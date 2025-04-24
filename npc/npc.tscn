@@ -1,6 +1,124 @@
-[gd_scene load_steps=2 format=3 uid="uid://dn6fi4mt6rurg"]
+[gd_scene load_steps=11 format=3 uid="uid://dn6fi4mt6rurg"]
 
 [ext_resource type="Script" uid="uid://cbc044a8mlx6" path="res://npc/scripts/npc.gd" id="1_2xp5l"]
+[ext_resource type="Texture2D" uid="uid://b0kaof7dxqd0b" path="res://npc/sprites/npc_sprite_02.png" id="2_3i1kj"]
+[ext_resource type="Texture2D" uid="uid://bn2dsccwr6idn" path="res://player/Sprites/Shadow.png" id="3_o6cys"]
 
-[node name="NPC" type="Node2D"]
+[sub_resource type="Animation" id="Animation_3i1kj"]
+resource_name = "idle_down"
+step = 0.1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [0]
+}
+
+[sub_resource type="Animation" id="Animation_o6cys"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [0]
+}
+
+[sub_resource type="Animation" id="Animation_ldo70"]
+resource_name = "idle_up"
+step = 0.1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [1]
+}
+
+[sub_resource type="Animation" id="Animation_fnhme"]
+resource_name = "idle_side"
+step = 0.1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [2]
+}
+
+[sub_resource type="Animation" id="Animation_uamtn"]
+resource_name = "walk_down"
+length = 1.2
+loop_mode = 1
+step = 0.1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.2, 0.4, 0.6, 0.8, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [3, 4, 5, 6, 5, 4]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_ldo70"]
+_data = {
+&"RESET": SubResource("Animation_o6cys"),
+&"idle_down": SubResource("Animation_3i1kj"),
+&"idle_side": SubResource("Animation_fnhme"),
+&"idle_up": SubResource("Animation_ldo70"),
+&"walk_down": SubResource("Animation_uamtn")
+}
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_ldo70"]
+radius = 8.0
+height = 24.0
+
+[node name="NPC" type="CharacterBody2D"]
+collision_layer = 0
+collision_mask = 16
 script = ExtResource("1_2xp5l")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(0, -22)
+texture = ExtResource("2_3i1kj")
+hframes = 15
+
+[node name="ShadowSprite" type="Sprite2D" parent="Sprite2D"]
+modulate = Color(0, 0, 0, 0.756863)
+show_behind_parent = true
+position = Vector2(0, 22)
+texture = ExtResource("3_o6cys")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("AnimationLibrary_ldo70")
+}
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+rotation = 4.71239
+shape = SubResource("CapsuleShape2D_ldo70")

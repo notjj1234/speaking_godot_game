@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=4 uid="uid://lbd0gmmnt1v1"]
+[gd_scene load_steps=18 format=4 uid="uid://lbd0gmmnt1v1"]
 
 [ext_resource type="Script" uid="uid://qtlc03dgcseo" path="res://levels/scripts/level.gd" id="1_qc11m"]
 [ext_resource type="PackedScene" uid="uid://diwmvkgtca114" path="res://tile_maps/grass-01.tscn" id="2_vkp6l"]
@@ -14,6 +14,9 @@
 [ext_resource type="Resource" uid="uid://cvfs8nrh4q5bo" path="res://items/gem.tres" id="11_orpxd"]
 [ext_resource type="Resource" uid="uid://biwqu7hopgnkh" path="res://items/stone.tres" id="13_s8dav"]
 [ext_resource type="Resource" uid="uid://cspdl2unf3uss" path="res://items/apple.tres" id="14_elgw5"]
+[ext_resource type="PackedScene" uid="uid://dn6fi4mt6rurg" path="res://npc/npc.tscn" id="15_dgk06"]
+[ext_resource type="Resource" uid="uid://duaqk48rhtdwb" path="res://npc/00_npcs/npc_01.tres" id="16_jnc0c"]
+[ext_resource type="PackedScene" uid="uid://co6lekkmfdftj" path="res://npc/npc_behavior_wander.tscn" id="16_uqx1c"]
 
 [node name="Playground" type="Node2D"]
 y_sort_enabled = true
@@ -185,3 +188,9 @@ autowrap_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Exit Now"
+
+[node name="NPC" parent="." instance=ExtResource("15_dgk06")]
+position = Vector2(278, 275)
+npc_resource = ExtResource("16_jnc0c")
+
+[node name="NpcBehaviorWander" parent="NPC" instance=ExtResource("16_uqx1c")]
