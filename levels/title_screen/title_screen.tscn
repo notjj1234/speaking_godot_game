@@ -1,0 +1,33 @@
+[gd_scene load_steps=3 format=3 uid="uid://8624fq7trlgq"]
+
+[ext_resource type="Script" uid="uid://drmxsqc880k0c" path="res://levels/title_screen/title_screen.gd" id="1_satpf"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_satpf"]
+
+[node name="TitleScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_satpf")
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer"]
+layout_mode = 2
+
+[node name="GameTitle" type="Label" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+text = "Danny Devito"
+
+[node name="StartTutorial" type="Button" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="StartGame" type="Button" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="TouchStartTutorial" type="TouchScreenButton" parent="."]
+shape = SubResource("RectangleShape2D_satpf")
+shape_visible = false
+action = "ui_accept"

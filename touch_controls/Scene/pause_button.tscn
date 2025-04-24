@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3 uid="uid://cgf1781jg33w2"]
+
+[ext_resource type="Texture2D" uid="uid://dhi7hva1ia754" path="res://touch_controls/UsedIcons/Pause.png" id="1_u0j31"]
+
+[node name="PauseButton" type="CanvasLayer"]
+
+[node name="Pause" type="TouchScreenButton" parent="."]
+position = Vector2(540, 15)
+scale = Vector2(0.7, 0.7)
+texture_normal = ExtResource("1_u0j31")
+action = "pause"

@@ -1,0 +1,217 @@
+[gd_scene load_steps=13 format=3 uid="uid://xnhp7ttbcmmm"]
+
+[ext_resource type="Script" uid="uid://b8mligen8pcbk" path="res://gui/pause_menu/pause_menu.gd" id="1_5ko8b"]
+[ext_resource type="Texture2D" uid="uid://dge3trwiyp5gh" path="res://touch_controls/UsedIcons/Exit.png" id="2_2go4f"]
+[ext_resource type="Texture2D" uid="uid://cej00ld0ei3ah" path="res://items/Sprites/items.png" id="2_cgb5d"]
+[ext_resource type="PackedScene" uid="uid://byhwfi7xi3p51" path="res://gui/pause_menu/inventory/inventory_slot.tscn" id="3_hsmkp"]
+[ext_resource type="Script" uid="uid://nmicpskqijjl" path="res://gui/pause_menu/inventory/Scripts/inventory_ui.gd" id="3_rxyot"]
+[ext_resource type="Resource" uid="uid://g2nsmgqmnhgp" path="res://gui/pause_menu/inventory/player_inventory.tres" id="4_2jlf4"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_48i6x"]
+atlas = ExtResource("2_cgb5d")
+region = Rect2(96, 0, 32, 32)
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_8nfop"]
+content_margin_left = 10.0
+content_margin_top = 10.0
+content_margin_right = 10.0
+content_margin_bottom = 10.0
+texture = SubResource("AtlasTexture_48i6x")
+texture_margin_left = 14.0
+texture_margin_top = 14.0
+texture_margin_right = 14.0
+texture_margin_bottom = 14.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_fdasw"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_nva4f"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_sl4bd"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_v88r8"]
+
+[node name="PauseMenu" type="CanvasLayer"]
+process_mode = 3
+script = ExtResource("1_5ko8b")
+
+[node name="Control" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ColorRect" type="ColorRect" parent="Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 1.0
+offset_top = -1.0
+offset_right = 1.0
+offset_bottom = -1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.442911, 0.442911, 0.442911, 0.72549)
+
+[node name="Label" type="Label" parent="Control"]
+modulate = Color(0.670588, 0.670588, 0.670588, 1)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -47.0
+offset_top = -173.0
+offset_right = 10.0
+offset_bottom = -150.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Paused"
+
+[node name="ItemDescription" type="Label" parent="Control"]
+modulate = Color(0.670588, 0.670588, 0.670588, 1)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -257.0
+offset_top = -6.0
+offset_right = -56.0
+offset_bottom = 25.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 10
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="PanelContainer" type="PanelContainer" parent="Control"]
+layout_mode = 0
+offset_left = 64.0
+offset_top = 144.0
+offset_right = 260.0
+offset_bottom = 232.0
+theme_override_styles/panel = SubResource("StyleBoxTexture_8nfop")
+
+[node name="GridContainer" type="GridContainer" parent="Control/PanelContainer"]
+layout_mode = 2
+columns = 5
+script = ExtResource("3_rxyot")
+data = ExtResource("4_2jlf4")
+
+[node name="InventorySlot" parent="Control/PanelContainer/GridContainer" instance=ExtResource("3_hsmkp")]
+layout_mode = 2
+
+[node name="InventorySlot2" parent="Control/PanelContainer/GridContainer" instance=ExtResource("3_hsmkp")]
+layout_mode = 2
+
+[node name="InventorySlot3" parent="Control/PanelContainer/GridContainer" instance=ExtResource("3_hsmkp")]
+layout_mode = 2
+
+[node name="InventorySlot4" parent="Control/PanelContainer/GridContainer" instance=ExtResource("3_hsmkp")]
+layout_mode = 2
+
+[node name="InventorySlot5" parent="Control/PanelContainer/GridContainer" instance=ExtResource("3_hsmkp")]
+layout_mode = 2
+
+[node name="InventorySlot6" parent="Control/PanelContainer/GridContainer" instance=ExtResource("3_hsmkp")]
+layout_mode = 2
+
+[node name="InventorySlot7" parent="Control/PanelContainer/GridContainer" instance=ExtResource("3_hsmkp")]
+layout_mode = 2
+
+[node name="InventorySlot8" parent="Control/PanelContainer/GridContainer" instance=ExtResource("3_hsmkp")]
+layout_mode = 2
+
+[node name="InventorySlot9" parent="Control/PanelContainer/GridContainer" instance=ExtResource("3_hsmkp")]
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Control"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -259.0
+offset_top = 139.0
+offset_right = -105.0
+offset_bottom = 170.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 4
+
+[node name="Button_Save" type="Button" parent="Control/HBoxContainer"]
+custom_minimum_size = Vector2(75, 0)
+layout_mode = 2
+text = "Save"
+
+[node name="Button_Load" type="Button" parent="Control/HBoxContainer"]
+custom_minimum_size = Vector2(75, 0)
+layout_mode = 2
+text = "Load"
+
+[node name="Touch_Save" type="TouchScreenButton" parent="Control/HBoxContainer"]
+position = Vector2(36, 15)
+scale = Vector2(3.96376, -1.55805)
+shape = SubResource("RectangleShape2D_fdasw")
+
+[node name="Touch_Load" type="TouchScreenButton" parent="Control/HBoxContainer"]
+position = Vector2(116, 16)
+scale = Vector2(3.78361, 1.57552)
+shape = SubResource("RectangleShape2D_nva4f")
+
+[node name="TouchScreenButton" type="TouchScreenButton" parent="Control"]
+position = Vector2(20, 12)
+scale = Vector2(0.7, 0.7)
+texture_normal = ExtResource("2_2go4f")
+action = "pause"
+
+[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="Control"]
+max_polyphony = 4
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Control"]
+layout_mode = 0
+offset_left = 428.0
+offset_top = 109.0
+offset_right = 502.0
+offset_bottom = 149.0
+
+[node name="Label" type="Label" parent="Control/VBoxContainer"]
+layout_mode = 2
+text = "Word List"
+
+[node name="WordListDisplay" type="RichTextLabel" parent="Control/VBoxContainer"]
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Control/VBoxContainer"]
+layout_mode = 2
+
+[node name="PrevPageButton" type="Button" parent="Control/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(30, 30)
+layout_mode = 2
+text = "<-"
+
+[node name="NextPageButton" type="Button" parent="Control/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(30, 30)
+layout_mode = 2
+mouse_filter = 1
+text = "->"
+
+[node name="PrevPageTouch" type="TouchScreenButton" parent="Control/VBoxContainer/HBoxContainer"]
+visible = false
+position = Vector2(14, 15)
+scale = Vector2(1.5, 1.5)
+shape = SubResource("RectangleShape2D_sl4bd")
+
+[node name="NextPageTouch" type="TouchScreenButton" parent="Control/VBoxContainer/HBoxContainer"]
+visible = false
+position = Vector2(49, 15)
+scale = Vector2(1.5, 1.5)
+shape = SubResource("RectangleShape2D_v88r8")

@@ -1,0 +1,45 @@
+[gd_scene load_steps=2 format=3 uid="uid://smf7qaadyq4m"]
+
+[ext_resource type="Script" uid="uid://6s62y772ca1j" path="res://speech_to_text/STTManager.gd" id="1_skanw"]
+
+[node name="SpeechToText" type="Node2D"]
+position = Vector2(-1, 0)
+script = ExtResource("1_skanw")
+
+[node name="Listen" type="Button" parent="."]
+offset_left = 40.0
+offset_top = 13.0
+offset_right = 350.0
+offset_bottom = 118.0
+text = "Listen"
+
+[node name="Stop" type="Button" parent="."]
+offset_left = 40.0
+offset_top = 130.0
+offset_right = 350.0
+offset_bottom = 235.0
+text = "Stop
+"
+
+[node name="GetOutput" type="Button" parent="."]
+offset_left = 371.0
+offset_top = 90.0
+offset_right = 614.0
+offset_bottom = 172.0
+text = "Get Output"
+
+[node name="TextEdit" type="TextEdit" parent="."]
+offset_left = 47.0
+offset_top = 255.0
+offset_right = 337.0
+offset_bottom = 455.0
+
+[node name="TextEdit2" type="TextEdit" parent="."]
+offset_left = 366.0
+offset_top = 264.0
+offset_right = 612.0
+offset_bottom = 433.0
+
+[connection signal="button_down" from="Listen" to="." method="_on_listen_button_down"]
+[connection signal="button_down" from="Stop" to="." method="_on_stop_button_down"]
+[connection signal="button_down" from="GetOutput" to="." method="_on_get_output_button_down"]

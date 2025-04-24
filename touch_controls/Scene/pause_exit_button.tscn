@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3 uid="uid://dms7cudmlav4u"]
+
+[ext_resource type="Texture2D" uid="uid://dge3trwiyp5gh" path="res://touch_controls/UsedIcons/Exit.png" id="1_rlhmv"]
+
+[node name="PauseExitButton" type="CanvasLayer"]
+
+[node name="TouchScreenButton" type="TouchScreenButton" parent="."]
+position = Vector2(18, 17)
+scale = Vector2(0.7, 0.7)
+texture_normal = ExtResource("1_rlhmv")

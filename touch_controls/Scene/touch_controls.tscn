@@ -1,0 +1,72 @@
+[gd_scene load_steps=9 format=3 uid="uid://ctqin6e0wq3vi"]
+
+[ext_resource type="Texture2D" uid="uid://3oefvnla4lmc" path="res://touch_controls/UsedIcons/Left.png" id="1_6daiv"]
+[ext_resource type="Script" uid="uid://0m3n5koscq2h" path="res://touch_controls/Scripts/touch_controls.gd" id="1_qogkm"]
+[ext_resource type="Texture2D" uid="uid://odsbyxdn780e" path="res://touch_controls/UsedIcons/Right.png" id="2_0pjbp"]
+[ext_resource type="Texture2D" uid="uid://cs3ynn34s7g7d" path="res://touch_controls/UsedIcons/Up.png" id="3_2v5l8"]
+[ext_resource type="Texture2D" uid="uid://da178lghwcwu4" path="res://touch_controls/UsedIcons/Down.png" id="4_i1qv5"]
+[ext_resource type="Texture2D" uid="uid://cuwrmnqqcgbds" path="res://touch_controls/UsedIcons/Attack.png" id="5_g2tuf"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_bqbfm"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_yjrdc"]
+
+[node name="TouchControls" type="CanvasLayer"]
+script = ExtResource("1_qogkm")
+
+[node name="Left" type="TouchScreenButton" parent="."]
+position = Vector2(32, 356)
+scale = Vector2(0.7, 0.7)
+texture_normal = ExtResource("1_6daiv")
+action = "left"
+
+[node name="Right" type="TouchScreenButton" parent="."]
+position = Vector2(161, 356)
+scale = Vector2(0.7, 0.7)
+texture_normal = ExtResource("2_0pjbp")
+action = "right"
+
+[node name="Up" type="TouchScreenButton" parent="."]
+position = Vector2(95, 296)
+scale = Vector2(0.7, 0.7)
+texture_normal = ExtResource("3_2v5l8")
+action = "up"
+
+[node name="Down" type="TouchScreenButton" parent="."]
+position = Vector2(97, 411)
+scale = Vector2(0.7, 0.7)
+texture_normal = ExtResource("4_i1qv5")
+action = "down"
+
+[node name="Attack" type="TouchScreenButton" parent="."]
+position = Vector2(493, 356)
+scale = Vector2(0.7, 0.7)
+texture_normal = ExtResource("5_g2tuf")
+action = "attack"
+
+[node name="Mic" type="Button" parent="."]
+offset_left = 481.0
+offset_top = 312.0
+offset_right = 559.0
+offset_bottom = 348.0
+text = "Mic Off"
+
+[node name="Touch_Mic" type="TouchScreenButton" parent="."]
+position = Vector2(520, 330)
+scale = Vector2(3.99388, 1.84)
+shape = SubResource("RectangleShape2D_bqbfm")
+shape_visible = false
+
+[node name="Interact" type="Button" parent="."]
+offset_left = 391.0
+offset_top = 370.0
+offset_right = 469.0
+offset_bottom = 406.0
+text = "Interact"
+
+[node name="Touch_Interact" type="TouchScreenButton" parent="."]
+position = Vector2(430, 388)
+scale = Vector2(4.04, 1.92)
+shape = SubResource("RectangleShape2D_yjrdc")
+shape_visible = false
+action = "interact"

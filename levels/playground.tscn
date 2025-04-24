@@ -1,0 +1,187 @@
+[gd_scene load_steps=15 format=4 uid="uid://lbd0gmmnt1v1"]
+
+[ext_resource type="Script" uid="uid://qtlc03dgcseo" path="res://levels/scripts/level.gd" id="1_qc11m"]
+[ext_resource type="PackedScene" uid="uid://diwmvkgtca114" path="res://tile_maps/grass-01.tscn" id="2_vkp6l"]
+[ext_resource type="PackedScene" uid="uid://cxwqvwsctjoim" path="res://props/Plants/plant.tscn" id="3_0q3tp"]
+[ext_resource type="PackedScene" uid="uid://b3oaeqoffq7dl" path="res://levels/player_spawn.tscn" id="4_8j31g"]
+[ext_resource type="PackedScene" uid="uid://cssawlcgy87g8" path="res://gui/player_hud/player_hud.tscn" id="6_2sfj0"]
+[ext_resource type="Script" uid="uid://dp7xt1c8ct3s4" path="res://levels/tutorial_items/tutorial_dialog.gd" id="6_bk8ow"]
+[ext_resource type="PackedScene" uid="uid://ctqin6e0wq3vi" path="res://touch_controls/Scene/touch_controls.tscn" id="7_rl3ru"]
+[ext_resource type="PackedScene" uid="uid://cgf1781jg33w2" path="res://touch_controls/Scene/pause_button.tscn" id="8_52oid"]
+[ext_resource type="PackedScene" uid="uid://cyyhm21q0wqey" path="res://levels/level_transition.tscn" id="8_gmlbg"]
+[ext_resource type="PackedScene" uid="uid://edomghquajpv" path="res://items/item_pickup/item_pickup.tscn" id="10_xuoq6"]
+[ext_resource type="Resource" uid="uid://b5ftubrkok1eq" path="res://items/potion.tres" id="11_hnmvy"]
+[ext_resource type="Resource" uid="uid://cvfs8nrh4q5bo" path="res://items/gem.tres" id="11_orpxd"]
+[ext_resource type="Resource" uid="uid://biwqu7hopgnkh" path="res://items/stone.tres" id="13_s8dav"]
+[ext_resource type="Resource" uid="uid://cspdl2unf3uss" path="res://items/apple.tres" id="14_elgw5"]
+
+[node name="Playground" type="Node2D"]
+y_sort_enabled = true
+script = ExtResource("1_qc11m")
+
+[node name="PlantsContainer" type="Node2D" parent="."]
+
+[node name="Plant" parent="PlantsContainer" instance=ExtResource("3_0q3tp")]
+position = Vector2(468, 354)
+
+[node name="Plant5" parent="PlantsContainer" instance=ExtResource("3_0q3tp")]
+position = Vector2(118, 209)
+
+[node name="Plant10" parent="PlantsContainer" instance=ExtResource("3_0q3tp")]
+position = Vector2(212, 89)
+
+[node name="Plant18" parent="PlantsContainer" instance=ExtResource("3_0q3tp")]
+position = Vector2(247, 89)
+
+[node name="Plant19" parent="PlantsContainer" instance=ExtResource("3_0q3tp")]
+position = Vector2(282, 89)
+
+[node name="Plant11" parent="PlantsContainer" instance=ExtResource("3_0q3tp")]
+position = Vector2(162, 111)
+
+[node name="Plant12" parent="PlantsContainer" instance=ExtResource("3_0q3tp")]
+position = Vector2(281, 376)
+
+[node name="Plant13" parent="PlantsContainer" instance=ExtResource("3_0q3tp")]
+position = Vector2(313, 89)
+
+[node name="Plant2" parent="PlantsContainer" instance=ExtResource("3_0q3tp")]
+position = Vector2(357, 256)
+
+[node name="Plant6" parent="PlantsContainer" instance=ExtResource("3_0q3tp")]
+position = Vector2(335, 348)
+
+[node name="Plant7" parent="PlantsContainer" instance=ExtResource("3_0q3tp")]
+position = Vector2(468, 184)
+
+[node name="Plant8" parent="PlantsContainer" instance=ExtResource("3_0q3tp")]
+position = Vector2(131, 378)
+
+[node name="Plant14" parent="PlantsContainer" instance=ExtResource("3_0q3tp")]
+position = Vector2(418, 319)
+
+[node name="Plant15" parent="PlantsContainer" instance=ExtResource("3_0q3tp")]
+position = Vector2(366, 201)
+
+[node name="Plant16" parent="PlantsContainer" instance=ExtResource("3_0q3tp")]
+position = Vector2(91, 274)
+
+[node name="Plant17" parent="PlantsContainer" instance=ExtResource("3_0q3tp")]
+position = Vector2(191, 309)
+
+[node name="Plant3" parent="PlantsContainer" instance=ExtResource("3_0q3tp")]
+position = Vector2(420, 132)
+
+[node name="Grass-01" parent="." instance=ExtResource("2_vkp6l")]
+tile_map_data = PackedByteArray("AAAAAAAAAAAAAAQAAAAAAAEAAAAAAAUAAAAAAAIAAAAAAAYAAAAAAAMAAAAAAAcAAAAAAAQAAAAAAAcAAAAAAAUAAAAAAAcAAAAAAAYAAAAAAAcAAAAAAAcAAAAAAAcAAAAAAAgAAAAAAAcAAAAAAAkAAAAAAAcAAAAAAAoAAAAAAAcAAAAAAAsAAAAAAAcAAAAAAAwAAAAGAAYAADAAAA0AAAAGAAUAADAAAA4AAAAGAAQAADABAAAAAAABAAQAAAABAAEAAAABAAUAAAABAAIAAAABAAYAAAABAAMAAAABAAcAAAABAAQAAAABAAcAAAABAAUAAAABAAcAAAABAAYAAAABAAcAAAABAAcAAAABAAcAAAABAAgAAAABAAcAAAABAAkAAAABAAcAAAABAAoAAAABAAcAAAABAAsAAAABAAcAAAABAAwAAAAFAAYAADABAA4AAAAFAAQAADACAAAAAAADAAQAAAACAAEAAAADAAUAAAACAAIAAAADAAYAAAACAAMAAAADAAMAAAACAAQAAAACAAMAAAACAAUAAAACAAMAAAACAAYAAAACAAMAAAACAAcAAAACAAMAAAACAAgAAAACAAMAAAACAAkAAAACAAMAAAACAAoAAAACAAMAAAACAAsAAAACAAMAAAACAAwAAAAAAAMAAAACAA0AAAAEAAUAADACAA4AAAAEAAQAADADAAAAAAAEAAQAAAADAAEAAAAEAAUAAAADAAIAAAADAAYAAAADAAMAAAADAAIAAAADAAQAAAADAAMAAAADAAUAAAACAAMAAAADAAYAAAACAAMAAAADAAcAAAACAAMAAAADAAgAAAACAAMAAAADAAkAAAACAAMAAAADAAoAAAACAAMAAAADAAsAAAACAAMAAAADAAwAAAAAAAMAAAADAA0AAAADAAUAADADAA4AAAADAAQAADAEAAAAAAAEAAQAAAAEAAEAAAAEAAUAAAAEAAIAAAADAAYAAAAEAAMAAAABAAIAAAAEAAQAAAABAAMAAAAEAAUAAAACAAMAAAAEAAYAAAACAAMAAAAEAAcAAAACAAMAAAAEAAgAAAACAAMAAAAEAAkAAAACAAMAAAAEAAoAAAACAAMAAAAEAAsAAAACAAMAAAAEAAwAAAAAAAMAAAAEAA0AAAACAAUAADAEAA4AAAACAAQAADAFAAAAAAAEAAQAAAAFAAEAAAAEAAUAAAAFAAIAAAADAAYAAAAFAAMAAAACAAIAAAAFAAQAAAACAAMAAAAFAAUAAAACAAMAAAAFAAYAAAACAAMAAAAFAAcAAAACAAMAAAAFAAgAAAACAAMAAAAFAAkAAAACAAMAAAAFAAoAAAACAAMAAAAFAAsAAAACAAMAAAAFAAwAAAAAAAMAAAAFAA0AAAAEAAUAADAFAA4AAAAEAAQAADAGAAAAAAAHAAQAAAAGAAEAAAAHAAUAAAAGAAIAAAAHAAYAAAAGAAMAAAADAAIAAAAGAAUAAAACAAMAAAAGAAYAAAACAAMAAAAGAAcAAAACAAMAAAAGAAgAAAACAAMAAAAGAAkAAAACAAMAAAAGAAoAAAACAAMAAAAGAAsAAAACAAMAAAAGAAwAAAAAAAMAAAAGAA0AAAADAAUAADAGAA4AAAADAAQAADAHAAAAAAABAAMAAAAHAAEAAAABAAMAAAAHAAIAAAADAAIAAAAHAAMAAAABAAIAAAAHAAQAAAABAAMAAAAHAAUAAAACAAMAAAAHAAYAAAACAAMAAAAHAAcAAAACAAMAAAAHAAgAAAACAAMAAAAHAAkAAAACAAMAAAAHAAoAAAACAAMAAAAHAAsAAAACAAMAAAAHAAwAAAAAAAMAAAAHAA0AAAACAAUAADAHAA4AAAACAAQAADAIAAAAAAABAAMAAAAIAAEAAAABAAMAAAAIAAIAAAABAAIAAAAIAAMAAAACAAIAAAAIAAQAAAACAAMAAAAIAAUAAAACAAMAAAAIAAYAAAACAAMAAAAIAAcAAAACAAMAAAAIAAgAAAACAAMAAAAIAAkAAAACAAMAAAAIAAoAAAACAAMAAAAIAAsAAAACAAMAAAAIAAwAAAAAAAMAAAAIAA0AAAAEAAUAADAIAA4AAAAEAAQAADAJAAAAAAAHAAQAABAJAAEAAAAHAAUAABAJAAIAAAAHAAYAABAJAAMAAAADAAIAAAAJAAQAAAADAAMAAAAJAAUAAAACAAMAAAAJAAYAAAACAAMAAAAJAAcAAAACAAMAAAAJAAgAAAACAAMAAAAJAAkAAAACAAMAAAAJAAoAAAACAAMAAAAJAAsAAAACAAMAAAAJAAwAAAAAAAMAAAAJAA0AAAADAAUAADAJAA4AAAADAAQAADAKAAAAAAAEAAQAAAAKAAEAAAAEAAUAAAAKAAIAAAADAAYAAAAKAAMAAAABAAIAAAAKAAQAAAABAAMAAAAKAAUAAAACAAMAAAAKAAYAAAACAAMAAAAKAAcAAAACAAMAAAAKAAkAAAACAAMAAAAKAAoAAAACAAMAAAAKAAsAAAACAAMAAAAKAAwAAAAAAAMAAAAKAA0AAAACAAUAADAKAA4AAAACAAQAADALAAAAAAAEAAQAAAALAAEAAAAEAAUAAAALAAIAAAADAAYAAAALAAMAAAACAAIAAAALAAQAAAACAAMAAAALAAUAAAACAAMAAAALAAYAAAACAAMAAAALAAcAAAACAAMAAAALAAgAAAACAAMAAAALAAoAAAACAAMAAAALAAsAAAACAAMAAAALAAwAAAAAAAMAAAALAA0AAAAEAAUAADALAA4AAAAEAAQAADAMAAAAAAACAAQAAAAMAAEAAAACAAUAAAAMAAIAAAADAAYAAAAMAAMAAAADAAIAAAAMAAQAAAADAAMAAAAMAAUAAAACAAMAAAAMAAYAAAACAAMAAAAMAAcAAAACAAMAAAAMAAgAAAACAAMAAAAMAAkAAAACAAMAAAAMAAoAAAACAAMAAAAMAAsAAAACAAMAAAAMAAwAAAAAAAMAAAAMAA0AAAADAAUAADAMAA4AAAADAAQAADANAAAAAAADAAQAAAANAAEAAAADAAUAAAANAAIAAAADAAYAAAANAAMAAAABAAIAAAANAAQAAAABAAMAAAANAAUAAAACAAMAAAANAAYAAAACAAMAAAANAAcAAAACAAMAAAANAAgAAAACAAMAAAANAAkAAAACAAMAAAANAAoAAAACAAMAAAANAAsAAAACAAMAAAANAAwAAAAAAAMAAAANAA0AAAAEAAUAADANAA4AAAAEAAQAADAOAAAAAAACAAQAAAAOAAEAAAACAAUAAAAOAAIAAAADAAYAAAAOAAMAAAACAAIAAAAOAAQAAAACAAMAAAAOAAUAAAACAAMAAAAOAAYAAAACAAMAAAAOAAcAAAACAAMAAAAOAAgAAAACAAMAAAAOAAkAAAACAAMAAAAOAAoAAAACAAMAAAAOAAsAAAACAAMAAAAOAAwAAAAAAAMAAAAOAA0AAAADAAUAADAOAA4AAAADAAQAADAPAAAAAAADAAQAAAAPAAEAAAADAAUAAAAPAA4AAAACAAQAADAQAAAAAAAEAAQAAAAQAAEAAAAEAAUAAAAQAA4AAAAEAAQAADARAAAAAAADAAQAAAARAAEAAAADAAUAAAARAAIAAAADAAYAAAARAAMAAAABAAIAAAARAAQAAAABAAMAAAARAAUAAAACAAMAAAARAAYAAAACAAMAAAARAAcAAAACAAMAAAARAAgAAAACAAMAAAARAAkAAAACAAMAAAARAAoAAAACAAMAAAARAAsAAAACAAMAAAARAAwAAAACAAIAAAARAA0AAAACAAUAADARAA4AAAACAAQAADASAAAAAAAFAAQAAAASAAEAAAAFAAUAAAASAAIAAAAFAAYAAAASAAMAAAAFAAcAAAASAAQAAAAFAAcAAAASAAUAAAAFAAcAAAASAAYAAAAFAAcAAAASAAcAAAAFAAcAAAASAAgAAAAFAAcAAAASAAkAAAAFAAcAAAASAAoAAAAFAAcAAAASAAsAAAAFAAcAAAASAAwAAAABAAYAADASAA0AAAABAAUAADASAA4AAAABAAQAADATAAAAAAAGAAQAAAATAAEAAAAGAAUAAAATAAIAAAAGAAYAAAATAAMAAAAGAAcAAAATAAQAAAAGAAcAAAATAAUAAAAGAAcAAAATAAYAAAAGAAcAAAATAAcAAAAGAAcAAAATAAgAAAAGAAcAAAATAAkAAAAGAAcAAAATAAoAAAAGAAcAAAATAAsAAAAGAAcAAAATAAwAAAAAAAYAADATAA0AAAAAAAUAADATAA4AAAAAAAQAADAPAAIAAAADAAYAAAAQAAIAAAADAAYAAAAQAAMAAAABAAIAAAAPAAMAAAACAAMAAAAPAAQAAAADAAMAAAAQAAQAAAABAAMAAAAQAAUAAAACAAMAAAAPAAYAAAACAAMAAAAPAAcAAAACAAMAAAAQAAYAAAACAAMAAAAQAAcAAAACAAMAAAAQAAgAAAACAAMAAAAQAAkAAAACAAMAAAAQAAoAAAACAAMAAAAQAAsAAAACAAMAAAAQAAwAAAAAAAMAAAAQAA0AAAAEAAUAADAPAAkAAAACAAMAAAAPAAgAAAACAAMAAAAPAAoAAAACAAMAAAAPAAsAAAACAAMAAAAPAAwAAAAAAAMAAAAPAAUAAAACAAMAAAAPAA0AAAACAAUAADAGAAQAAAADAAMAAAABAA0AAAAFAAUAADAKAAgAAAACAAMAAAALAAkAAAACAAMAAAA=")
+
+[node name="PlayerSpawn" parent="." instance=ExtResource("4_8j31g")]
+position = Vector2(288, 207)
+
+[node name="PlayerHud" parent="." instance=ExtResource("6_2sfj0")]
+
+[node name="TutorialDialog" type="Control" parent="PlayerHud"]
+visible = false
+layout_mode = 3
+anchor_left = 0.05
+anchor_top = 0.75
+anchor_right = 0.95
+anchor_bottom = 0.95
+offset_left = -21.0
+offset_top = -320.0
+offset_right = -21.0
+offset_bottom = -320.0
+script = ExtResource("6_bk8ow")
+metadata/_edit_use_anchors_ = true
+
+[node name="DialogBackground" type="Panel" parent="PlayerHud/TutorialDialog"]
+modulate = Color(0, 0, 0, 0.6)
+custom_minimum_size = Vector2(600, 80)
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+metadata/_edit_use_anchors_ = true
+
+[node name="DialogLabel" type="Label" parent="PlayerHud/TutorialDialog/DialogBackground"]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+metadata/_edit_use_anchors_ = true
+
+[node name="Control" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="TouchControls" parent="Control" instance=ExtResource("7_rl3ru")]
+
+[node name="PauseButton" parent="Control" instance=ExtResource("8_52oid")]
+
+[node name="PlaygroundTo01" parent="." instance=ExtResource("8_gmlbg")]
+position = Vector2(256, 0)
+level = "uid://dkiyytwbuvmqo"
+target_transition_area = "01ToPlayground"
+size = 2
+side = 2
+
+[node name="ItemPickup" parent="." instance=ExtResource("10_xuoq6")]
+position = Vector2(188, 180)
+item_data = ExtResource("11_orpxd")
+
+[node name="ItemPickup2" parent="." instance=ExtResource("10_xuoq6")]
+position = Vector2(159, 178)
+item_data = ExtResource("11_hnmvy")
+
+[node name="ItemPickup3" parent="." instance=ExtResource("10_xuoq6")]
+position = Vector2(195.786, 197.896)
+item_data = ExtResource("13_s8dav")
+
+[node name="ItemPickup4" parent="." instance=ExtResource("10_xuoq6")]
+position = Vector2(231.65, 232.869)
+item_data = ExtResource("14_elgw5")
+
+[node name="UILayer" type="CanvasLayer" parent="."]
+visible = false
+
+[node name="UIRoot" type="Control" parent="UILayer"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="MicPermissionPanel" type="Panel" parent="UILayer/UIRoot"]
+visible = false
+layout_mode = 0
+offset_left = -200.0
+offset_top = -100.0
+offset_right = 200.0
+offset_bottom = 100.0
+mouse_filter = 1
+
+[node name="VBoxContainer" type="VBoxContainer" parent="UILayer/UIRoot/MicPermissionPanel"]
+layout_mode = 0
+alignment = 1
+
+[node name="DialogLabel" type="Label" parent="UILayer/UIRoot/MicPermissionPanel/VBoxContainer"]
+custom_minimum_size = Vector2(350, 100)
+layout_mode = 2
+text = "🎤 Mic permission was granted.
+Please restart the app to activate voice features."
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="ConfirmButton" type="Button" parent="UILayer/UIRoot/MicPermissionPanel/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Exit Now"
