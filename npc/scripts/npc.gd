@@ -8,6 +8,7 @@ signal do_behavior_enabled
 var state: String = "idle"
 var direction: Vector2 = Vector2.DOWN
 var direction_name: String = "down"
+var do_behavior: bool = true
 
 @export var npc_resource: NPCResource: set = _set_npc_resource
 
@@ -18,6 +19,7 @@ func _ready() -> void:
 	setup_npc()
 	if Engine.is_editor_hint():
 		return
+	do_behavior_enabled.emit()
 	pass
 	
 func _physics_process(delta: float) -> void:
