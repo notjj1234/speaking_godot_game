@@ -17,6 +17,11 @@ func _ready() -> void:
 	$Sprite2D.queue_free()
 	pass
 
+func update_label(_s:String) -> void:
+	$Sprite2D/Label.text = _s
+	
+	pass
+
 
 
 func _update_wait_time_label() -> void:
