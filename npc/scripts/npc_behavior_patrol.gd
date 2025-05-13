@@ -21,16 +21,16 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		child_entered_tree.connect(gather_patrol_locations)
 		child_order_changed.connect(gather_patrol_locations)
-	
+		return
 	super()
-	
 	if patrol_locations.size() == 0:
 		print("⚠️ No patrol points found! Patrol disabled.")
-		set_process(false)
+		process_mode = Node.PROCESS_MODE_DISABLED
+		#set_process(false)
 		return
 
 	target = patrol_locations[0]
-	set_process(true)  # Make sure we’re processing when valid
+	#set_process(true)  # Make sure we’re processing when valid
 
 	
 

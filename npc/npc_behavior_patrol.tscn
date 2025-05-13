@@ -3,5 +3,4 @@
 [ext_resource type="Script" uid="uid://bj1obpgvufdx7" path="res://npc/scripts/npc_behavior_patrol.gd" id="1_pbuvt"]
 
 [node name="NpcBehaviorPatrol" type="Node2D"]
-process_mode = 3
 script = ExtResource("1_pbuvt")
