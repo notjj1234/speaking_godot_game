@@ -19,7 +19,7 @@
 
 ## 📖 About The Project
 
-Loqui Quest is a 2D topdown RPG game that combines JRPG combat with language learning via speech mechanics. This game heavily inspired by games we all know and love such as **Zelda**, **Dragon Quest** and **Final Fantasy**
+Loqui Quest is a 2D topdown RPG game that combines JRPG combat with language learning via speech mechanics. This is game heavily inspired by games we all know and love such as **Zelda**, **Dragon Quest** and **Final Fantasy**
 
 > Assets courtesy of [Michael Games](https://michaelgames.itch.io/2d-action-adventure-rpg-assets).
 > Cannot thank him enough for making these assets free to use. This personal project of mine would never have started if not for him.
