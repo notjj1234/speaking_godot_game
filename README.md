@@ -47,10 +47,10 @@ Original sprites will come later once the core gameplay is finished!
 
 ## 🚧 Built With
 
-* [Flutter](https://flutter.dev/)
+* Godot
 * [Google Sheets API](https://developers.google.com/sheets/api)
-* [speech_to_text](https://pub.dev/packages/speech_to_text)
-* [flame](https://pub.dev/packages/flame)
+* Google Cloud API
+* Google App Script
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
