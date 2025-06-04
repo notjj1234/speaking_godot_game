@@ -2,16 +2,10 @@
   <h3 align="center">Loqui Quest</h3>
 
   <p align="center">
-    A 2D RPG game with voice interaction — fight, speak, and learn!
-    <br />
-    <a href="https://github.com/your_username/loqui-quest"><strong>Explore the code »</strong></a>
-    <br />
-    <br />
-    <a href="https://github.com/your_username/loqui-quest">View Demo</a>
-    ·
-    <a href="https://github.com/your_username/loqui-quest/issues">Report Bug</a>
-    ·
-    <a href="https://github.com/your_username/loqui-quest/issues">Request Feature</a>
+    A 2D RPG game with voice interaction — Punch the enemy with your voice!
+  </p>
+  <p align="center">
+    WORK IN PROGRESS
   </p>
 </div>
 
