@@ -27,6 +27,7 @@ SaveManager="*res://00_globals/global_save_manager.gd"
 WordTracker="*res://00_globals/global_word_tracker.gd"
 SheetsManager="*res://google_sheets/sheets_manager.gd"
 GodotWhisper="*res://addons/godot_whisper/godot_whisper.gdextension"
+DialogSystem="*res://gui/dialog_system/dialog_system.tscn"
 
 [debug]
 
@@ -57,6 +58,10 @@ folder_colors={
 "res://speech_to_text/": "green",
 "res://touch_controls/": "green"
 }
+
+[gui]
+
+theme/custom_font="uid://d1uabga2q8lmv"
 
 [input]
 

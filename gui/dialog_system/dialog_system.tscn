@@ -1,0 +1,82 @@
+[gd_scene load_steps=8 format=3 uid="uid://dsgaak6scyr71"]
+
+[ext_resource type="Script" uid="uid://cufclhfll0abb" path="res://gui/dialog_system/scripts/dialog_system.gd" id="1_gle0o"]
+[ext_resource type="Texture2D" uid="uid://5tm1nkk6c6b4" path="res://gui/dialog_system/sprites/text-bubble.png" id="2_h0xjv"]
+[ext_resource type="FontFile" uid="uid://d1uabga2q8lmv" path="res://gui/fonts/Abaddon Light.ttf" id="3_f7bgx"]
+[ext_resource type="FontFile" uid="uid://0ow6by7f8lfy" path="res://gui/fonts/Abaddon Bold.ttf" id="4_jxevo"]
+
+[sub_resource type="Gradient" id="Gradient_gle0o"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_h0xjv"]
+gradient = SubResource("Gradient_gle0o")
+fill_from = Vector2(0, 1)
+fill_to = Vector2(0, 0)
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_3jka7"]
+content_margin_left = 14.0
+content_margin_top = 10.0
+content_margin_right = 14.0
+content_margin_bottom = 10.0
+texture = ExtResource("2_h0xjv")
+texture_margin_left = 16.0
+texture_margin_top = 16.0
+texture_margin_right = 16.0
+texture_margin_bottom = 16.0
+
+[node name="DialogSystem" type="CanvasLayer"]
+process_mode = 3
+layer = 0
+script = ExtResource("1_gle0o")
+
+[node name="DialogUI" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TextureRect" type="TextureRect" parent="DialogUI"]
+modulate = Color(0.272117, 0.280664, 0.269963, 1)
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -159.0
+grow_horizontal = 2
+grow_vertical = 0
+texture = SubResource("GradientTexture2D_h0xjv")
+
+[node name="PanelContainer" type="PanelContainer" parent="DialogUI"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -464.0
+offset_top = -101.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxTexture_3jka7")
+
+[node name="RichTextLabel" type="RichTextLabel" parent="DialogUI/PanelContainer"]
+layout_mode = 2
+theme_override_colors/default_color = Color(0.439216, 0.396078, 0.321569, 1)
+theme_override_fonts/normal_font = ExtResource("3_f7bgx")
+theme_override_fonts/bold_italics_font = ExtResource("4_jxevo")
+bbcode_enabled = true
+text = "Example text of [b]stuff[/b] goes here
+[wave]wavy text here ooo[/wave]
+[shake][color=orange]shaking orange text [/color][/shake]"
+scroll_active = false
+
+[node name="Label" type="Label" parent="DialogUI"]
+layout_mode = 0
+offset_left = 176.0
+offset_top = 348.0
+offset_right = 216.0
+offset_bottom = 371.0
+text = "Name"
