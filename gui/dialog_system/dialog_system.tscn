@@ -27,6 +27,7 @@ texture_margin_bottom = 16.0
 [node name="DialogSystem" type="CanvasLayer"]
 process_mode = 3
 layer = 0
+visible = false
 script = ExtResource("1_gle0o")
 
 [node name="DialogUI" type="Control" parent="."]
