@@ -28,11 +28,11 @@ Original sprites will come later once the core gameplay is finished!
 - ☁️ **Google Sheets Integration**: Spoken words are logged for tracking. I use Google Sheets because its free and accessible everywhere on the internet. Sue me for being broke lol.
 
 **Supported OS:**
-- Windows OS
-- Android OS
+- Windows
+- Android
 
 **Unsupported OS:**
-- iOS/Mac OS
+- iOS/Mac OS (Thank you Apple for making everything expensive)
 - Web Based (Trying to work on this. Primary focus)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
