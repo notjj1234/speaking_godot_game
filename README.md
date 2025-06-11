@@ -51,16 +51,14 @@ Original sprites will come later once the core gameplay is finished!
 ---
 
 ## ⚙️ Getting Started
-Make sure Flutter/Dart is properly setup on your device
-
+Later
 <!-- CONTACT -->
 ## Contact
 
 Orallo John James (JJ) Dalton Alvarez 
 - Email: orallojohnjames@gmail.com
 
-Project Link:
-- [https://github.com/notjj1234/](https://github.com/notjj1234/speaking_godot_game.git)
+
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
