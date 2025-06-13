@@ -73,7 +73,7 @@ Orallo John James (JJ) Dalton Alvarez
 A little acknowledgement and thank you section to those who intentionally or unintentionally helped me in the making of this little project of mine, along with some links of stuff I got/use from them!
 
 - [Michael Games] (https://www.youtube.com/@MichaelGamesOfficial)
-	- As mentioned at the top, his [assets](https://michaelgames.itch.io/2d-action-adventure-rpg-assets) were a big help in creating this project 
+	- As mentioned at the top, his [assets](https://michaelgames.itch.io/2d-action-adventure-rpg-assets) were a big help in creating this project. His YouTube videos/tutorials are very cool.
 - [FinePointCGI] (https://www.youtube.com/@FinePointCGI)
 	- Collabed with Abdullah Nawaz Khan to create this [plugin](https://github.com/finepointcgi/SpeechToText-Android-Godot.git) that allows Speech to Text in Godot 
 - [Abdullah Nawaz Khan] (https://github.com/abdullahnawazkhan)
