@@ -30,7 +30,7 @@ Original sprites will come later once the core gameplay is finished! (Or when I 
 - ☁️ **Google Sheets Integration**: Spoken words are logged for tracking. I use Google Sheets because its free and accessible everywhere on the internet. Sue me for being broke lol.
 
 **Supported OS:**
-- Windows
+- Windows (Speech challenge DOES NOT work)
 - Android
 
 **Unsupported OS:**
