@@ -2,7 +2,7 @@
 
 extends Node
 
-const API_URL = "https://script.google.com/macros/s/AKfycbyqeyVMNfMOyTYBJAufy3WyBKtKFhPU5rhyiTi6LC5ybIWdSQ-z66_jGw0v90ShAk9LKA/exec"
+const API_URL = "YOUR APP SCRIPT URL"
 
 signal sentences_loaded(sentences)
 signal words_loaded(words)
