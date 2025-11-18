@@ -30,8 +30,8 @@ Original sprites will come later once the core gameplay is finished! (Or when I 
 - ☁️ **Google Sheets Integration**: Spoken words are logged for tracking. I use Google Sheets because its free and accessible everywhere on the internet. Sue me for being broke lol.
 
 **Supported OS:**
-- Windows (Speech challenge DOES NOT work)
-- Android
+- Windows* (Speech challenge DOES NOT work)
+- Android (Completely functional)
 
 **Unsupported OS:**
 - iOS/Mac OS (Thank you Apple for making everything expensive)
@@ -47,6 +47,7 @@ Original sprites will come later once the core gameplay is finished! (Or when I 
 * [Google Sheets API](https://developers.google.com/sheets/api)
 * Google Cloud API
 * Google App Script
+* AWS (Planning to scrap Google and replace with AWS soon)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
