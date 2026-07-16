@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="ItemData" load_steps=8 format=3 uid="uid://cspdl2unf3uss"]
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://cspdl2unf3uss"]
 
 [ext_resource type="Script" uid="uid://b7sa2ijldxahs" path="res://items/item_effects/item_effect.gd" id="1_rj1s8"]
 [ext_resource type="AudioStream" uid="uid://d1udpjr8d3ifk" path="res://items/item_effects/hp-up.wav" id="2_ia5ia"]
@@ -8,9 +8,7 @@
 
 [sub_resource type="Resource" id="Resource_fn3er"]
 script = ExtResource("3_hbuy5")
-heal_amount = 1
 audio = ExtResource("2_ia5ia")
-use_description = ""
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_6m883"]
 atlas = ExtResource("5_ia5ia")

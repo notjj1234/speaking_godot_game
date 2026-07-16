@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="ItemData" load_steps=5 format=3 uid="uid://biwqu7hopgnkh"]
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://biwqu7hopgnkh"]
 
 [ext_resource type="Script" uid="uid://b7sa2ijldxahs" path="res://items/item_effects/item_effect.gd" id="1_uj5p3"]
 [ext_resource type="Script" uid="uid://doxdejy44xhx7" path="res://items/Scripts/item_data.gd" id="2_uj5p3"]
@@ -13,4 +13,3 @@ script = ExtResource("2_uj5p3")
 name = "Stone"
 description = "A nice rock"
 texture = SubResource("AtlasTexture_n8kuh")
-effects = Array[ExtResource("1_uj5p3")]([])

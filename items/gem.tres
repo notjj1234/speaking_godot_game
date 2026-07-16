@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="ItemData" load_steps=5 format=3 uid="uid://cvfs8nrh4q5bo"]
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://cvfs8nrh4q5bo"]
 
 [ext_resource type="Script" uid="uid://b7sa2ijldxahs" path="res://items/item_effects/item_effect.gd" id="1_gbvxt"]
 [ext_resource type="Script" uid="uid://doxdejy44xhx7" path="res://items/Scripts/item_data.gd" id="2_gbvxt"]
@@ -13,4 +13,3 @@ script = ExtResource("2_gbvxt")
 name = "Gem"
 description = "A cool gem"
 texture = SubResource("AtlasTexture_68gbi")
-effects = Array[ExtResource("1_gbvxt")]([])
