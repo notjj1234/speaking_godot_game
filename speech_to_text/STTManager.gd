@@ -4,7 +4,7 @@ var STT  # Reference to SpeechToText plugin singleton
 signal speech_result(success: bool)
 
 @onready var sheets_manager = get_node("/root/SheetsManager")
-@onready var mic_panel := get_node_or_null("/root/Playground/UILayer/UIRoot/MicPermissionPanel")
+var mic_panel: Control = null
 
 var mic_button: Button
 var target_sentence: String = ""
@@ -93,15 +93,30 @@ func _on_listening_completed(args):
 		var recognized_text = String(args).to_lower().strip_edges()
 		_validate_speech(recognized_text)
 
+func _resolve_mic_panel() -> Control:
+	# Autoload _ready runs before any level scene exists, so resolve lazily
+	var current := get_tree().current_scene
+	if current:
+		var panel = current.get_node_or_null("UILayer/UIRoot/MicPermissionPanel")
+		if panel:
+			return panel
+	# Fallback: playground hard path (kept for older layouts)
+	return get_node_or_null("/root/Playground/UILayer/UIRoot/MicPermissionPanel")
+
 func show_restart_notice():
 	if mic_test_passed:
 		print("✅ Mic previously passed. Not showing panel again.")
 		return
 
+	mic_panel = _resolve_mic_panel()
 	if mic_panel and mic_panel.has_node("VBoxContainer/ConfirmButton"):
 		print("📢 [STTManager] Showing MicPermissionPanel...")
 		mic_button = mic_panel.get_node("VBoxContainer/ConfirmButton")
 		mic_panel.visible = true
+		# Ensure the parent UILayer is visible so the panel can be seen
+		var ui_layer = mic_panel.get_parent().get_parent() if mic_panel.get_parent() else null
+		if ui_layer:
+			ui_layer.visible = true
 
 		var screen_size = get_viewport().get_visible_rect().size
 		mic_panel.set_anchors_preset(Control.PRESET_CENTER)

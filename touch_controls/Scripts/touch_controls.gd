@@ -19,7 +19,7 @@ func _ready() -> void:
 	# Hide certain buttons for specific levels
 	var current_level := get_tree().current_scene.name
 	if current_level == "02":
-		#_disable_arrow_buttons()
+		_disable_arrow_buttons()
 		_disable_interact_button()
 	if current_level == "Playground":
 		_disable_mic_button()

@@ -15,12 +15,17 @@ var speech_challenge_active: bool = false
 
 var next_challenge_type := "word"  # Start with a word
 
+const LOCAL_SENTENCES_PATH := "res://sentence_data/sentences.txt"
+
 func _ready() -> void:
 	if not get_tree().root.has_node("WordTracker"):
 		get_tree().root.add_child(self)  
 	print("✅ WordTracker initialized.")
 
-	# ✅ Fetch words and sentences from Google Sheets at startup
+	# Local fallback first so challenges work even when Sheets URL is a placeholder
+	_load_local_fallback()
+
+	# Sheets can overwrite local data if/when the request succeeds
 	fetch_words_and_sentences()
 
 	emit_signal("word_list_updated")
@@ -33,20 +38,62 @@ func fetch_words_and_sentences():
 		sheets_manager.sentences_loaded.connect(_on_sentences_loaded)
 		sheets_manager.fetch_sentences_and_words()
 	else:
-		print("❌ [ERROR] SheetsManager not found! Cannot fetch words or sentences.")
+		print("❌ [ERROR] SheetsManager not found! Using local sentence fallback.")
+		_load_local_fallback()
+
+# Load res://sentence_data/sentences.txt into available_words / available_sentences
+func _load_local_fallback() -> void:
+	if not FileAccess.file_exists(LOCAL_SENTENCES_PATH):
+		print("❌ [ERROR] Local sentences file not found:", LOCAL_SENTENCES_PATH)
+		return
+
+	var file := FileAccess.open(LOCAL_SENTENCES_PATH, FileAccess.READ)
+	if file == null:
+		print("❌ [ERROR] Could not open local sentences file:", LOCAL_SENTENCES_PATH)
+		return
+
+	var words: Array = []
+	var sentences: Array = []
+	while not file.eof_reached():
+		var line := file.get_line().strip_edges()
+		if line.is_empty():
+			continue
+		if line.split(" ").size() > 1:
+			sentences.append(line)
+		else:
+			words.append(line)
+	file.close()
+
+	if not words.is_empty():
+		available_words = words
+	if not sentences.is_empty():
+		available_sentences = sentences
+
+	if available_words.is_empty() and available_sentences.is_empty():
+		print("⚠️ [WARNING] Local sentences file was empty.")
+	else:
+		print("✅ [INFO] Loaded local fallback — words:", available_words.size(), "sentences:", available_sentences.size())
 
 # ✅ Store loaded words from Google Sheets
 func _on_words_loaded(words: Array):
+	if words.is_empty():
+		print("⚠️ [WARNING] Sheets returned no words; keeping local fallback.")
+		return
 	available_words = words
 	print("✅ [INFO] Loaded words from Google Sheets:", available_words)
 
 # ✅ Store loaded sentences from Google Sheets
 func _on_sentences_loaded(sentences: Array):
+	if sentences.is_empty():
+		print("⚠️ [WARNING] Sheets returned no sentences; keeping local fallback.")
+		return
 	available_sentences = sentences
 	print("✅ [INFO] Loaded sentences from Google Sheets:", available_sentences)
 
 # ✅ Pick a random word or sentence for speech challenge, alternating between word and sentence
 func get_random_speech_challenge() -> String:
+	if available_words.is_empty() and available_sentences.is_empty():
+		_load_local_fallback()
 	if available_words.is_empty() and available_sentences.is_empty():
 		print("❌ [ERROR] No words or sentences available for speech challenge.")
 		return "No words available."

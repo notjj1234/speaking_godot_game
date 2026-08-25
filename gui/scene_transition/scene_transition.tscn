@@ -76,6 +76,7 @@ _data = {
 
 [node name="SceneTransition" type="CanvasLayer"]
 process_mode = 3
+layer = 20
 script = ExtResource("1_dbbjh")
 
 [node name="Control" type="Control" parent="."]

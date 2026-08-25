@@ -47,8 +47,11 @@ func _on_tutorial_pressed() -> void:
 	_navigating = true
 	print("Starting Tutorial...")
 	_restore_game_ui()
-	# Fire-and-forget: LevelManager (autoload) owns the coroutine across the scene swap
-	LevelManager.load_new_level(PLAYGROUND_PATH, "PlaygroundTo01", Vector2.ZERO)
+	# Spawn at PlayerSpawn (center of playground), not PlaygroundTo01 (top edge —
+	# that transition would immediately pull the player into tutorial area 01).
+	# Empty target + player_spawned=false lets player_spawn.gd place the player.
+	PlayerManager.player_spawned = false
+	LevelManager.load_new_level(PLAYGROUND_PATH, "", Vector2.ZERO)
 
 
 func _on_game_pressed() -> void:

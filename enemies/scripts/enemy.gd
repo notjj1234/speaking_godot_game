@@ -198,9 +198,7 @@ func _on_speech_result(success: bool) -> void:
 			word_tracker.add_spoken_word(player_hud.target_sentence)
 		else:
 			print("Error: WordTracker singleton not found! Cannot store the word.")
-
-		#await get_tree().create_timer(0.1).timeout  # Give time to unpause
-		queue_free()
+		# EnemyStateDestroy handles queue_free after the destroy animation finishes
 
 	else:
 		print("Speech challenge failed. Try again.")
