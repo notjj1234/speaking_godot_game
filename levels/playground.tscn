@@ -129,9 +129,9 @@ anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="TouchControls" parent="Control" unique_id=482636000 instance=ExtResource("7_rl3ru")]
+[node name="TouchControls" parent="." unique_id=482636000 instance=ExtResource("7_rl3ru")]
 
-[node name="PauseButton" parent="Control" unique_id=1451915275 instance=ExtResource("8_52oid")]
+[node name="PauseButton" parent="." unique_id=1451915275 instance=ExtResource("8_52oid")]
 
 [node name="PlaygroundTo01" parent="." unique_id=1937241879 instance=ExtResource("8_gmlbg")]
 position = Vector2(256, 0)
@@ -222,7 +222,7 @@ wait_time = 1.0
 
 [node name="PatrolLocation4" parent="NPC2/NpcBehaviorPatrol" unique_id=2120930886 instance=ExtResource("20_ksl6w")]
 modulate = Color(0, 1, 1, 1)
-position = Vector2(-42, -90)
+position = Vector2(-60, -104)
 wait_time = 1.0
 
 [node name="PatrolLocation5" parent="NPC2/NpcBehaviorPatrol" unique_id=203010415 instance=ExtResource("20_ksl6w")]

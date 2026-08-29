@@ -42,10 +42,10 @@ anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="TouchControls" parent="Control" unique_id=957638960 instance=ExtResource("6_c41en")]
+[node name="TouchControls" parent="." unique_id=957638960 instance=ExtResource("6_c41en")]
 visible = false
 
-[node name="PauseButton" parent="Control" unique_id=1373692155 instance=ExtResource("7_ongdp")]
+[node name="PauseButton" parent="." unique_id=1373692155 instance=ExtResource("7_ongdp")]
 
 [node name="LevelTransition" parent="." unique_id=1595153386 instance=ExtResource("8_2g78l")]
 position = Vector2(255, 2)

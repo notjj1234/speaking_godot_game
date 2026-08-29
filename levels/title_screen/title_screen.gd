@@ -25,9 +25,23 @@ func _ready() -> void:
 	touch_game_button.pressed.connect(_on_game_pressed)
 
 	_hide_gameplay_ui()
+	var viewport := get_viewport()
+	if viewport:
+		viewport.size_changed.connect(_align_menu_touch_buttons)
+	_align_menu_touch_buttons()
+	call_deferred("_align_menu_touch_buttons")
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_SIZE_CHANGED:
+		_align_menu_touch_buttons()
 
 
 func _process(_delta: float) -> void:
+	_align_menu_touch_buttons()
+
+
+func _align_menu_touch_buttons() -> void:
 	_align_touch_button(tutorial_button, touch_tutorial_button)
 	_align_touch_button(game_button, touch_game_button)
 
@@ -46,6 +60,7 @@ func _on_tutorial_pressed() -> void:
 		return
 	_navigating = true
 	print("Starting Tutorial...")
+	_prime_web_mic()
 	_restore_game_ui()
 	# Spawn at PlayerSpawn (center of playground), not PlaygroundTo01 (top edge —
 	# that transition would immediately pull the player into tutorial area 01).
@@ -59,9 +74,18 @@ func _on_game_pressed() -> void:
 		return
 	_navigating = true
 	print("Starting Main Game...")
+	_prime_web_mic()
 	# Keep HUD/player hidden — Coming Soon is still a menu
 	await SceneTransition.fade_out()
 	get_tree().change_scene_to_file(COMING_SOON_PATH)
+
+
+func _prime_web_mic() -> void:
+	if not OS.has_feature("web"):
+		return
+	var stt = get_node_or_null("/root/STTManager")
+	if stt and stt.has_method("prime_web_permission"):
+		stt.prime_web_permission()
 
 
 func _set_player_camera_enabled(enabled: bool) -> void:

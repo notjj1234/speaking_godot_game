@@ -1,11 +1,33 @@
-[gd_scene load_steps=2 format=3 uid="uid://cgf1781jg33w2"]
+[gd_scene load_steps=3 format=3 uid="uid://cgf1781jg33w2"]
 
 [ext_resource type="Texture2D" uid="uid://dhi7hva1ia754" path="res://touch_controls/UsedIcons/Pause.png" id="1_u0j31"]
+[ext_resource type="Script" path="res://touch_controls/Scripts/pause_button_layout.gd" id="2_layout"]
 
 [node name="PauseButton" type="CanvasLayer"]
+follow_viewport_enabled = false
+script = ExtResource("2_layout")
 
-[node name="Pause" type="TouchScreenButton" parent="."]
-position = Vector2(540, 15)
-scale = Vector2(0.7, 0.7)
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="TopRight" type="Control" parent="Root"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -120.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = 64.0
+grow_horizontal = 0
+mouse_filter = 2
+
+[node name="Pause" type="TouchScreenButton" parent="Root/TopRight"]
 texture_normal = ExtResource("1_u0j31")
 action = "pause"

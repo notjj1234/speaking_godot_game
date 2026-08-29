@@ -17,6 +17,28 @@ var next_challenge_type := "word"  # Start with a word
 
 const LOCAL_SENTENCES_PATH := "res://sentence_data/sentences.txt"
 
+const DEFAULT_WORDS: PackedStringArray = [
+	"hello",
+	"water",
+	"apple",
+	"cat",
+	"dog",
+	"school",
+	"friend",
+	"book",
+	"happy",
+	"sorry",
+]
+
+const DEFAULT_SENTENCES: PackedStringArray = [
+	"I like cats",
+	"My name is Tom",
+	"I can run",
+	"Good morning",
+	"How are you",
+	"I am fine",
+]
+
 func _ready() -> void:
 	if not get_tree().root.has_node("WordTracker"):
 		get_tree().root.add_child(self)  
@@ -43,36 +65,46 @@ func fetch_words_and_sentences():
 
 # Load res://sentence_data/sentences.txt into available_words / available_sentences
 func _load_local_fallback() -> void:
-	if not FileAccess.file_exists(LOCAL_SENTENCES_PATH):
-		print("❌ [ERROR] Local sentences file not found:", LOCAL_SENTENCES_PATH)
-		return
-
-	var file := FileAccess.open(LOCAL_SENTENCES_PATH, FileAccess.READ)
-	if file == null:
-		print("❌ [ERROR] Could not open local sentences file:", LOCAL_SENTENCES_PATH)
-		return
-
 	var words: Array = []
 	var sentences: Array = []
-	while not file.eof_reached():
-		var line := file.get_line().strip_edges()
-		if line.is_empty():
-			continue
-		if line.split(" ").size() > 1:
-			sentences.append(line)
+
+	if FileAccess.file_exists(LOCAL_SENTENCES_PATH):
+		var file := FileAccess.open(LOCAL_SENTENCES_PATH, FileAccess.READ)
+		if file:
+			while not file.eof_reached():
+				var line := file.get_line().strip_edges()
+				if line.is_empty():
+					continue
+				if line.split(" ").size() > 1:
+					sentences.append(line)
+				else:
+					words.append(line)
+			file.close()
 		else:
-			words.append(line)
-	file.close()
+			print("❌ [ERROR] Could not open local sentences file:", LOCAL_SENTENCES_PATH)
+	else:
+		print("❌ [ERROR] Local sentences file not found:", LOCAL_SENTENCES_PATH)
 
 	if not words.is_empty():
 		available_words = words
 	if not sentences.is_empty():
 		available_sentences = sentences
 
+	_apply_builtin_defaults()
+
 	if available_words.is_empty() and available_sentences.is_empty():
 		print("⚠️ [WARNING] Local sentences file was empty.")
 	else:
 		print("✅ [INFO] Loaded local fallback — words:", available_words.size(), "sentences:", available_sentences.size())
+
+
+func _apply_builtin_defaults() -> void:
+	if available_words.is_empty():
+		available_words = Array(DEFAULT_WORDS)
+		print("✅ [INFO] Using built-in ESL words.")
+	if available_sentences.is_empty():
+		available_sentences = Array(DEFAULT_SENTENCES)
+		print("✅ [INFO] Using built-in ESL sentences.")
 
 # ✅ Store loaded words from Google Sheets
 func _on_words_loaded(words: Array):
@@ -94,9 +126,10 @@ func _on_sentences_loaded(sentences: Array):
 func get_random_speech_challenge() -> String:
 	if available_words.is_empty() and available_sentences.is_empty():
 		_load_local_fallback()
+	_apply_builtin_defaults()
 	if available_words.is_empty() and available_sentences.is_empty():
 		print("❌ [ERROR] No words or sentences available for speech challenge.")
-		return "No words available."
+		return DEFAULT_WORDS[0]
 
 	var selected_challenge = ""
 

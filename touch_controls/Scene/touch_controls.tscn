@@ -8,65 +8,118 @@
 [ext_resource type="Texture2D" uid="uid://cuwrmnqqcgbds" path="res://touch_controls/UsedIcons/Attack.png" id="5_g2tuf"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_bqbfm"]
+size = Vector2(88, 44)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_yjrdc"]
+size = Vector2(88, 44)
 
 [node name="TouchControls" type="CanvasLayer"]
+follow_viewport_enabled = false
 script = ExtResource("1_qogkm")
 
-[node name="Left" type="TouchScreenButton" parent="."]
-position = Vector2(32, 356)
-scale = Vector2(0.7, 0.7)
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="SafeArea" type="Control" parent="Root"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="LeftCluster" type="Control" parent="Root/SafeArea"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = -220.0
+offset_right = 224.0
+offset_bottom = -4.0
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="Left" type="TouchScreenButton" parent="Root/SafeArea/LeftCluster"]
+position = Vector2(0, 70)
 texture_normal = ExtResource("1_6daiv")
 action = "left"
 
-[node name="Right" type="TouchScreenButton" parent="."]
-position = Vector2(161, 356)
-scale = Vector2(0.7, 0.7)
+[node name="Right" type="TouchScreenButton" parent="Root/SafeArea/LeftCluster"]
+position = Vector2(132, 70)
 texture_normal = ExtResource("2_0pjbp")
 action = "right"
 
-[node name="Up" type="TouchScreenButton" parent="."]
-position = Vector2(95, 296)
-scale = Vector2(0.7, 0.7)
+[node name="Up" type="TouchScreenButton" parent="Root/SafeArea/LeftCluster"]
+position = Vector2(66, 0)
 texture_normal = ExtResource("3_2v5l8")
 action = "up"
 
-[node name="Down" type="TouchScreenButton" parent="."]
-position = Vector2(97, 411)
-scale = Vector2(0.7, 0.7)
+[node name="Down" type="TouchScreenButton" parent="Root/SafeArea/LeftCluster"]
+position = Vector2(66, 132)
 texture_normal = ExtResource("4_i1qv5")
 action = "down"
 
-[node name="Attack" type="TouchScreenButton" parent="."]
-position = Vector2(493, 356)
-scale = Vector2(0.7, 0.7)
-texture_normal = ExtResource("5_g2tuf")
-action = "attack"
+[node name="RightCluster" type="Control" parent="Root/SafeArea"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -224.0
+offset_top = -180.0
+offset_right = -4.0
+offset_bottom = -4.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
 
-[node name="Mic" type="Button" parent="."]
-offset_left = 481.0
-offset_top = 312.0
-offset_right = 559.0
-offset_bottom = 348.0
+[node name="Mic" type="Button" parent="Root/SafeArea/RightCluster"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -88.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 44.0
+grow_horizontal = 0
+custom_minimum_size = Vector2(100, 50)
 text = "Mic Off"
 
-[node name="Touch_Mic" type="TouchScreenButton" parent="."]
-position = Vector2(520, 330)
-scale = Vector2(3.99388, 1.84)
+[node name="Touch_Mic" type="TouchScreenButton" parent="Root/SafeArea/RightCluster"]
+position = Vector2(156, 22)
 shape = SubResource("RectangleShape2D_bqbfm")
 shape_visible = false
 
-[node name="Interact" type="Button" parent="."]
-offset_left = 391.0
-offset_top = 370.0
-offset_right = 469.0
-offset_bottom = 406.0
+[node name="Interact" type="Button" parent="Root/SafeArea/RightCluster"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 0.0
+offset_top = -44.0
+offset_right = 88.0
+offset_bottom = 0.0
+grow_vertical = 0
+custom_minimum_size = Vector2(100, 50)
 text = "Interact"
 
-[node name="Touch_Interact" type="TouchScreenButton" parent="."]
-position = Vector2(430, 388)
-scale = Vector2(4.04, 1.92)
+[node name="Touch_Interact" type="TouchScreenButton" parent="Root/SafeArea/RightCluster"]
+position = Vector2(44, 142)
 shape = SubResource("RectangleShape2D_yjrdc")
 shape_visible = false
 action = "interact"
+
+[node name="Attack" type="TouchScreenButton" parent="Root/SafeArea/RightCluster"]
+position = Vector2(132, 92)
+texture_normal = ExtResource("5_g2tuf")
+action = "attack"

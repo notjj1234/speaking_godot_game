@@ -1,10 +1,16 @@
-pizza
-mouse
-donuts
-pencil
-keyboard
-slime
-door
-notepad
-computer
-train
+hello
+water
+apple
+cat
+dog
+school
+friend
+book
+happy
+sorry
+I like cats
+My name is Tom
+I can run
+Good morning
+How are you
+I am fine

@@ -1,7 +1,11 @@
 extends Node2D
 
-var STT  # Reference to SpeechToText plugin singleton
 signal speech_result(success: bool)
+signal listening_completed(result: String)
+signal error(error_code)
+
+var STT  # Kept for compatibility; prefer `provider`.
+var provider: SttProvider = null
 
 @onready var sheets_manager = get_node("/root/SheetsManager")
 var mic_panel: Control = null
@@ -15,83 +19,144 @@ var mic_test_passed := false
 var mic_test_mode := false
 var mic_test_result_received := false
 
-func _ready():
-	print("🟡 [STTManager] Ready. Checking mic permission...")
 
-	# 🔄 Load mic test result from previous session
+func _ready():
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	print("[STTManager] Ready.")
+	_create_provider()
+	_initialize_stt()
+
+	if OS.get_name() != "Android":
+		return
+
+	print("[STTManager] Android: checking mic permission...")
 	mic_test_passed = ProjectSettings.get_setting("stt/mic_test_passed", false)
 
 	if "RECORD_AUDIO" in OS.get_granted_permissions():
-		print("✅ [STTManager] Mic permission already granted.")
-		_initialize_stt()
-
-		# Only test mic if it hasn’t passed before
+		print("[STTManager] Mic permission already granted.")
 		if not mic_test_passed:
 			await get_tree().process_frame
 			await _test_microphone()
 	else:
-		print("🎤 [STTManager] Requesting mic permission...")
+		print("[STTManager] Requesting mic permission...")
 		OS.request_permission("RECORD_AUDIO")
 		await get_tree().create_timer(2.0).timeout
 
-		# 🔁 Check again after delay
 		if "RECORD_AUDIO" in OS.get_granted_permissions():
-			print("✅ [STTManager] Mic permission granted after prompt.")
-			_initialize_stt()
-			await get_tree().process_frame
-			await _test_microphone()
+			print("[STTManager] Mic permission granted after prompt.")
+			if not mic_test_passed:
+				await get_tree().process_frame
+				await _test_microphone()
 		else:
-			print("❌ Mic permission denied.")
+			print("[STTManager] Mic permission denied.")
 			show_restart_notice()
 
-func _test_microphone():
-	print("🎙️ [STTManager] Testing mic functionality...")
-	if not Engine.has_singleton("SpeechToText"):
-		print("❌ [STTManager] SpeechToText singleton missing during mic test.")
-		show_restart_notice()
+
+func is_speech_available() -> bool:
+	return provider != null and provider.is_available()
+
+
+func listen() -> void:
+	if provider == null:
+		print("[STTManager] listen() called with no provider.")
+		return
+	provider.listen()
+
+
+func stop() -> void:
+	if provider != null:
+		provider.stop()
+
+
+func set_language(lang: String) -> void:
+	if provider != null:
+		provider.set_language(lang)
+
+
+func prime_web_permission() -> void:
+	if not OS.has_feature("web"):
+		return
+	if provider is WebSTTProvider:
+		(provider as WebSTTProvider).prime_permission()
+
+
+func begin_challenge_listen() -> void:
+	listen()
+
+
+func end_challenge_listen() -> void:
+	stop()
+
+
+func _create_provider() -> void:
+	if provider != null:
 		return
 
-	var test_STT = Engine.get_singleton("SpeechToText")
-	if not test_STT.has_method("listen"):
-		print("❌ [STTManager] STT.listen() not available.")
+	if Engine.has_singleton("SpeechToText"):
+		provider = AndroidSTTProvider.new()
+		print("[STTManager] Using Android SpeechToText plugin.")
+	elif OS.has_feature("web"):
+		provider = WebSTTProvider.new()
+		print("[STTManager] Using Web Speech API provider.")
+	else:
+		provider = UnavailableSTTProvider.new()
+		print("[STTManager] No STT backend on this platform.")
+
+	add_child(provider)
+
+	if provider is WebSTTProvider and not provider.is_available():
+		print("[STTManager] Web Speech API not present. Falling back to unavailable provider.")
+		provider.queue_free()
+		provider = UnavailableSTTProvider.new()
+		add_child(provider)
+
+
+func _test_microphone():
+	print("[STTManager] Testing mic functionality...")
+	if not is_speech_available() or provider == null or not provider.has_method("listen"):
+		print("[STTManager] Speech provider missing during mic test.")
 		show_restart_notice()
 		return
 
 	mic_test_result_received = false
 	mic_test_mode = true
-
-	if test_STT.is_connected("listening_completed", Callable(self, "_on_listening_completed")):
-		test_STT.disconnect("listening_completed", Callable(self, "_on_listening_completed"))
-	test_STT.connect("listening_completed", Callable(self, "_on_listening_completed"))
-
-	test_STT.listen()
+	provider.listen()
 	await get_tree().create_timer(3.0).timeout
 
 	if mic_test_result_received:
-		print("✅ [STTManager] Mic test passed.")
+		print("[STTManager] Mic test passed.")
 		mic_test_passed = true
-
-		# 🔒 Save result persistently
 		ProjectSettings.set_setting("stt/mic_test_passed", true)
 		ProjectSettings.save()
 	else:
-		print("❌ [STTManager] No mic input detected during test.")
+		print("[STTManager] No mic input detected during test.")
 		mic_test_passed = false
 		show_restart_notice()
 
 	mic_test_mode = false
 
+
 func _on_listening_completed(args):
 	if mic_test_mode:
 		mic_test_result_received = true
-		print("✅ [STTManager] Mic test result received.")
+		print("[STTManager] Mic test result received.")
 		return
 
+	var recognized := String(args) if args != null else ""
+	listening_completed.emit(recognized)
+
+	if target_sentence.is_empty():
+		return
 	if args == null or args == "":
 		_handle_result(false)
 	else:
-		var recognized_text = String(args).to_lower().strip_edges()
-		_validate_speech(recognized_text)
+		_validate_speech(recognized.to_lower().strip_edges())
+
+
+func _on_error(error_code) -> void:
+	print("[STTManager] STT error: ", error_code)
+	error.emit(error_code)
+
 
 func _resolve_mic_panel() -> Control:
 	# Autoload _ready runs before any level scene exists, so resolve lazily
@@ -103,14 +168,15 @@ func _resolve_mic_panel() -> Control:
 	# Fallback: playground hard path (kept for older layouts)
 	return get_node_or_null("/root/Playground/UILayer/UIRoot/MicPermissionPanel")
 
+
 func show_restart_notice():
 	if mic_test_passed:
-		print("✅ Mic previously passed. Not showing panel again.")
+		print("[STTManager] Mic previously passed. Not showing panel again.")
 		return
 
 	mic_panel = _resolve_mic_panel()
 	if mic_panel and mic_panel.has_node("VBoxContainer/ConfirmButton"):
-		print("📢 [STTManager] Showing MicPermissionPanel...")
+		print("[STTManager] Showing MicPermissionPanel...")
 		mic_button = mic_panel.get_node("VBoxContainer/ConfirmButton")
 		mic_panel.visible = true
 		# Ensure the parent UILayer is visible so the panel can be seen
@@ -125,51 +191,69 @@ func show_restart_notice():
 		if not mic_button.is_connected("pressed", Callable(self, "_on_restart_confirmed")):
 			var success = mic_button.connect("pressed", Callable(self, "_on_restart_confirmed"))
 			if success != OK:
-				print("❌ [STTManager] Failed to connect 'pressed' signal!")
+				print("[STTManager] Failed to connect 'pressed' signal!")
 			else:
-				print("✅ [STTManager] Connected 'pressed' signal to _on_restart_confirmed.")
+				print("[STTManager] Connected 'pressed' signal to _on_restart_confirmed.")
 		else:
-			print("🔄 [STTManager] Button already connected.")
+			print("[STTManager] Button already connected.")
 
 		await get_tree().process_frame
 		mic_panel.grab_focus()
 	else:
-		print("❌ [STTManager] MicPermissionPanel or ConfirmButton not found!")
+		print("[STTManager] MicPermissionPanel or ConfirmButton not found!")
+
 
 func _on_restart_confirmed():
-	print("🛑 [STTManager] Restart confirmed. Quitting app.")
+	print("[STTManager] Restart confirmed. Quitting app.")
 	get_tree().quit()
 
-func _initialize_stt():
-	if Engine.has_singleton("SpeechToText"):
-		STT = Engine.get_singleton("SpeechToText")
-		STT.set_language("en")
-		STT.connect("error", Callable(self, "_on_error"))
-		STT.connect("listening_completed", Callable(self, "_on_listening_completed"))
-		print("✅ STT initialized.")
-	else:
-		print("❌ SpeechToText singleton not found.")
-		return
 
-	sheets_manager.sentences_loaded.connect(_on_sentences_received)
+func _initialize_stt():
+	if provider == null:
+		_create_provider()
+
+	if provider != null:
+		STT = provider
+		provider.set_language("en")
+		if not provider.listening_completed.is_connected(_on_listening_completed):
+			provider.listening_completed.connect(_on_listening_completed)
+		if not provider.error.is_connected(_on_error):
+			provider.error.connect(_on_error)
+		print("[STTManager] STT initialized. available=", is_speech_available())
+	else:
+		print("[STTManager] No STT provider.")
+
+	call_deferred("_fetch_sentences")
+
+
+func _fetch_sentences() -> void:
+	if sheets_manager == null:
+		sheets_manager = get_node_or_null("/root/SheetsManager")
+	if sheets_manager == null:
+		print("[STTManager] SheetsManager not found.")
+		return
+	if not sheets_manager.sentences_loaded.is_connected(_on_sentences_received):
+		sheets_manager.sentences_loaded.connect(_on_sentences_received)
 	sheets_manager.fetch_sentences()
+
 
 func _on_sentences_received(loaded_sentences: Array):
 	if loaded_sentences.size() > 0:
 		sentences = loaded_sentences
-		print("✅ Loaded sentences from Google Sheets:", sentences)
+		print("[STTManager] Loaded sentences from Google Sheets:", sentences)
 	else:
 		print("[WARNING] No sentences from Google Sheets. Using backup file.")
-		load_sentences("res://SentenceData/sentences.txt")
+		load_sentences("res://sentence_data/sentences.txt")
+
 
 func load_sentences(file_path: String):
 	if not FileAccess.file_exists(file_path):
-		print("❌ Sentences file not found:", file_path)
+		print("[STTManager] Sentences file not found:", file_path)
 		return
 
 	var file = FileAccess.open(file_path, FileAccess.READ)
 	if file == null:
-		print("❌ Could not open file:", file_path)
+		print("[STTManager] Could not open file:", file_path)
 		return
 
 	sentences.clear()
@@ -180,20 +264,22 @@ func load_sentences(file_path: String):
 	file.close()
 
 	if sentences.is_empty():
-		print("⚠️ No sentences loaded from file.")
+		print("[STTManager] No sentences loaded from file.")
 	else:
-		print("✅ Loaded sentences from file:", sentences)
+		print("[STTManager] Loaded sentences from file:", sentences)
+
 
 func get_random_sentence() -> String:
 	if sentences.is_empty():
-		print("❌ No sentences available.")
+		print("[STTManager] No sentences available.")
 		return "No sentences available."
 	var random_index = randi() % sentences.size()
 	return sentences[random_index]
 
+
 func start_speech_recognition(target_sentence: String, on_result_callback: Callable):
-	if not Engine.has_singleton("SpeechToText"):
-		print("❌ SpeechToText singleton not found.")
+	if not is_speech_available():
+		print("[STTManager] Speech not available.")
 		on_result_callback.call(false)
 		return
 
@@ -202,7 +288,7 @@ func start_speech_recognition(target_sentence: String, on_result_callback: Calla
 
 	var speech_scene_path = "res://SpeechToText/SpeechToText.tscn"
 	if not FileAccess.file_exists(speech_scene_path):
-		print("❌ Speech scene not found.")
+		print("[STTManager] Speech scene not found.")
 		on_result_callback.call(false)
 		return
 
@@ -212,14 +298,16 @@ func start_speech_recognition(target_sentence: String, on_result_callback: Calla
 	if current_scene and current_scene.has_method("start_speech_recognition"):
 		current_scene.start_speech_recognition(self.target_sentence, Callable(self, "_on_speech_result"))
 	else:
-		print("❌ Speech scene missing required method.")
+		print("[STTManager] Speech scene missing required method.")
 		on_result_callback.call(false)
+
 
 func _validate_speech(recognized_text: String):
 	if recognized_text == target_sentence:
 		_handle_result(true)
 	else:
 		_handle_result(false)
+
 
 func _handle_result(success: bool):
 	emit_signal("speech_result", success)

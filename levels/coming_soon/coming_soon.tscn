@@ -9,7 +9,7 @@ size = Vector2(120, 24)
 
 [node name="ComingSoon" type="CanvasLayer"]
 layer = 10
-follow_viewport_enabled = false
+follow_viewport_enabled = true
 script = ExtResource("1_script")
 
 [node name="Control" type="Control" parent="."]
@@ -72,10 +72,10 @@ text = "The main adventure is not ready yet."
 horizontal_alignment = 1
 
 [node name="BackButton" type="Button" parent="Control/CenterContainer/VBoxContainer"]
-custom_minimum_size = Vector2(160, 28)
+custom_minimum_size = Vector2(220, 48)
 layout_mode = 2
 theme_override_fonts/font = ExtResource("3_light")
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 16
 text = "Back"
 
 [node name="TouchBack" type="TouchScreenButton" parent="Control"]

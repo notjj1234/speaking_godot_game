@@ -67,9 +67,9 @@ anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="TouchControls" parent="Control" instance=ExtResource("6_te4hv")]
+[node name="TouchControls" parent="." instance=ExtResource("6_te4hv")]
 
-[node name="PauseButton" parent="Control" instance=ExtResource("7_7oy6e")]
+[node name="PauseButton" parent="." instance=ExtResource("7_7oy6e")]
 
 [node name="02To01" parent="." instance=ExtResource("8_suuof")]
 position = Vector2(304, 480)

@@ -148,20 +148,23 @@ func _start_speech_challenge(target_sentence: String, hurt_box: HurtBox) -> void
 	if player_hud:
 		player_hud.show_speech_challenge(target_sentence)
 
-	if Engine.has_singleton("SpeechToText"):
-		var STT = Engine.get_singleton("SpeechToText")
-		if STT.is_connected("listening_completed", Callable(self, "_on_listening_completed")):
-			STT.disconnect("listening_completed", Callable(self, "_on_listening_completed"))
-		if STT.is_connected("error", Callable(self, "_on_speech_error")):
-			STT.disconnect("error", Callable(self, "_on_speech_error"))
-
-		STT.connect("listening_completed", Callable(self, "_on_listening_completed"))
-		STT.connect("error", Callable(self, "_on_speech_error"))
-
-		STT.listen()
+	_connect_stt_signals()
+	var stt = _stt_manager()
+	if _is_web():
+		_begin_web_challenge_mic()
+		_show_typed_fallback()
+		_connect_speak_button()
+		if stt != null and stt.is_speech_available():
+			if stt.has_method("begin_challenge_listen"):
+				stt.begin_challenge_listen()
+			else:
+				stt.listen()
+		return
+	if stt != null and stt.is_speech_available():
+		stt.listen()
 	else:
-		print("Error: SpeechToText singleton not found.")
-		_on_speech_result(false)
+		print("STT unavailable. Showing typed fallback.")
+		_show_typed_fallback()
 
 func _on_listening_completed(result: String) -> void:
 	print("Listening completed: ", result)
@@ -173,18 +176,44 @@ func _on_listening_completed(result: String) -> void:
 		return
 
 	var word_tracker = get_node("/root/WordTracker")
-	var recognized_text = result.strip_edges().to_lower()
-	var target_sentence = player_hud.target_sentence.strip_edges().to_lower()
+	var recognized_text: String
+	var target_sentence: String
+	if _is_web():
+		recognized_text = _normalize_web_text(result)
+		target_sentence = _normalize_web_text(player_hud.target_sentence)
+	else:
+		recognized_text = result.strip_edges().to_lower()
+		target_sentence = player_hud.target_sentence.strip_edges().to_lower()
 
-	if target_sentence in recognized_text:
-		print("✅ Target phrase detected in speech:", target_sentence)
+	if target_sentence != "" and target_sentence in recognized_text:
+		print("Target phrase detected in speech:", target_sentence)
 		word_tracker.add_spoken_word(player_hud.target_sentence)
 		_on_speech_result(true)
-	else:
-		print("❌ Target phrase NOT found in speech:", target_sentence)
-		_on_speech_result(false)
+		return
+
+	print("Target phrase NOT found in speech:", target_sentence)
+	if _is_web():
+		if player_hud:
+			player_hud.show_feedback(false)
+		_show_typed_fallback()
+		var stt = _stt_manager()
+		if stt != null and stt.is_speech_available():
+			stt.listen()
+		return
+	_on_speech_result(false)
 
 func _on_speech_result(success: bool) -> void:
+	var stt = _stt_manager()
+	if _is_web():
+		if stt and stt.has_method("end_challenge_listen"):
+			stt.end_challenge_listen()
+		elif stt:
+			stt.stop()
+	elif stt:
+		stt.stop()
+	_disconnect_stt_signals()
+	_disconnect_fallback()
+	_disconnect_speak_button()
 	if player_hud:
 		player_hud.hide_speech_challenge()
 		player_hud.show_feedback(success)
@@ -204,6 +233,8 @@ func _on_speech_result(success: bool) -> void:
 		print("Speech challenge failed. Try again.")
 
 	get_tree().paused = false
+	if _is_web():
+		_end_web_challenge_mic()
 
 func _on_speech_error(error_code) -> void:
 	print("Speech recognition error: ", error_code)
@@ -212,11 +243,119 @@ func _on_speech_error(error_code) -> void:
 		var converted = int(error_code) if error_code.is_valid_int() else -1
 		error_code = converted
 
+	if _is_web():
+		_show_typed_fallback()
+		if error_code == -1:
+			print("Web speech permission/start failed. Keeping typed fallback.")
+			return
+		print("Restarting web speech recognition due to error.")
+		var web_stt = _stt_manager()
+		if web_stt != null and web_stt.is_speech_available():
+			web_stt.listen()
+		return
+
 	if error_code != -1:
 		print("Restarting speech recognition due to error.")
-		if Engine.has_singleton("SpeechToText"):
-			var STT = Engine.get_singleton("SpeechToText")
-			STT.listen()
+		var stt = _stt_manager()
+		if stt != null and stt.is_speech_available():
+			stt.listen()
+		else:
+			_show_typed_fallback()
 	else:
-		print("Speech recognition failed with unknown error.")
-		_on_speech_result(false)
+		print("Speech recognition failed. Showing typed fallback.")
+		_show_typed_fallback()
+
+
+func _stt_manager():
+	return get_node_or_null("/root/STTManager")
+
+
+func _is_web() -> bool:
+	return OS.has_feature("web")
+
+
+func _normalize_web_text(text: String) -> String:
+	var cleaned := ""
+	for i in text.length():
+		var ch := text.substr(i, 1).to_lower()
+		var code := ch.unicode_at(0)
+		if (code >= 97 and code <= 122) or (code >= 48 and code <= 57):
+			cleaned += ch
+		elif ch == " " or ch == "\t" or ch == "\n":
+			cleaned += " "
+	return " ".join(cleaned.split(" ", false))
+
+
+func _begin_web_challenge_mic() -> void:
+	for node in get_tree().get_nodes_in_group("touch_controls"):
+		if node.has_method("begin_challenge_mic"):
+			node.begin_challenge_mic()
+
+
+func _end_web_challenge_mic() -> void:
+	for node in get_tree().get_nodes_in_group("touch_controls"):
+		if node.has_method("end_challenge_mic"):
+			node.end_challenge_mic()
+
+
+func _connect_stt_signals() -> void:
+	var stt = _stt_manager()
+	if stt == null:
+		return
+	_disconnect_stt_signals()
+	stt.listening_completed.connect(_on_listening_completed)
+	stt.error.connect(_on_speech_error)
+
+
+func _disconnect_stt_signals() -> void:
+	var stt = _stt_manager()
+	if stt == null:
+		return
+	if stt.listening_completed.is_connected(_on_listening_completed):
+		stt.listening_completed.disconnect(_on_listening_completed)
+	if stt.error.is_connected(_on_speech_error):
+		stt.error.disconnect(_on_speech_error)
+
+
+func _show_typed_fallback() -> void:
+	if player_hud == null:
+		return
+	player_hud.show_typed_fallback()
+	if _is_web():
+		player_hud.show_speak_button()
+	if not player_hud.fallback_submitted.is_connected(_on_listening_completed):
+		player_hud.fallback_submitted.connect(_on_listening_completed)
+
+
+func _disconnect_fallback() -> void:
+	if player_hud == null:
+		return
+	if player_hud.fallback_submitted.is_connected(_on_listening_completed):
+		player_hud.fallback_submitted.disconnect(_on_listening_completed)
+	player_hud.hide_typed_fallback()
+	player_hud.hide_speak_button()
+
+
+func _connect_speak_button() -> void:
+	if player_hud == null:
+		return
+	if not player_hud.speak_pressed.is_connected(_on_speak_pressed):
+		player_hud.speak_pressed.connect(_on_speak_pressed)
+
+
+func _disconnect_speak_button() -> void:
+	if player_hud == null:
+		return
+	if player_hud.speak_pressed.is_connected(_on_speak_pressed):
+		player_hud.speak_pressed.disconnect(_on_speak_pressed)
+
+
+func _on_speak_pressed() -> void:
+	if not _is_web():
+		return
+	var stt = _stt_manager()
+	if stt != null and stt.is_speech_available():
+		if stt.has_method("begin_challenge_listen"):
+			stt.begin_challenge_listen()
+		else:
+			stt.listen()
