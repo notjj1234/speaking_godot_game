@@ -20,6 +20,7 @@ func init() -> void:
 
 func enter() -> void:
 	enemy.invulnerable = true
+	enemy.animation_player.process_mode = Node.PROCESS_MODE_ALWAYS
 	
 	#_direction = enemy.DIR_4[rand]
 	
@@ -32,6 +33,8 @@ func enter() -> void:
 	enemy.update_animation(anim_name)
 	enemy.animation_player.animation_finished.connect(_on_animation_finished)
 	disable_hurt_box()
+	if enemy.has_method("spawn_split_children"):
+		enemy.spawn_split_children()
 	drop_items()
 	
 	pass

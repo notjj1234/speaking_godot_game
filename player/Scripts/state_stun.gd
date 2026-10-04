@@ -24,6 +24,9 @@ func enter() -> void:
 	player.set_direction()
 	
 	player.update_animation("stun")
+	var weapon := player.get_node_or_null("Sprite2D/WeaponSprite") as Sprite2D
+	if weapon:
+		weapon.visible = false
 	player.make_invulnerable(invulnerable_duration)
 	player.effect_animation_player.play("damaged")
 	
@@ -34,7 +37,7 @@ func enter() -> void:
 func exit() -> void:
 	next_state = null
 	player.animation_player.animation_finished.disconnect(_animation_finished)
-	pass
+	player.refresh_weapon_sprite()
 
 # _process update in this State
 func process(_delta: float) -> State:

@@ -8,7 +8,7 @@ class_name State_Idle extends State
 # What happens when player enters the State
 func enter() -> void:
 	player.update_animation("idle")
-	pass
+	player.refresh_weapon_sprite()
 
 # What happens when player exits the State
 func exit() -> void:
@@ -26,6 +26,8 @@ func physics(_delta: float)->State:
 	return null
 	
 func handle_input(_event: InputEvent)-> State:
+	if PlayerManager.dialog_open or PlayerManager.voice_only:
+		return null
 	if _event.is_action_pressed("attack"):
 		return attack
 	if _event.is_action_pressed("interact"):

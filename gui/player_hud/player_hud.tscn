@@ -1,13 +1,43 @@
-[gd_scene load_steps=4 format=3 uid="uid://cssawlcgy87g8"]
+[gd_scene load_steps=6 format=3 uid="uid://cssawlcgy87g8"]
 
 [ext_resource type="Script" uid="uid://lqd5kigr2ceg" path="res://gui/player_hud/player_hud.gd" id="1_shp8k"]
 [ext_resource type="Texture2D" uid="uid://duxpc005b44ye" path="res://gui/player_hud/gui-health.png" id="2_w1ao3"]
 [ext_resource type="PackedScene" uid="uid://dsq8xil82iriw" path="res://gui/player_hud/heart_gui.tscn" id="3_rmetd"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_challenge"]
+bg_color = Color(0.98, 0.96, 0.9, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.2, 0.14, 0.05, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0, 0, 0.25)
+shadow_size = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_voice_only"]
+bg_color = Color(0.06, 0.07, 0.09, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.92, 0.92, 0.88, 0.85)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 12
+content_margin_top = 4
+content_margin_right = 12
+content_margin_bottom = 4
+
 [node name="PlayerHud" type="CanvasLayer"]
 process_mode = 3
 layer = 2
-follow_viewport_enabled = true
+follow_viewport_enabled = false
 script = ExtResource("1_shp8k")
 
 [node name="Control" type="Control" parent="."]
@@ -26,11 +56,15 @@ region_enabled = true
 region_rect = Rect2(29, 0, 34, 8)
 
 [node name="HFlowContainer" type="HFlowContainer" parent="Control"]
-layout_mode = 0
-offset_left = 255.0
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -65.0
 offset_top = 10.0
-offset_right = 385.0
+offset_right = 65.0
 offset_bottom = 50.0
+grow_horizontal = 2
 theme_override_constants/h_separation = 4
 theme_override_constants/v_separation = 2
 alignment = 1
@@ -95,6 +129,29 @@ layout_mode = 2
 [node name="Heart20" parent="Control/HFlowContainer" instance=ExtResource("3_rmetd")]
 layout_mode = 2
 
+[node name="VoiceOnlyBanner" type="PanelContainer" parent="Control"]
+visible = false
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -250.0
+offset_top = 52.0
+offset_right = 250.0
+offset_bottom = 80.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_voice_only")
+
+[node name="VoiceOnlyLabel" type="Label" parent="Control/VoiceOnlyBanner"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = "VOICE ONLY — keyboard disabled. Speak to move."
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
 [node name="ChallengePanel" type="PanelContainer" parent="Control"]
 visible = false
 layout_mode = 1
@@ -103,12 +160,13 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -250.0
-offset_top = -90.0
-offset_right = 250.0
-offset_bottom = 90.0
+offset_left = -280.0
+offset_top = -96.0
+offset_right = 280.0
+offset_bottom = 96.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_challenge")
 mouse_filter = 0
 
 [node name="MarginContainer" type="MarginContainer" parent="Control/ChallengePanel"]
@@ -124,25 +182,28 @@ theme_override_constants/separation = 10
 alignment = 1
 
 [node name="SpeechChallengeLabel" type="Label" parent="Control/ChallengePanel/MarginContainer/ChallengeVBox"]
-custom_minimum_size = Vector2(480, 0)
+custom_minimum_size = Vector2(520, 0)
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.13, 0.08, 0.03, 1)
+theme_override_font_sizes/font_size = 18
 text = "Say:"
 horizontal_alignment = 1
 autowrap_mode = 2
 
 [node name="LiveTranscriptLabel" type="Label" parent="Control/ChallengePanel/MarginContainer/ChallengeVBox"]
-custom_minimum_size = Vector2(480, 0)
+custom_minimum_size = Vector2(520, 0)
 layout_mode = 2
-theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.18, 0.13, 0.08, 1)
+theme_override_font_sizes/font_size = 14
 horizontal_alignment = 1
 autowrap_mode = 2
 
 [node name="ChallengeFeedbackLabel" type="Label" parent="Control/ChallengePanel/MarginContainer/ChallengeVBox"]
 visible = false
-custom_minimum_size = Vector2(480, 0)
+custom_minimum_size = Vector2(520, 0)
 layout_mode = 2
-theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.75, 0.25, 0.1, 1)
+theme_override_font_sizes/font_size = 15
 horizontal_alignment = 1
 autowrap_mode = 2
 

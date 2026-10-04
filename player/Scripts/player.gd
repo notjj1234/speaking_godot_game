@@ -27,6 +27,9 @@ func _ready() -> void:
 	update_hp(99)  # Initialize HUD with current HP
 
 func _process(_delta: float) -> void:
+	if PlayerManager.dialog_open or PlayerManager.voice_only:
+		direction = Vector2.ZERO
+		return
 	direction = Vector2(
 		Input.get_axis("left", "right"),
 		Input.get_axis("up", "down"),
@@ -37,6 +40,7 @@ func _physics_process(_delta: float) -> void:
 
 func set_direction(force_update: bool = false) -> bool:
 	if direction == Vector2.ZERO and not force_update:
+		refresh_weapon_sprite()
 		return false
 
 	var new_dir = cardinal_direction
@@ -49,11 +53,13 @@ func set_direction(force_update: bool = false) -> bool:
 			new_dir = Vector2.UP if input_dir.y < 0 else Vector2.DOWN
 
 	if new_dir == cardinal_direction and not force_update:
+		refresh_weapon_sprite()
 		return false
 
 	cardinal_direction = new_dir
 	direction_changed.emit(new_dir)
 	sprite.scale.x = -1 if cardinal_direction == Vector2.LEFT else 1
+	refresh_weapon_sprite()
 	return true
 
 func update_animation(state: String) -> void:
@@ -77,7 +83,15 @@ func _take_damage(hurt_box: HurtBox) -> void:
 		player_damaged.emit(hurt_box)
 	else:
 		player_damaged.emit(hurt_box)
-		update_hp(99)
+		var scene := get_tree().current_scene
+		if scene != null and scene.name == "EndlessHorde":
+			invulnerable = true
+			hit_box.monitoring = false
+			var game_over := get_node_or_null("/root/GameOver")
+			if game_over and game_over.has_method("show_defeat"):
+				game_over.show_defeat()
+		else:
+			update_hp(99)
 
 func update_hp(delta: int) -> void:
 	hp = clampi(hp + delta, 0, max_hp)
@@ -92,6 +106,8 @@ func make_invulnerable(_duration: float = 1.0) -> void:
 	hit_box.monitoring = true
 
 func move_with_animation(direction_vector: Vector2) -> void:
+	if PlayerManager.dialog_open:
+		return
 	direction = direction_vector.normalized()
 	set_direction(true)
 
@@ -117,6 +133,8 @@ func move_with_animation(direction_vector: Vector2) -> void:
 		print("Error: State machine missing 'Walk' or 'Idle' state.")
 
 func attack_with_animation() -> void:
+	if PlayerManager.dialog_open:
+		return
 	var attack_state = state_machine.get_node("Attack")
 	if attack_state:
 		state_machine.change_state(attack_state)
@@ -134,3 +152,30 @@ func cardinal_to_relative(direction: Vector2) -> Vector2:
 		Vector2.LEFT:
 			return Vector2.DOWN if direction == Vector2.LEFT else Vector2.UP
 	return Vector2.ZERO
+
+
+func refresh_weapon_sprite() -> void:
+	var weapon := get_node_or_null("Sprite2D/WeaponSprite") as Sprite2D
+	if weapon == null:
+		return
+	var stunned := state_machine != null and state_machine.current_state is State_Stun
+	weapon.visible = PlayerManager.sword_equipped and not stunned
+	if not weapon.visible:
+		return
+	weapon.scale = Vector2.ONE
+	match anim_direction():
+		"down":
+			weapon.position = Vector2(10, 6)
+			weapon.rotation_degrees = 20.0
+			weapon.show_behind_parent = false
+			weapon.z_index = 1
+		"up":
+			weapon.position = Vector2(-8, -4)
+			weapon.rotation_degrees = -20.0
+			weapon.show_behind_parent = true
+			weapon.z_index = -1
+		_:
+			weapon.position = Vector2(12, 2)
+			weapon.rotation_degrees = 70.0
+			weapon.show_behind_parent = false
+			weapon.z_index = 1

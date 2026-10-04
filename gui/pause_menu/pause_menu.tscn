@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3 uid="uid://xnhp7ttbcmmm"]
+[gd_scene load_steps=15 format=3 uid="uid://xnhp7ttbcmmm"]
 
 [ext_resource type="Script" uid="uid://b8mligen8pcbk" path="res://gui/pause_menu/pause_menu.gd" id="1_5ko8b"]
 [ext_resource type="Texture2D" uid="uid://dge3trwiyp5gh" path="res://touch_controls/UsedIcons/Exit.png" id="2_2go4f"]
@@ -6,6 +6,9 @@
 [ext_resource type="PackedScene" uid="uid://byhwfi7xi3p51" path="res://gui/pause_menu/inventory/inventory_slot.tscn" id="3_hsmkp"]
 [ext_resource type="Script" uid="uid://nmicpskqijjl" path="res://gui/pause_menu/inventory/Scripts/inventory_ui.gd" id="3_rxyot"]
 [ext_resource type="Resource" uid="uid://g2nsmgqmnhgp" path="res://gui/pause_menu/inventory/player_inventory.tres" id="4_2jlf4"]
+[ext_resource type="Texture2D" uid="uid://5tm1nkk6c6b4" path="res://gui/dialog_system/sprites/text-bubble.png" id="5_bubble"]
+[ext_resource type="FontFile" uid="uid://d1uabga2q8lmv" path="res://gui/fonts/Abaddon Light.ttf" id="6_light"]
+[ext_resource type="FontFile" uid="uid://0ow6by7f8lfy" path="res://gui/fonts/Abaddon Bold.ttf" id="7_bold"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_48i6x"]
 atlas = ExtResource("2_cgb5d")
@@ -26,9 +29,48 @@ texture_margin_bottom = 14.0
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_nva4f"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_sl4bd"]
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_word"]
+content_margin_left = 14.0
+content_margin_top = 12.0
+content_margin_right = 14.0
+content_margin_bottom = 12.0
+texture = ExtResource("5_bubble")
+texture_margin_left = 16.0
+texture_margin_top = 16.0
+texture_margin_right = 16.0
+texture_margin_bottom = 16.0
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_v88r8"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pager"]
+bg_color = Color(0.93, 0.88, 0.78, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.35, 0.24, 0.12, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 4.0
+content_margin_top = 2.0
+content_margin_right = 4.0
+content_margin_bottom = 2.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pager_off"]
+bg_color = Color(0.82, 0.78, 0.7, 0.6)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.35, 0.24, 0.12, 0.35)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 4.0
+content_margin_top = 2.0
+content_margin_right = 4.0
+content_margin_bottom = 2.0
 
 [node name="PauseMenu" type="CanvasLayer"]
 process_mode = 3
@@ -172,46 +214,150 @@ texture_normal = ExtResource("2_2go4f")
 action = "pause"
 
 [node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="Control"]
+bus = "SFX"
 max_polyphony = 4
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Control"]
-layout_mode = 0
-offset_left = 428.0
-offset_top = 109.0
-offset_right = 502.0
-offset_bottom = 149.0
+[node name="WordPanel" type="PanelContainer" parent="Control"]
+layout_mode = 1
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -150.0
+offset_right = -24.0
+offset_bottom = 150.0
+grow_horizontal = 0
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxTexture_word")
 
-[node name="Label" type="Label" parent="Control/VBoxContainer"]
+[node name="WordColumn" type="VBoxContainer" parent="Control/WordPanel"]
 layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Control/WordPanel/WordColumn"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.08, 0.04, 1)
+theme_override_fonts/font = ExtResource("7_bold")
+theme_override_font_sizes/font_size = 16
 text = "Word List"
+horizontal_alignment = 1
 
-[node name="WordListDisplay" type="RichTextLabel" parent="Control/VBoxContainer"]
+[node name="WordRows" type="VBoxContainer" parent="Control/WordPanel/WordColumn"]
 layout_mode = 2
-bbcode_enabled = true
-fit_content = true
+size_flags_vertical = 3
+theme_override_constants/separation = 4
 
-[node name="HBoxContainer" type="HBoxContainer" parent="Control/VBoxContainer"]
+[node name="Pager" type="HBoxContainer" parent="Control/WordPanel/WordColumn"]
 layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
 
-[node name="PrevPageButton" type="Button" parent="Control/VBoxContainer/HBoxContainer"]
-custom_minimum_size = Vector2(30, 30)
+[node name="PrevPageButton" type="Button" parent="Control/WordPanel/WordColumn/Pager"]
+custom_minimum_size = Vector2(64, 36)
 layout_mode = 2
-text = "<-"
+theme_override_colors/font_color = Color(0.12, 0.08, 0.04, 1)
+theme_override_colors/font_disabled_color = Color(0.12, 0.08, 0.04, 0.35)
+theme_override_colors/font_hover_color = Color(0.12, 0.08, 0.04, 1)
+theme_override_colors/font_pressed_color = Color(0.12, 0.08, 0.04, 1)
+theme_override_fonts/font = ExtResource("6_light")
+theme_override_font_sizes/font_size = 16
+theme_override_styles/disabled = SubResource("StyleBoxFlat_pager_off")
+theme_override_styles/focus = SubResource("StyleBoxFlat_pager")
+theme_override_styles/hover = SubResource("StyleBoxFlat_pager")
+theme_override_styles/normal = SubResource("StyleBoxFlat_pager")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_pager")
+text = "<"
 
-[node name="NextPageButton" type="Button" parent="Control/VBoxContainer/HBoxContainer"]
-custom_minimum_size = Vector2(30, 30)
+[node name="PageLabel" type="Label" parent="Control/WordPanel/WordColumn/Pager"]
+custom_minimum_size = Vector2(72, 0)
 layout_mode = 2
-mouse_filter = 1
-text = "->"
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.12, 0.08, 0.04, 1)
+theme_override_fonts/font = ExtResource("6_light")
+theme_override_font_sizes/font_size = 14
+text = "1 / 1"
+horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="PrevPageTouch" type="TouchScreenButton" parent="Control/VBoxContainer/HBoxContainer"]
-visible = false
-position = Vector2(14, 15)
-scale = Vector2(1.5, 1.5)
-shape = SubResource("RectangleShape2D_sl4bd")
+[node name="NextPageButton" type="Button" parent="Control/WordPanel/WordColumn/Pager"]
+custom_minimum_size = Vector2(64, 36)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.08, 0.04, 1)
+theme_override_colors/font_disabled_color = Color(0.12, 0.08, 0.04, 0.35)
+theme_override_colors/font_hover_color = Color(0.12, 0.08, 0.04, 1)
+theme_override_colors/font_pressed_color = Color(0.12, 0.08, 0.04, 1)
+theme_override_fonts/font = ExtResource("6_light")
+theme_override_font_sizes/font_size = 16
+theme_override_styles/disabled = SubResource("StyleBoxFlat_pager_off")
+theme_override_styles/focus = SubResource("StyleBoxFlat_pager")
+theme_override_styles/hover = SubResource("StyleBoxFlat_pager")
+theme_override_styles/normal = SubResource("StyleBoxFlat_pager")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_pager")
+text = ">"
 
-[node name="NextPageTouch" type="TouchScreenButton" parent="Control/VBoxContainer/HBoxContainer"]
-visible = false
-position = Vector2(49, 15)
-scale = Vector2(1.5, 1.5)
-shape = SubResource("RectangleShape2D_v88r8")
+[node name="MusicPanel" type="VBoxContainer" parent="Control"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 248.0
+offset_right = 260.0
+offset_bottom = 330.0
+theme_override_constants/separation = 6
+
+[node name="MusicLabel" type="Label" parent="Control/MusicPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_fonts/font = ExtResource("6_light")
+theme_override_font_sizes/font_size = 14
+text = "Music"
+
+[node name="MusicSlider" type="HSlider" parent="Control/MusicPanel"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+max_value = 100.0
+step = 1.0
+value = 70.0
+
+[node name="MusicButtons" type="HBoxContainer" parent="Control/MusicPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MusicQuieter" type="Button" parent="Control/MusicPanel/MusicButtons"]
+custom_minimum_size = Vector2(64, 36)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.08, 0.04, 1)
+theme_override_fonts/font = ExtResource("6_light")
+theme_override_font_sizes/font_size = 16
+theme_override_styles/focus = SubResource("StyleBoxFlat_pager")
+theme_override_styles/hover = SubResource("StyleBoxFlat_pager")
+theme_override_styles/normal = SubResource("StyleBoxFlat_pager")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_pager")
+text = "-"
+
+[node name="MusicMute" type="Button" parent="Control/MusicPanel/MusicButtons"]
+custom_minimum_size = Vector2(120, 36)
+clip_text = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.12, 0.08, 0.04, 1)
+theme_override_fonts/font = ExtResource("6_light")
+theme_override_font_sizes/font_size = 14
+theme_override_styles/focus = SubResource("StyleBoxFlat_pager")
+theme_override_styles/hover = SubResource("StyleBoxFlat_pager")
+theme_override_styles/normal = SubResource("StyleBoxFlat_pager")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_pager")
+text = "Mute"
+
+[node name="MusicLouder" type="Button" parent="Control/MusicPanel/MusicButtons"]
+custom_minimum_size = Vector2(64, 36)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.08, 0.04, 1)
+theme_override_fonts/font = ExtResource("6_light")
+theme_override_font_sizes/font_size = 16
+theme_override_styles/focus = SubResource("StyleBoxFlat_pager")
+theme_override_styles/hover = SubResource("StyleBoxFlat_pager")
+theme_override_styles/normal = SubResource("StyleBoxFlat_pager")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_pager")
+text = "+"

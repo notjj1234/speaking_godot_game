@@ -17,6 +17,11 @@ mono_crash.*.json
 # Ignore Godot Android library files
 android/build/libs/godot-lib.template_debug.aar
 *.aar
+!addons/speech_to_text_android/bin/*.aar
+ios/plugins/loqui_speech/build/
+addons/speech_to_text_android/android/.gradle/
+addons/speech_to_text_android/android/**/build/
+addons/speech_to_text_android/android/local.properties
 
 android/build/
 .DS_Store

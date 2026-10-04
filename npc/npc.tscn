@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3 uid="uid://dn6fi4mt6rurg"]
+[gd_scene load_steps=14 format=3 uid="uid://dn6fi4mt6rurg"]
 
 [ext_resource type="Script" uid="uid://cbc044a8mlx6" path="res://npc/scripts/npc.gd" id="1_2xp5l"]
 [ext_resource type="Texture2D" uid="uid://b0kaof7dxqd0b" path="res://npc/sprites/npc_sprite_02.png" id="2_3i1kj"]
@@ -136,6 +136,9 @@ _data = {
 radius = 8.0
 height = 24.0
 
+[sub_resource type="CircleShape2D" id="CircleShape2D_interact"]
+radius = 22.0
+
 [node name="NPC" type="CharacterBody2D"]
 collision_layer = 0
 collision_mask = 16
@@ -160,3 +163,26 @@ libraries = {
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 rotation = 4.71239
 shape = SubResource("CapsuleShape2D_ldo70")
+
+[node name="InteractArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 4
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="InteractArea"]
+position = Vector2(0, -8)
+shape = SubResource("CircleShape2D_interact")
+
+[node name="PromptLabel" type="Label" parent="."]
+visible = false
+offset_left = -10.0
+offset_top = -54.0
+offset_right = 10.0
+offset_bottom = -36.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 1, 0.75, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 16
+text = "!"
+horizontal_alignment = 1

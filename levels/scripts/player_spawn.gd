@@ -10,6 +10,7 @@ func _ready() -> void:
 	# Assign PlayerHud to the player
 	var player_hud = get_tree().root.get_node("PlayerHud") as PlayerHudUI  # Cast explicitly to PlayerHudUI
 	PlayerManager.player.player_hud = player_hud
+	PlayerManager.player.update_hp(0)
 
 	# Add a debug message to confirm player spawn
 	print("Player spawned at position: ", global_position)

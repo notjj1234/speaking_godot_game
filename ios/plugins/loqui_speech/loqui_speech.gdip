@@ -1,0 +1,20 @@
+[config]
+
+name="LoquiSpeechIOS"
+binary="LoquiSpeechIOS.xcframework"
+
+initialization="loqui_speech_init"
+deinitialization="loqui_speech_deinit"
+
+[dependencies]
+
+linked=[]
+embedded=[]
+system=["Speech.framework", "AVFoundation.framework", "Foundation.framework"]
+
+linker_flags=["-ObjC"]
+
+[plist]
+
+NSMicrophoneUsageDescription:string="Loqui Quest uses the microphone so you can speak attack phrases."
+NSSpeechRecognitionUsageDescription:string="Loqui Quest uses speech recognition to hear the phrase you say."

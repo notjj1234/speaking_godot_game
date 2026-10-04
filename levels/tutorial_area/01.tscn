@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=4 uid="uid://dkiyytwbuvmqo"]
+[gd_scene load_steps=12 format=4 uid="uid://dkiyytwbuvmqo"]
 
 [ext_resource type="Script" uid="uid://qtlc03dgcseo" path="res://levels/scripts/level.gd" id="1_q37j8"]
 [ext_resource type="PackedScene" uid="uid://diwmvkgtca114" path="res://tile_maps/grass-01.tscn" id="2_te5iu"]
@@ -10,10 +10,13 @@
 [ext_resource type="PackedScene" uid="uid://cyyhm21q0wqey" path="res://levels/level_transition.tscn" id="8_oo5xq"]
 [ext_resource type="PackedScene" uid="uid://b5qrnxplw1xog" path="res://enemies/slime/slime.tscn" id="9_3efd1"]
 [ext_resource type="PackedScene" uid="uid://cxwqvwsctjoim" path="res://props/Plants/plant.tscn" id="10_tb6ak"]
+[ext_resource type="PackedScene" uid="uid://5cfc806c0f304b6e" path="res://tile_maps/grass_background.tscn" id="11_bggr"]
 
 [node name="01" type="Node2D"]
 y_sort_enabled = true
 script = ExtResource("1_q37j8")
+
+[node name="GrassBackground" parent="." instance=ExtResource("11_bggr")]
 
 [node name="PlantsContainer" type="Node2D" parent="."]
 
@@ -78,7 +81,6 @@ script = ExtResource("5_yqe3w")
 metadata/_edit_use_anchors_ = true
 
 [node name="DialogBackground" type="Panel" parent="PlayerHud/TutorialDialog"]
-modulate = Color(0, 0, 0, 0.6)
 custom_minimum_size = Vector2(600, 80)
 layout_mode = 0
 offset_left = 10.0

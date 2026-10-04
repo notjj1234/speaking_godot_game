@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="NPCResource" load_steps=4 format=3 uid="uid://duaqk48rhtdwb"]
+[gd_resource type="Resource" script_class="NPCResource" format=3 uid="uid://duaqk48rhtdwb"]
 
 [ext_resource type="Texture2D" uid="uid://dcm2e6ohfas6q" path="res://npc/sprites/portraits/npc_portrait_01.png" id="1_fxmbg"]
 [ext_resource type="Script" uid="uid://bnxcct0tps4vp" path="res://npc/scripts/npc_resource.gd" id="1_mlker"]
@@ -9,5 +9,5 @@ script = ExtResource("1_mlker")
 npc_name = "Daniel Devito"
 sprite = ExtResource("3_fxmbg")
 portrait = ExtResource("1_fxmbg")
-dialog_audio_pitch = ""
+dialog_lines = PackedStringArray("Hey there! Welcome to the tutorial.", "Walk around, pick up items, and smash those bushes.", "When you are ready, head to the next area.")
 metadata/_custom_type_script = "uid://bnxcct0tps4vp"

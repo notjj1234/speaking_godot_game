@@ -1,4 +1,4 @@
-[gd_scene load_steps=44 format=3 uid="uid://drgp3w18p3w2l"]
+[gd_scene load_steps=45 format=3 uid="uid://drgp3w18p3w2l"]
 
 [ext_resource type="Script" uid="uid://k5jh1el2xjrm" path="res://player/Scripts/player.gd" id="1_c5xc7"]
 [ext_resource type="Texture2D" uid="uid://cnxgokvn1s2sh" path="res://player/Sprites/PlayerSprite02.png" id="2_enqah"]
@@ -15,6 +15,7 @@
 [ext_resource type="Script" uid="uid://cbr4thweayepd" path="res://player/Scripts/state_stun.gd" id="11_oeayg"]
 [ext_resource type="PackedScene" uid="uid://dtb0tphufv7r" path="res://general_nodes/hit_box/hit_box.tscn" id="13_bt1vk"]
 [ext_resource type="AudioStream" uid="uid://cj304224ri7rj" path="res://player/Audio/hit_player.wav" id="14_am60g"]
+[ext_resource type="Texture2D" uid="uid://bfjb4qom020yu" path="res://items/Sprites/sword.png" id="15_sword"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_6ntk7"]
 
@@ -618,6 +619,12 @@ texture = ExtResource("2_enqah")
 hframes = 16
 vframes = 3
 
+[node name="WeaponSprite" type="Sprite2D" parent="Sprite2D"]
+visible = false
+z_index = 1
+position = Vector2(10, 6)
+texture = ExtResource("15_sword")
+
 [node name="AttackEffectSprite" type="Sprite2D" parent="Sprite2D"]
 position = Vector2(0, 10)
 texture = ExtResource("3_s0ggu")
@@ -674,6 +681,7 @@ script = ExtResource("11_nebtf")
 [node name="Audio" type="Node2D" parent="."]
 
 [node name="AudioStreamPlayer2D" type="AudioStreamPlayer2D" parent="Audio"]
+bus = "SFX"
 max_polyphony = 4
 
 [node name="Interactions" type="Node2D" parent="."]

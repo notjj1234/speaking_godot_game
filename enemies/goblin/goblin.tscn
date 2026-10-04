@@ -1,4 +1,4 @@
-[gd_scene load_steps=43 format=3 uid="uid://brq0jk6yaiu12"]
+[gd_scene load_steps=45 format=3 uid="uid://brq0jk6yaiu12"]
 
 [ext_resource type="Script" uid="uid://bnayglrkxo8yi" path="res://enemies/scripts/enemy.gd" id="1_f3wku"]
 [ext_resource type="PackedScene" uid="uid://uws4gec4x2tr" path="res://general_nodes/hurt_box/hurt_box.tscn" id="2_lvhkj"]
@@ -15,6 +15,7 @@
 [ext_resource type="Script" uid="uid://d3rynod850lw6" path="res://enemies/scripts/drop_data.gd" id="13_ys2o2"]
 [ext_resource type="Resource" uid="uid://cvfs8nrh4q5bo" path="res://items/gem.tres" id="14_t3vbn"]
 [ext_resource type="Resource" uid="uid://cspdl2unf3uss" path="res://items/apple.tres" id="15_j3imk"]
+[ext_resource type="Resource" uid="uid://b8sworditemlq01" path="res://items/sword.tres" id="18_sword"]
 [ext_resource type="Texture2D" uid="uid://d4fsh4u7wbasf" path="res://enemies/slime/DestroySmoke.png" id="16_4i38r"]
 [ext_resource type="Script" uid="uid://dxcjtp83b8j7x" path="res://enemies/scripts/states/enemy_state_chase.gd" id="16_p257j"]
 [ext_resource type="PackedScene" uid="uid://bqwrhjawi6wei" path="res://enemies/vision_area.tscn" id="17_r3i0u"]
@@ -627,6 +628,13 @@ probability = 100.0
 min_amount = 1
 max_amount = 3
 
+[sub_resource type="Resource" id="Resource_sword"]
+script = ExtResource("13_ys2o2")
+item = ExtResource("18_sword")
+probability = 8.0
+min_amount = 1
+max_amount = 1
+
 [sub_resource type="Animation" id="Animation_cjcsw"]
 length = 0.001
 tracks/0/type = "value"
@@ -756,7 +764,7 @@ next_state = NodePath("../Chase")
 
 [node name="Destroy" type="Node" parent="EnemyStateMachine"]
 script = ExtResource("12_ad7vh")
-drops = Array[ExtResource("13_ys2o2")]([SubResource("Resource_umlv4"), SubResource("Resource_8lxjo"), null])
+drops = Array[ExtResource("13_ys2o2")]([SubResource("Resource_umlv4"), SubResource("Resource_8lxjo"), SubResource("Resource_sword")])
 
 [node name="Chase" type="Node" parent="EnemyStateMachine" node_paths=PackedStringArray("vision_area", "attack_area", "next_state")]
 script = ExtResource("16_p257j")
@@ -765,6 +773,7 @@ attack_area = NodePath("../../Sprite2D/AttackHurtBox")
 next_state = NodePath("../Idle")
 
 [node name="AudioStreamPlayer2D" type="AudioStreamPlayer2D" parent="."]
+bus = "SFX"
 max_polyphony = 4
 
 [node name="DestroyEffectSprite" type="Sprite2D" parent="."]

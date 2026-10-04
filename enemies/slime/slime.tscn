@@ -1,4 +1,4 @@
-[gd_scene load_steps=38 format=3 uid="uid://b5qrnxplw1xog"]
+[gd_scene load_steps=40 format=3 uid="uid://b5qrnxplw1xog"]
 
 [ext_resource type="Script" uid="uid://bnayglrkxo8yi" path="res://enemies/scripts/enemy.gd" id="1_6ph5f"]
 [ext_resource type="Texture2D" uid="uid://bn2dsccwr6idn" path="res://player/Sprites/Shadow.png" id="1_7y7re"]
@@ -16,6 +16,7 @@
 [ext_resource type="Script" uid="uid://d3rynod850lw6" path="res://enemies/scripts/drop_data.gd" id="13_6csyn"]
 [ext_resource type="Resource" uid="uid://cvfs8nrh4q5bo" path="res://items/gem.tres" id="14_1c4yi"]
 [ext_resource type="Resource" uid="uid://cspdl2unf3uss" path="res://items/apple.tres" id="15_ugsk4"]
+[ext_resource type="Resource" uid="uid://b8sworditemlq01" path="res://items/sword.tres" id="16_sword"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_uvnwc"]
 radius = 13.0384
@@ -674,6 +675,13 @@ probability = 100.0
 min_amount = 1
 max_amount = 3
 
+[sub_resource type="Resource" id="Resource_sword"]
+script = ExtResource("13_6csyn")
+item = ExtResource("16_sword")
+probability = 8.0
+min_amount = 1
+max_amount = 1
+
 [sub_resource type="Animation" id="Animation_cjcsw"]
 length = 0.001
 tracks/0/type = "value"
@@ -793,9 +801,10 @@ next_state = NodePath("../Idle")
 
 [node name="Destroy" type="Node" parent="EnemyStateMachine"]
 script = ExtResource("12_eckar")
-drops = Array[ExtResource("13_6csyn")]([SubResource("Resource_umlv4"), SubResource("Resource_8lxjo"), null])
+drops = Array[ExtResource("13_6csyn")]([SubResource("Resource_umlv4"), SubResource("Resource_8lxjo"), SubResource("Resource_sword")])
 
 [node name="AudioStreamPlayer2D" type="AudioStreamPlayer2D" parent="."]
+bus = "SFX"
 max_polyphony = 4
 
 [node name="DestroyEffectSprite" type="Sprite2D" parent="."]

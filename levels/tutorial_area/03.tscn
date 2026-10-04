@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=4 uid="uid://d3u3f26n1doh6"]
+[gd_scene load_steps=16 format=4 uid="uid://d3u3f26n1doh6"]
 
 [ext_resource type="Script" uid="uid://dk1x51omf5uux" path="res://levels/scripts/level_03_logic.gd" id="1_0g5yh"]
 [ext_resource type="Script" uid="uid://qtlc03dgcseo" path="res://levels/scripts/level.gd" id="1_pwgtw"]
@@ -14,10 +14,13 @@
 [ext_resource type="PackedScene" uid="uid://gqs1hvcj20dw" path="res://interactables/treasure_chest/treasure_chest.tscn" id="11_0g5yh"]
 [ext_resource type="Resource" uid="uid://biwqu7hopgnkh" path="res://items/stone.tres" id="12_ww55q"]
 [ext_resource type="PackedScene" uid="uid://b5qrnxplw1xog" path="res://enemies/slime/slime.tscn" id="14_tdgo7"]
+[ext_resource type="PackedScene" uid="uid://5cfc806c0f304b6e" path="res://tile_maps/grass_background.tscn" id="15_bggr"]
 
 [node name="03" type="Node2D"]
 y_sort_enabled = true
 script = ExtResource("1_pwgtw")
+
+[node name="GrassBackground" parent="." instance=ExtResource("15_bggr")]
 
 [node name="Level03ScriptRunner" type="Node" parent="."]
 script = ExtResource("1_0g5yh")
@@ -64,7 +67,6 @@ script = ExtResource("5_tdgo7")
 metadata/_edit_use_anchors_ = true
 
 [node name="DialogBackground" type="Panel" parent="PlayerHud/TutorialDialog"]
-modulate = Color(0, 0, 0, 0.6)
 custom_minimum_size = Vector2(600, 80)
 layout_mode = 0
 offset_left = 10.0

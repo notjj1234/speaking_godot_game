@@ -11,6 +11,9 @@ var _navigating: bool = false
 
 
 func _ready() -> void:
+	var music = get_node_or_null("/root/MusicManager")
+	if music and music.has_method("stop_for_menu"):
+		music.stop_for_menu()
 	await SceneTransition.fade_in()
 	_hide_gameplay_ui()
 
@@ -18,8 +21,28 @@ func _ready() -> void:
 	back_button.pressed.connect(_on_back_pressed)
 	touch_back.pressed.connect(_on_back_pressed)
 
+	# Invisible twin stays aligned so desktop mouse clicks still fire.
+	touch_back.visible = true
+	back_button.grab_focus()
+	var viewport := get_viewport()
+	if viewport:
+		viewport.size_changed.connect(_align_back_touch_button)
+	_align_back_touch_button()
+	call_deferred("_align_back_touch_button")
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_SIZE_CHANGED:
+		_align_back_touch_button()
+
 
 func _process(_delta: float) -> void:
+	_align_back_touch_button()
+
+
+func _align_back_touch_button() -> void:
+	if not MobileSafeLayout.uses_touch_button_twins():
+		return
 	if back_button == null or touch_back == null:
 		return
 	var rect := back_button.get_global_rect()

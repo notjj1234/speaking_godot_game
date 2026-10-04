@@ -1,0 +1,471 @@
+[gd_scene load_steps=25 format=3 uid="uid://csettings01"]
+
+[ext_resource type="Script" path="res://gui/settings/settings.gd" id="1_script"]
+[ext_resource type="FontFile" uid="uid://0ow6by7f8lfy" path="res://gui/fonts/Abaddon Bold.ttf" id="2_bold"]
+[ext_resource type="FontFile" uid="uid://d1uabga2q8lmv" path="res://gui/fonts/Abaddon Light.ttf" id="3_light"]
+[ext_resource type="Texture2D" uid="uid://cbv28avj8c058" path="res://tile_maps/sprites/Grass-01.png" id="4_grass"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_window"]
+content_margin_left = 18.0
+content_margin_top = 16.0
+content_margin_right = 18.0
+content_margin_bottom = 16.0
+bg_color = Color(0.04, 0.16, 0.1, 0.94)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.86, 0.74, 0.32, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+shadow_color = Color(0.02, 0.05, 0.02, 0.55)
+shadow_size = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.1, 0.34, 0.18, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.78, 0.66, 0.28, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_hover"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.16, 0.46, 0.24, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.95, 0.84, 0.42, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_pressed"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.06, 0.22, 0.12, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.7, 0.58, 0.22, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_disabled"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.12, 0.16, 0.12, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.35, 0.38, 0.28, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slider"]
+bg_color = Color(0.08, 0.12, 0.08, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.4, 0.2, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slider_grabber"]
+bg_color = Color(0.86, 0.74, 0.32, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.6, 0.5, 0.2, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_music_mute"]
+size = Vector2(48, 32)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_sfx_mute"]
+size = Vector2(48, 32)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_fullscreen"]
+size = Vector2(180, 36)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_language"]
+size = Vector2(180, 36)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_touch"]
+size = Vector2(180, 36)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_reset"]
+size = Vector2(180, 36)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_close"]
+size = Vector2(180, 36)
+
+[node name="Settings" type="CanvasLayer"]
+process_mode = 3
+layer = 18
+visible = false
+script = ExtResource("1_script")
+
+[node name="Control" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Backdrop" type="TextureRect" parent="Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("4_grass")
+expand_mode = 1
+stretch_mode = 1
+
+[node name="Dim" type="ColorRect" parent="Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.02, 0.08, 0.04, 0.45)
+
+[node name="CenterContainer" type="CenterContainer" parent="Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Panel" type="PanelContainer" parent="Control/CenterContainer"]
+custom_minimum_size = Vector2(520, 400)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_window")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Control/CenterContainer/Panel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Control/CenterContainer/Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.92, 0.62, 1)
+theme_override_colors/font_outline_color = Color(0.05, 0.08, 0.02, 1)
+theme_override_constants/outline_size = 6
+theme_override_fonts/font = ExtResource("2_bold")
+theme_override_font_sizes/font_size = 28
+text = "Settings"
+
+[node name="MusicRow" type="HBoxContainer" parent="Control/CenterContainer/Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MusicLabel" type="Label" parent="Control/CenterContainer/Panel/VBoxContainer/MusicRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.96, 0.97, 0.9, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.06, 0.03, 1)
+theme_override_constants/outline_size = 4
+theme_override_fonts/font = ExtResource("3_light")
+theme_override_font_sizes/font_size = 16
+text = "Music Volume"
+
+[node name="MusicSlider" type="HSlider" parent="Control/CenterContainer/Panel/VBoxContainer/MusicRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(200, 24)
+max_value = 100.0
+step = 1.0
+theme_override_styles/slider = SubResource("StyleBoxFlat_slider")
+theme_override_styles/grabber = SubResource("StyleBoxFlat_slider_grabber")
+theme_override_styles/grabber_highlight = SubResource("StyleBoxFlat_slider_grabber")
+
+[node name="MusicMuteButton" type="Button" parent="Control/CenterContainer/Panel/VBoxContainer/MusicRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(56, 32)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 0.95, 1)
+theme_override_colors/font_pressed_color = Color(0.95, 0.9, 0.7, 1)
+theme_override_colors/font_disabled_color = Color(0.55, 0.58, 0.5, 1)
+theme_override_fonts/font = ExtResource("2_bold")
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+text = "Mute"
+
+[node name="SFXRow" type="HBoxContainer" parent="Control/CenterContainer/Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SFXLabel" type="Label" parent="Control/CenterContainer/Panel/VBoxContainer/SFXRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.96, 0.97, 0.9, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.06, 0.03, 1)
+theme_override_constants/outline_size = 4
+theme_override_fonts/font = ExtResource("3_light")
+theme_override_font_sizes/font_size = 16
+text = "SFX Volume"
+
+[node name="SFXSlider" type="HSlider" parent="Control/CenterContainer/Panel/VBoxContainer/SFXRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(200, 24)
+max_value = 100.0
+step = 1.0
+theme_override_styles/slider = SubResource("StyleBoxFlat_slider")
+theme_override_styles/grabber = SubResource("StyleBoxFlat_slider_grabber")
+theme_override_styles/grabber_highlight = SubResource("StyleBoxFlat_slider_grabber")
+
+[node name="SFXMuteButton" type="Button" parent="Control/CenterContainer/Panel/VBoxContainer/SFXRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(56, 32)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 0.95, 1)
+theme_override_colors/font_pressed_color = Color(0.95, 0.9, 0.7, 1)
+theme_override_colors/font_disabled_color = Color(0.55, 0.58, 0.5, 1)
+theme_override_fonts/font = ExtResource("2_bold")
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+text = "Mute"
+
+[node name="FullscreenRow" type="HBoxContainer" parent="Control/CenterContainer/Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="FullscreenLabel" type="Label" parent="Control/CenterContainer/Panel/VBoxContainer/FullscreenRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.96, 0.97, 0.9, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.06, 0.03, 1)
+theme_override_constants/outline_size = 4
+theme_override_fonts/font = ExtResource("3_light")
+theme_override_font_sizes/font_size = 16
+text = "Fullscreen"
+
+[node name="FullscreenButton" type="Button" parent="Control/CenterContainer/Panel/VBoxContainer/FullscreenRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 36)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 0.95, 1)
+theme_override_colors/font_pressed_color = Color(0.95, 0.9, 0.7, 1)
+theme_override_colors/font_disabled_color = Color(0.55, 0.58, 0.5, 1)
+theme_override_fonts/font = ExtResource("2_bold")
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+text = "Off"
+
+[node name="LanguageRow" type="HBoxContainer" parent="Control/CenterContainer/Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="LanguageLabel" type="Label" parent="Control/CenterContainer/Panel/VBoxContainer/LanguageRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.96, 0.97, 0.9, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.06, 0.03, 1)
+theme_override_constants/outline_size = 4
+theme_override_fonts/font = ExtResource("3_light")
+theme_override_font_sizes/font_size = 16
+text = "Speech Language"
+
+[node name="LanguageButton" type="Button" parent="Control/CenterContainer/Panel/VBoxContainer/LanguageRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 36)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 0.95, 1)
+theme_override_colors/font_pressed_color = Color(0.95, 0.9, 0.7, 1)
+theme_override_colors/font_disabled_color = Color(0.55, 0.58, 0.5, 1)
+theme_override_fonts/font = ExtResource("2_bold")
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+text = "English"
+
+[node name="TouchRow" type="HBoxContainer" parent="Control/CenterContainer/Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TouchLabel" type="Label" parent="Control/CenterContainer/Panel/VBoxContainer/TouchRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.96, 0.97, 0.9, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.06, 0.03, 1)
+theme_override_constants/outline_size = 4
+theme_override_fonts/font = ExtResource("3_light")
+theme_override_font_sizes/font_size = 16
+text = "Touch Controls"
+
+[node name="TouchButton" type="Button" parent="Control/CenterContainer/Panel/VBoxContainer/TouchRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 36)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 0.95, 1)
+theme_override_colors/font_pressed_color = Color(0.95, 0.9, 0.7, 1)
+theme_override_colors/font_disabled_color = Color(0.55, 0.58, 0.5, 1)
+theme_override_fonts/font = ExtResource("2_bold")
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+text = "Auto"
+
+[node name="ResetRow" type="HBoxContainer" parent="Control/CenterContainer/Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ResetLabel" type="Label" parent="Control/CenterContainer/Panel/VBoxContainer/ResetRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.96, 0.97, 0.9, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.06, 0.03, 1)
+theme_override_constants/outline_size = 4
+theme_override_fonts/font = ExtResource("3_light")
+theme_override_font_sizes/font_size = 16
+text = "Reset Progress"
+
+[node name="ResetButton" type="Button" parent="Control/CenterContainer/Panel/VBoxContainer/ResetRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 36)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.3, 0.3, 1)
+theme_override_colors/font_hover_color = Color(1, 0.5, 0.5, 1)
+theme_override_colors/font_pressed_color = Color(0.7, 0.2, 0.2, 1)
+theme_override_colors/font_disabled_color = Color(0.55, 0.58, 0.5, 1)
+theme_override_fonts/font = ExtResource("2_bold")
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+text = "Reset"
+
+[node name="CloseRow" type="HBoxContainer" parent="Control/CenterContainer/Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CloseLabel" type="Label" parent="Control/CenterContainer/Panel/VBoxContainer/CloseRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.96, 0.97, 0.9, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.06, 0.03, 1)
+theme_override_constants/outline_size = 4
+theme_override_fonts/font = ExtResource("3_light")
+theme_override_font_sizes/font_size = 16
+text = ""
+
+[node name="CloseButton" type="Button" parent="Control/CenterContainer/Panel/VBoxContainer/CloseRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 36)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 0.95, 1)
+theme_override_colors/font_pressed_color = Color(0.95, 0.9, 0.7, 1)
+theme_override_colors/font_disabled_color = Color(0.55, 0.58, 0.5, 1)
+theme_override_fonts/font = ExtResource("2_bold")
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+text = "Close"
+
+[node name="TouchMusicMute" type="TouchScreenButton" parent="Control"]
+unique_name_in_owner = true
+position = Vector2(400, 100)
+shape = SubResource("RectangleShape2D_music_mute")
+shape_visible = false
+
+[node name="TouchSFXMute" type="TouchScreenButton" parent="Control"]
+unique_name_in_owner = true
+position = Vector2(400, 140)
+shape = SubResource("RectangleShape2D_sfx_mute")
+shape_visible = false
+
+[node name="TouchFullscreen" type="TouchScreenButton" parent="Control"]
+unique_name_in_owner = true
+position = Vector2(400, 180)
+shape = SubResource("RectangleShape2D_fullscreen")
+shape_visible = false
+
+[node name="TouchLanguage" type="TouchScreenButton" parent="Control"]
+unique_name_in_owner = true
+position = Vector2(400, 220)
+shape = SubResource("RectangleShape2D_language")
+shape_visible = false
+
+[node name="TouchTouch" type="TouchScreenButton" parent="Control"]
+unique_name_in_owner = true
+position = Vector2(400, 260)
+shape = SubResource("RectangleShape2D_touch")
+shape_visible = false
+
+[node name="TouchReset" type="TouchScreenButton" parent="Control"]
+unique_name_in_owner = true
+position = Vector2(400, 300)
+shape = SubResource("RectangleShape2D_reset")
+shape_visible = false
+
+[node name="TouchClose" type="TouchScreenButton" parent="Control"]
+unique_name_in_owner = true
+position = Vector2(400, 340)
+shape = SubResource("RectangleShape2D_close")
+shape_visible = false

@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://8624fq7trlgq"]
+[gd_scene load_steps=7 format=3 uid="uid://8624fq7trlgq"]
 
 [ext_resource type="Script" uid="uid://drmxsqc880k0c" path="res://levels/title_screen/title_screen.gd" id="1_satpf"]
 [ext_resource type="Texture2D" uid="uid://cbv28avj8c058" path="res://tile_maps/sprites/Grass-01.png" id="2_grass"]
@@ -11,9 +11,12 @@ size = Vector2(120, 24)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_game"]
 size = Vector2(120, 24)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_horde"]
+size = Vector2(120, 24)
+
 [node name="TitleScreen" type="CanvasLayer"]
 layer = 10
-follow_viewport_enabled = true
+follow_viewport_enabled = false
 script = ExtResource("1_satpf")
 
 [node name="Control" type="Control" parent="."]
@@ -119,6 +122,13 @@ theme_override_fonts/font = ExtResource("4_light")
 theme_override_font_sizes/font_size = 16
 text = "Start Game"
 
+[node name="EndlessHorde" type="Button" parent="Control/CenterContainer/VBoxContainer"]
+custom_minimum_size = Vector2(220, 48)
+layout_mode = 2
+theme_override_fonts/font = ExtResource("4_light")
+theme_override_font_sizes/font_size = 16
+text = "Endless Horde"
+
 [node name="TouchStartTutorial" type="TouchScreenButton" parent="Control"]
 visible = true
 shape = SubResource("RectangleShape2D_tutorial")
@@ -127,4 +137,9 @@ shape_visible = false
 [node name="TouchStartGame" type="TouchScreenButton" parent="Control"]
 visible = true
 shape = SubResource("RectangleShape2D_game")
+shape_visible = false
+
+[node name="TouchEndlessHorde" type="TouchScreenButton" parent="Control"]
+visible = true
+shape = SubResource("RectangleShape2D_horde")
 shape_visible = false

@@ -21,8 +21,10 @@ func _ready() -> void:
 	
 	
 	
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	if Engine.is_editor_hint():
+		return
+	if npc.do_behavior == false:
 		return
 	if abs(global_position.distance_to(original_position)) > wander_range * 32:
 		npc.velocity *= -1
@@ -43,6 +45,8 @@ func start() -> void:
 	npc.velocity = Vector2.ZERO
 	npc.update_animation()
 	await get_tree().create_timer(randf() * idle_duration + idle_duration * 0.5).timeout
+	if npc.do_behavior == false:
+		return
 	
 	# WALK
 	npc.state = "walk"

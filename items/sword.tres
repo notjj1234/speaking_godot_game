@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://b8sworditemlq01"]
+
+[ext_resource type="Script" uid="uid://doxdejy44xhx7" path="res://items/Scripts/item_data.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://bfjb4qom020yu" path="res://items/Sprites/sword.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_script")
+name = "Sword"
+description = "Equip to change how you look."
+texture = ExtResource("2_tex")
+equip_id = "sword"

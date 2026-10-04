@@ -12,6 +12,8 @@ func add_item(item: ItemData, count: int = 1) -> bool:
 	for s in slots:
 		if s:
 			if s.item_data == item:
+				if item.equip_id != "":
+					return true
 				s.quantity += count
 				return true
 	

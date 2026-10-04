@@ -16,6 +16,7 @@ var attacking: bool = false
 
 func enter() -> void:
 	player.update_animation("attack")
+	player.refresh_weapon_sprite()
 	attack_anim.play("attack_" + player.anim_direction())
 	animation_player.animation_finished.connect(end_attack)
 	
@@ -27,6 +28,8 @@ func enter() -> void:
 	
 	await get_tree().create_timer(0.075).timeout
 	if attacking:
+		hurt_box.damage = PlayerManager.roll_attack_damage()
+		hurt_box.was_crit = PlayerManager.last_attack_was_crit
 		hurt_box.monitoring = true
 
 func exit() -> void:

@@ -15,21 +15,43 @@ var current_save: Dictionary = {
 	},
 	items = [],
 	persistence = [],
-	quests = []
+	quests = [],
+	bonfire = {
+		"points": 0,
+		"vitality": 0,
+		"might": 0,
+		"haste": 0,
+		"crit": 0,
+		"sword_equipped": false
+	}
 }
+
+func has_save() -> bool:
+	return FileAccess.file_exists(SAVE_PATH + "save.sav")
+
 
 func save_game() -> void:
 	update_player_data()
 	update_scene_path()
 	update_item_data()
+	update_bonfire_data()
 	var file := FileAccess.open(SAVE_PATH + "save.sav", FileAccess.WRITE)
+	if file == null:
+		print("❌ SaveManager: Failed to open save file for writing")
+		return
 	var save_json = JSON.stringify(current_save)
 	file.store_line(save_json)
 	game_saved.emit()
-	pass
+
 
 func load_game() -> void:
+	if not has_save():
+		print("❌ SaveManager: No save file found")
+		return
 	var file := FileAccess.open(SAVE_PATH + "save.sav", FileAccess.READ)
+	if file == null:
+		print("❌ SaveManager: Failed to open save file for reading")
+		return
 	var json := JSON.new()
 	json.parse(file.get_line())
 	var save_dict : Dictionary = json.get_data() as Dictionary
@@ -42,6 +64,10 @@ func load_game() -> void:
 	PlayerManager.set_player_position(Vector2(current_save.player.pos_x, current_save.player.pos_y))
 	PlayerManager.set_health(current_save.player.hp, current_save.player.max_hp)
 	PlayerManager.INVENTORY_DATA.parse_save_data(current_save.items)
+	var bonfire_data: Dictionary = {}
+	if current_save.has("bonfire") and current_save.bonfire is Dictionary:
+		bonfire_data = current_save.bonfire
+	PlayerManager.apply_saved_bonfire(bonfire_data)
 	
 	await LevelManager.level_loaded
 	
@@ -63,6 +89,10 @@ func update_scene_path() -> void:
 	
 func update_item_data() -> void:
 	current_save.items = PlayerManager.INVENTORY_DATA.get_save_data()
+
+
+func update_bonfire_data() -> void:
+	current_save.bonfire = PlayerManager.bonfire_save_dict()
 	
 	
 func add_persistent_value(value: String) -> void:

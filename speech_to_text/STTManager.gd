@@ -2,7 +2,10 @@ extends Node2D
 
 signal speech_result(success: bool)
 signal listening_completed(result: String)
+signal partial_transcript(result: String)
 signal error(error_code)
+signal listening_started
+signal listening_stopped
 
 var STT  # Kept for compatibility; prefer `provider`.
 var provider: SttProvider = null
@@ -95,6 +98,9 @@ func _create_provider() -> void:
 	if Engine.has_singleton("SpeechToText"):
 		provider = AndroidSTTProvider.new()
 		print("[STTManager] Using Android SpeechToText plugin.")
+	elif Engine.has_singleton("LoquiSpeechIOS"):
+		provider = IosSTTProvider.new()
+		print("[STTManager] Using iOS speech recognition plugin.")
 	elif OS.has_feature("web"):
 		provider = WebSTTProvider.new()
 		print("[STTManager] Using Web Speech API provider.")
@@ -158,6 +164,20 @@ func _on_error(error_code) -> void:
 	error.emit(error_code)
 
 
+func _on_partial_transcript(args) -> void:
+	var text := String(args) if args != null else ""
+	if not text.strip_edges().is_empty():
+		partial_transcript.emit(text)
+
+
+func _on_listening_started() -> void:
+	listening_started.emit()
+
+
+func _on_listening_stopped() -> void:
+	listening_stopped.emit()
+
+
 func _resolve_mic_panel() -> Control:
 	# Autoload _ready runs before any level scene exists, so resolve lazily
 	var current := get_tree().current_scene
@@ -214,11 +234,21 @@ func _initialize_stt():
 
 	if provider != null:
 		STT = provider
-		provider.set_language("en")
+		var settings = get_node_or_null("/root/SettingsManager")
+		var lang := "en"
+		if settings:
+			lang = settings.stt_language
+		provider.set_language(lang)
 		if not provider.listening_completed.is_connected(_on_listening_completed):
 			provider.listening_completed.connect(_on_listening_completed)
+		if not provider.partial_transcript.is_connected(_on_partial_transcript):
+			provider.partial_transcript.connect(_on_partial_transcript)
 		if not provider.error.is_connected(_on_error):
 			provider.error.connect(_on_error)
+		if not provider.listening_started.is_connected(_on_listening_started):
+			provider.listening_started.connect(_on_listening_started)
+		if not provider.listening_stopped.is_connected(_on_listening_stopped):
+			provider.listening_stopped.connect(_on_listening_stopped)
 		print("[STTManager] STT initialized. available=", is_speech_available())
 	else:
 		print("[STTManager] No STT provider.")

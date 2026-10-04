@@ -40,8 +40,14 @@ func exit() -> void:
 	pass
 
 func process(_delta: float) -> EnemyState:
-	var new_dir: Vector2 = enemy.global_position.direction_to(PlayerManager.player.global_position)
+	var target_pos: Vector2 = enemy.get_chase_target_position()
+	var new_dir: Vector2 = enemy.global_position.direction_to(target_pos)
+	var separation: Vector2 = enemy.get_separation_vector()
+	if separation != Vector2.ZERO:
+		new_dir = (new_dir + separation * 1.6).normalized()
 	_direction = lerp(_direction, new_dir, turn_rate)
+	if _direction.length_squared() > 0.0001:
+		_direction = _direction.normalized()
 	enemy.velocity = _direction * chase_speed
 	if enemy.set_direction(_direction):
 		enemy.update_animation(anim_name)
@@ -61,6 +67,10 @@ func physics(_delta: float) -> EnemyState:
 func _on_player_enter() -> void:
 	_can_see_player = true
 	if state_machine.current_state is EnemyStateStun:
+		return
+	if state_machine.current_state is EnemyStateDestroy:
+		return
+	if state_machine.current_state == self:
 		return
 	state_machine.change_state(self)
 	pass

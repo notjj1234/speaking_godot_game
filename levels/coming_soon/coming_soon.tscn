@@ -9,7 +9,7 @@ size = Vector2(120, 24)
 
 [node name="ComingSoon" type="CanvasLayer"]
 layer = 10
-follow_viewport_enabled = true
+follow_viewport_enabled = false
 script = ExtResource("1_script")
 
 [node name="Control" type="Control" parent="."]

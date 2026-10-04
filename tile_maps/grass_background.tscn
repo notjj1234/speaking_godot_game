@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://f0b40yoyusyg"]
+
+[ext_resource type="Texture2D" uid="uid://cbv28avj8c058" path="res://tile_maps/sprites/Grass-01.png" id="1_grass"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_grass"]
+atlas = ExtResource("1_grass")
+region = Rect2(0, 0, 32, 32)
+
+[node name="GrassBackground" type="Sprite2D"]
+z_index = -5
+position = Vector2(240, 320)
+texture = SubResource("AtlasTexture_grass")
+centered = true
+texture_repeat = 2
+region_enabled = true
+region_rect = Rect2(0, 0, 6000, 6000)

@@ -70,6 +70,8 @@ func listen() -> void:
 	if status != "ok":
 		_skip_end_result = true
 		error.emit(-1)
+	else:
+		listening_started.emit()
 
 
 func stop() -> void:
@@ -79,6 +81,7 @@ func stop() -> void:
 		return
 	_intentional_stop = true
 	_eval_stop()
+	listening_stopped.emit()
 
 
 func set_language(lang: String) -> void:
@@ -120,7 +123,7 @@ func _setup_recognition() -> void:
 	var window = JavaScriptBridge.get_interface("window")
 	window._godot_speech_recognition = _recognition
 
-	_recognition.interimResults = false
+	_recognition.interimResults = true
 	_recognition.continuous = false
 	_recognition.maxAlternatives = 1
 	_recognition.lang = _lang
@@ -179,6 +182,8 @@ func _restart_if_session() -> void:
 	elif status != "ok":
 		_skip_end_result = true
 		error.emit(-1)
+	else:
+		listening_started.emit()
 
 
 func _on_js_result(args: Array) -> void:
@@ -194,8 +199,11 @@ func _on_js_result(args: Array) -> void:
 	if last == null or last.length == 0:
 		return
 	var text := str(last[0].transcript)
-	_got_result = true
-	listening_completed.emit(text)
+	if bool(last.isFinal):
+		_got_result = true
+		listening_completed.emit(text)
+	else:
+		partial_transcript.emit(text)
 
 
 func _on_js_error(args: Array) -> void:
@@ -209,6 +217,7 @@ func _on_js_error(args: Array) -> void:
 			_pending_restart = false
 			_skip_end_result = true
 			error.emit(-1)
+			listening_stopped.emit()
 		"aborted":
 			_skip_end_result = true
 		"no-speech":
@@ -216,9 +225,11 @@ func _on_js_error(args: Array) -> void:
 		"network":
 			_skip_end_result = true
 			error.emit(1)
+			listening_stopped.emit()
 		_:
 			_skip_end_result = true
 			error.emit(1)
+			listening_stopped.emit()
 
 
 func _on_js_end(_args: Array) -> void:
