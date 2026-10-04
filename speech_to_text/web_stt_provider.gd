@@ -7,12 +7,10 @@ var _on_result_cb = null
 var _on_error_cb = null
 var _on_end_cb = null
 var _intentional_stop: bool = false
-var _got_result: bool = false
-var _skip_end_result: bool = false
-var _setup_attempted: bool = false
 var _session_active: bool = false
-var _pending_restart: bool = false
+var _setup_attempted: bool = false
 var _lang: String = "en-US"
+var _last_final_transcript: String = ""
 
 
 func _ready() -> void:
@@ -58,17 +56,14 @@ func listen() -> void:
 		return
 	_session_active = true
 	_intentional_stop = false
-	_got_result = false
-	_skip_end_result = false
-	_pending_restart = false
+	_last_final_transcript = ""
 	_apply_language()
 	var status := _eval_start()
 	if status == "already":
-		_pending_restart = true
 		_eval_stop()
-		return
+		await get_tree().process_frame
+		_eval_start()
 	if status != "ok":
-		_skip_end_result = true
 		error.emit(-1)
 	else:
 		listening_started.emit()
@@ -76,7 +71,6 @@ func listen() -> void:
 
 func stop() -> void:
 	_session_active = false
-	_pending_restart = false
 	if _recognition == null:
 		return
 	_intentional_stop = true
@@ -124,7 +118,7 @@ func _setup_recognition() -> void:
 	window._godot_speech_recognition = _recognition
 
 	_recognition.interimResults = true
-	_recognition.continuous = false
+	_recognition.continuous = true
 	_recognition.maxAlternatives = 1
 	_recognition.lang = _lang
 	_recognition.onresult = _on_result_cb
@@ -170,22 +164,6 @@ func _eval_stop() -> void:
 	)
 
 
-func _restart_if_session() -> void:
-	if not _session_active or _intentional_stop:
-		return
-	_got_result = false
-	_skip_end_result = false
-	var status := _eval_start()
-	if status == "already":
-		_pending_restart = true
-		_eval_stop()
-	elif status != "ok":
-		_skip_end_result = true
-		error.emit(-1)
-	else:
-		listening_started.emit()
-
-
 func _on_js_result(args: Array) -> void:
 	if args.is_empty():
 		return
@@ -195,12 +173,17 @@ func _on_js_result(args: Array) -> void:
 	var results = event.results
 	if results == null or results.length == 0:
 		return
-	var last = results[results.length - 1]
+	
+	# With continuous=true, we get all results since last start
+	# The last result is the most recent (interim or final)
+	var last_idx = results.length - 1
+	var last = results[last_idx]
 	if last == null or last.length == 0:
 		return
 	var text := str(last[0].transcript)
+	
 	if bool(last.isFinal):
-		_got_result = true
+		_last_final_transcript = text
 		listening_completed.emit(text)
 	else:
 		partial_transcript.emit(text)
@@ -214,20 +197,16 @@ func _on_js_error(args: Array) -> void:
 	match err_name:
 		"not-allowed", "service-not-allowed":
 			_session_active = false
-			_pending_restart = false
-			_skip_end_result = true
 			error.emit(-1)
 			listening_stopped.emit()
 		"aborted":
-			_skip_end_result = true
+			pass
 		"no-speech":
 			pass
 		"network":
-			_skip_end_result = true
 			error.emit(1)
 			listening_stopped.emit()
 		_:
-			_skip_end_result = true
 			error.emit(1)
 			listening_stopped.emit()
 
@@ -235,11 +214,10 @@ func _on_js_error(args: Array) -> void:
 func _on_js_end(_args: Array) -> void:
 	if _intentional_stop:
 		return
-	if _pending_restart:
-		_pending_restart = false
-		_restart_if_session()
-		return
-	if _session_active and not _got_result:
-		# Keep the challenge mic open; do not fail on silence.
-		_restart_if_session()
-		return
+	if _session_active:
+		# With continuous=true, onend shouldn't fire unless stopped
+		# But if it does (browser quirk), restart
+		print("[WebSTTProvider] onend fired unexpectedly, restarting...")
+		await get_tree().process_frame
+		if _session_active and not _intentional_stop:
+			_eval_start()

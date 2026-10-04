@@ -41,6 +41,11 @@ var practice_dummy: bool = false
 
 var challenge_hurt_box: HurtBox  # Store the hurt_box during the speech challenge
 var _last_partial_match: String = ""
+var _speech_matcher: SpeechMatcher = null
+var _fallback_stage: int = 0  # 0=mic, 1=speak_button, 2=typed_input
+var _fallback_timer: Timer = null
+var _mic_attempts: int = 0
+const MAX_MIC_ATTEMPTS: int = 2
 
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
 @onready var sprite: Sprite2D = $Sprite2D
@@ -52,6 +57,9 @@ func _ready() -> void:
 	state_machine.Initialize(self)
 	player = PlayerManager.player
 	hit_box.damaged.connect(_take_damage)
+
+	# Initialize SpeechMatcher with difficulty from settings
+	_initialize_speech_matcher()
 
 	# Start facing a random direction
 	var directions = [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]
@@ -83,6 +91,17 @@ func _physics_process(_delta):
 		if collision:
 			_handle_bounce()
 			break
+
+func _initialize_speech_matcher() -> void:
+	_speech_matcher = SpeechMatcher.new()
+	var settings = get_node_or_null("/root/SettingsManager")
+	var difficulty := SpeechMatcher.Difficulty.DIFFICULTY_NORMAL
+	if settings and settings.has_method("get_speech_difficulty"):
+		var settings_diff = settings.get_speech_difficulty()
+		# SettingsManager.SpeechDifficulty matches SpeechMatcher.Difficulty (0=Easy, 1=Normal, 2=Hard)
+		difficulty = SpeechMatcher.Difficulty(settings_diff)
+	_speech_matcher = SpeechMatcher.create_from_difficulty(difficulty)
+	print("✅ SpeechMatcher initialized with difficulty: ", difficulty)
 
 func _handle_bounce() -> void:
 	is_bouncing = true
@@ -290,6 +309,8 @@ func _take_damage(hurt_box: HurtBox) -> void:
 func _start_speech_challenge(target_sentence: String, hurt_box: HurtBox) -> void:
 	challenge_hurt_box = hurt_box  # Store hurt_box for later use
 	_last_partial_match = ""
+	_fallback_stage = 0
+	_mic_attempts = 0
 
 	get_tree().paused = true  # Pause the game
 
@@ -298,21 +319,52 @@ func _start_speech_challenge(target_sentence: String, hurt_box: HurtBox) -> void
 
 	_connect_stt_signals()
 	var stt = _stt_manager()
+	
 	if _is_web():
 		_begin_web_challenge_mic()
-		_show_typed_fallback()
-		_connect_speak_button()
+		# Start with mic only on web - show speak button after failed attempts
 		if stt != null and stt.is_speech_available():
+			_play_audio_cue("mic_start")
 			if stt.has_method("begin_challenge_listen"):
 				stt.begin_challenge_listen()
 			else:
 				stt.listen()
+		else:
+			_show_progressive_fallback()
 		return
+	
 	if stt != null and stt.is_speech_available():
+		_play_audio_cue("mic_start")
 		stt.listen()
 	else:
 		print("STT unavailable. Showing typed fallback.")
-		_show_typed_fallback()
+		_show_progressive_fallback()
+
+
+func _show_progressive_fallback() -> void:
+	_fallback_stage += 1
+	match _fallback_stage:
+		1:  # Stage 1: Show speak button
+			print("🔄 Fallback stage 1: Speak button")
+			if player_hud:
+				player_hud.show_speak_button()
+			_play_audio_cue("fallback")
+		2:  # Stage 2: Show typed input
+			print("🔄 Fallback stage 2: Typed input")
+			_show_typed_fallback()
+			_play_audio_cue("fallback")
+		_:  # Beyond stage 2: keep typed input visible
+			if player_hud:
+				player_hud.show_typed_fallback()
+
+
+func _play_audio_cue(cue_name: String) -> void:
+	var sfx = get_node_or_null("/root/SFXPlayer")
+	if sfx == null:
+		# Try to find AudioStreamPlayer in scene
+		sfx = get_tree().current_scene.find_child("SFXPlayer", true, false)
+	if sfx and sfx.has_method("play_cue"):
+		sfx.play_cue(cue_name)
 
 func _on_listening_completed(result: String) -> void:
 	print("Listening completed: ", result)
@@ -324,26 +376,29 @@ func _on_listening_completed(result: String) -> void:
 		return
 
 	var word_tracker = get_node("/root/WordTracker")
-	var recognized_text: String
-	var target_sentence: String
-	if _is_web():
-		recognized_text = _normalize_web_text(result)
-		target_sentence = _normalize_web_text(player_hud.target_sentence)
-	else:
-		recognized_text = result.strip_edges().to_lower()
-		target_sentence = player_hud.target_sentence.strip_edges().to_lower()
-
-	if target_sentence != "" and target_sentence in recognized_text:
-		print("Target phrase detected in speech:", target_sentence)
+	
+	if _speech_matcher == null:
+		_initialize_speech_matcher()
+	
+	var match_result = _speech_matcher.match_with_confidence(result, player_hud.target_sentence)
+	print("Speech match result: ", match_result)
+	
+	if match_result.matched:
+		print("✅ Target phrase detected in speech: ", player_hud.target_sentence, " (confidence: ", match_result.confidence, ")")
+		_play_audio_cue("success")
 		word_tracker.add_spoken_word(player_hud.target_sentence)
 		_on_speech_result(true)
 		return
 
-	print("Target phrase NOT found in speech:", target_sentence)
+	print("❌ Target phrase NOT found in speech: ", player_hud.target_sentence, " (confidence: ", match_result.confidence, ")")
+	_play_audio_cue("fail")
+	
 	if _is_web():
 		if player_hud:
 			player_hud.show_feedback(false)
-		_show_typed_fallback()
+		_mic_attempts += 1
+		if _mic_attempts >= MAX_MIC_ATTEMPTS:
+			_show_progressive_fallback()
 		var stt = _stt_manager()
 		if stt != null and stt.is_speech_available():
 			stt.listen()
@@ -365,6 +420,7 @@ func _on_speech_result(success: bool) -> void:
 	if player_hud:
 		player_hud.hide_speech_challenge()
 		player_hud.show_feedback(success)
+		player_hud.set_stt_state(PlayerHudUI.SttState.STT_IDLE)
 
 	if success:
 		print("Speech challenge passed! Storing word:", player_hud.target_sentence)
@@ -404,10 +460,14 @@ func _wait_feedback_and_resume() -> void:
 
 func _on_speech_error(error_code) -> void:
 	print("Speech recognition error: ", error_code)
+	_play_audio_cue("error")
 
 	if error_code is String:
 		var converted = int(error_code) if error_code.is_valid_int() else -1
 		error_code = converted
+
+	if player_hud:
+		player_hud.set_stt_state(PlayerHudUI.SttState.STT_ERROR)
 
 	if _is_web():
 		_show_typed_fallback()
@@ -438,18 +498,6 @@ func _stt_manager():
 
 func _is_web() -> bool:
 	return OS.has_feature("web")
-
-
-func _normalize_web_text(text: String) -> String:
-	var cleaned := ""
-	for i in text.length():
-		var ch := text.substr(i, 1).to_lower()
-		var code := ch.unicode_at(0)
-		if (code >= 97 and code <= 122) or (code >= 48 and code <= 57):
-			cleaned += ch
-		elif ch == " " or ch == "\t" or ch == "\n":
-			cleaned += " "
-	return " ".join(cleaned.split(" ", false))
 
 
 func _begin_web_challenge_mic() -> void:
@@ -494,49 +542,32 @@ func _disconnect_stt_signals() -> void:
 
 func _on_stt_listening_started() -> void:
 	if player_hud:
-		player_hud.set_mic_state(true)
+		player_hud.set_stt_state(PlayerHudUI.SttState.STT_LISTENING)
 
 
 func _on_stt_listening_stopped() -> void:
 	if player_hud:
-		player_hud.set_mic_state(false)
+		player_hud.set_stt_state(PlayerHudUI.SttState.STT_IDLE)
 
 
 func _on_partial_transcript(partial: String) -> void:
 	if player_hud:
 		player_hud.update_live_transcript(partial)
 
-	if _is_web():
-		var word_tracker = get_node_or_null("/root/WordTracker")
-		if word_tracker and word_tracker.speech_challenge_active and player_hud:
-			var normalized_partial = _normalize_web_text(partial)
-			var target = _normalize_web_text(player_hud.target_sentence)
-			if _contains_phrase(normalized_partial, target):
-				if normalized_partial == _last_partial_match:
-					_last_partial_match = ""
-					_on_speech_result(true)
-					return
-				_last_partial_match = normalized_partial
-			else:
+	if _speech_matcher == null:
+		_initialize_speech_matcher()
+	
+	var word_tracker = get_node_or_null("/root/WordTracker")
+	if word_tracker and word_tracker.speech_challenge_active and player_hud:
+		var match_result = _speech_matcher.match_with_confidence(partial, player_hud.target_sentence)
+		if match_result.matched:
+			if partial.strip_edges() == _last_partial_match:
 				_last_partial_match = ""
-
-
-func _contains_phrase(haystack: String, needle: String) -> bool:
-	if needle.is_empty():
-		return false
-	var haystack_tokens = haystack.split(" ", false)
-	var needle_tokens = needle.split(" ", false)
-	if needle_tokens.size() > haystack_tokens.size():
-		return false
-	for i in range(haystack_tokens.size() - needle_tokens.size() + 1):
-		var match = true
-		for j in range(needle_tokens.size()):
-			if haystack_tokens[i + j] != needle_tokens[j]:
-				match = false
-				break
-		if match:
-			return true
-	return false
+				_on_speech_result(true)
+				return
+			_last_partial_match = partial.strip_edges()
+		else:
+			_last_partial_match = ""
 
 
 func _show_typed_fallback() -> void:

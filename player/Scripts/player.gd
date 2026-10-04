@@ -36,7 +36,11 @@ func _process(_delta: float) -> void:
 	)
 
 func _physics_process(_delta: float) -> void:
-	move_and_slide()
+	if _continuous_move_direction != Vector2.ZERO and not PlayerManager.dialog_open and not PlayerManager.voice_only:
+		velocity = _continuous_move_direction * _continuous_move_speed
+		move_and_slide()
+	else:
+		move_and_slide()
 
 func set_direction(force_update: bool = false) -> bool:
 	if direction == Vector2.ZERO and not force_update:
@@ -131,6 +135,39 @@ func move_with_animation(direction_vector: Vector2) -> void:
 		update_animation("idle")
 	else:
 		print("Error: State machine missing 'Walk' or 'Idle' state.")
+
+
+# Continuous movement for voice-only mode
+var _continuous_move_direction: Vector2 = Vector2.ZERO
+var _continuous_move_speed: float = 120.0
+
+func start_continuous_move(direction_vector: Vector2) -> void:
+	if PlayerManager.dialog_open:
+		return
+	_continuous_move_direction = direction_vector.normalized()
+	direction = _continuous_move_direction
+	set_direction(true)
+	
+	var walk_state = state_machine.get_node("Walk")
+	if walk_state:
+		state_machine.change_state(walk_state)
+		update_animation("walk")
+
+
+func stop_continuous_move() -> void:
+	_continuous_move_direction = Vector2.ZERO
+	var idle_state = state_machine.get_node("Idle")
+	if idle_state:
+		state_machine.change_state(idle_state)
+		update_animation("idle")
+
+
+func _physics_process(_delta: float) -> void:
+	if _continuous_move_direction != Vector2.ZERO and not PlayerManager.dialog_open and not PlayerManager.voice_only:
+		velocity = _continuous_move_direction * _continuous_move_speed
+	else:
+		velocity = Vector2.ZERO
+	move_and_slide()
 
 func attack_with_animation() -> void:
 	if PlayerManager.dialog_open:

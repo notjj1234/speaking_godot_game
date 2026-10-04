@@ -11,15 +11,21 @@ extends CanvasLayer
 @onready var right_cluster: Control = $Root/SafeArea/RightCluster
 @onready var player_hud = $"/root/PlayerHud"  # Reference to the Player HUD for live transcription
 
-const STRUGGLE_UNLOCK_COUNT := 3
-const VOICE_COMMANDS := [
+const DEFAULT_STRUGGLE_UNLOCK_COUNT := 3
+const DEFAULT_VOICE_COMMANDS := [
 	"move forward",
 	"move backwards",
 	"move backward",
 	"move left",
 	"move right",
+	"stop",
+	"stop moving",
+	"halt",
 	"attack",
 ]
+
+var STRUGGLE_UNLOCK_COUNT: int = DEFAULT_STRUGGLE_UNLOCK_COUNT
+var VOICE_COMMANDS: Array[String] = DEFAULT_VOICE_COMMANDS
 
 var mic_enabled: bool = false
 var mic_restart_timer: Timer = null
@@ -125,15 +131,29 @@ func _pause_menu_open() -> bool:
 
 
 func _apply_level_touch_rules() -> void:
-	var current_level := get_tree().current_scene.name
-	if current_level == "02":
-		_disable_arrow_buttons()
-		_disable_interact_button()
-	if current_level == "Playground":
-		_disable_mic_button()
-		_disable_interact_button()
-	if current_level == "EndlessHorde":
-		_disable_interact_button()
+	var current_scene = get_tree().current_scene
+	if current_scene == null:
+		return
+	
+	var metadata = LevelMetadata.get_for_level(current_scene)
+	if metadata:
+		LevelMetadata.apply_to_touch_controls(self, metadata)
+		print("✅ Applied level metadata: ", metadata.level_name)
+	else:
+		# Fallback for legacy levels without metadata
+		_apply_legacy_level_rules(current_scene.name)
+
+
+func _apply_legacy_level_rules(level_name: String) -> void:
+	match level_name:
+		"02":
+			_disable_arrow_buttons()
+			_disable_interact_button()
+		"Playground":
+			_disable_mic_button()
+			_disable_interact_button()
+		"EndlessHorde":
+			_disable_interact_button()
 
 
 func set_suppressed_by_pause(suppressed: bool) -> void:
@@ -200,6 +220,21 @@ func _disable_mic_button() -> void:
 func _disable_interact_button() -> void:
 	if has_node("Root/SafeArea/RightCluster/Interact"): $Root/SafeArea/RightCluster/Interact.visible = false
 	if has_node("Root/SafeArea/RightCluster/Touch_Interact"): $Root/SafeArea/RightCluster/Touch_Interact.visible = false
+
+
+func _disable_attack_button() -> void:
+	if has_node("Root/SafeArea/RightCluster/Attack"): $Root/SafeArea/RightCluster/Attack.visible = false
+
+
+func set_struggle_unlock_count(count: int) -> void:
+	STRUGGLE_UNLOCK_COUNT = count
+	print("✅ Struggle unlock count set to: ", count)
+
+
+func set_custom_voice_commands(commands: Array[String]) -> void:
+	VOICE_COMMANDS = commands
+	print("✅ Custom voice commands set: ", commands)
+
 
 func _on_mic_button_pressed() -> void:
 	print("Mic button pressed.")
@@ -405,19 +440,39 @@ func _execute_command(command: String) -> void:
 
 	match command:
 		"move forward":
-			await PlayerManager.player.move_with_animation(PlayerManager.player.cardinal_direction)
+			if _voice_only_mode:
+				PlayerManager.player.start_continuous_move(PlayerManager.player.cardinal_direction)
+			else:
+				await PlayerManager.player.move_with_animation(PlayerManager.player.cardinal_direction)
 		"move backward", "move backwards":
-			await PlayerManager.player.move_with_animation(-PlayerManager.player.cardinal_direction)
+			if _voice_only_mode:
+				PlayerManager.player.start_continuous_move(-PlayerManager.player.cardinal_direction)
+			else:
+				await PlayerManager.player.move_with_animation(-PlayerManager.player.cardinal_direction)
 		"move left":
-			if is_facing_south:
-				await PlayerManager.player.move_with_animation(Vector2.LEFT)
+			if _voice_only_mode:
+				if is_facing_south:
+					PlayerManager.player.start_continuous_move(Vector2.LEFT)
+				else:
+					PlayerManager.player.start_continuous_move(PlayerManager.player.cardinal_to_relative(Vector2.LEFT))
 			else:
-				await PlayerManager.player.move_with_animation(PlayerManager.player.cardinal_to_relative(Vector2.LEFT))
+				if is_facing_south:
+					await PlayerManager.player.move_with_animation(Vector2.LEFT)
+				else:
+					await PlayerManager.player.move_with_animation(PlayerManager.player.cardinal_to_relative(Vector2.LEFT))
 		"move right":
-			if is_facing_south:
-				await PlayerManager.player.move_with_animation(Vector2.RIGHT)
+			if _voice_only_mode:
+				if is_facing_south:
+					PlayerManager.player.start_continuous_move(Vector2.RIGHT)
+				else:
+					PlayerManager.player.start_continuous_move(PlayerManager.player.cardinal_to_relative(Vector2.RIGHT))
 			else:
-				await PlayerManager.player.move_with_animation(PlayerManager.player.cardinal_to_relative(Vector2.RIGHT))
+				if is_facing_south:
+					await PlayerManager.player.move_with_animation(Vector2.RIGHT)
+				else:
+					await PlayerManager.player.move_with_animation(PlayerManager.player.cardinal_to_relative(Vector2.RIGHT))
+		"stop", "stop moving", "halt":
+			PlayerManager.player.stop_continuous_move()
 		"attack":
 			PlayerManager.player.attack_with_animation()
 		_:

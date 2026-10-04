@@ -7,11 +7,24 @@ signal fallback_submitted(text: String)
 signal speak_pressed
 signal feedback_closed
 
+enum SttState {
+	STT_IDLE = 0,
+	STT_LISTENING = 1,
+	STT_PROCESSING = 2,
+	STT_ERROR = 3,
+	STT_UNAVAILABLE = 4
+}
+
 const FEEDBACK_DURATION := 0.8
 
 var hearts: Array[HeartGUI] = []
-var target_sentence: String = ""  # Added to store the target sentence for validation
+var target_sentence: String = ""
 var _feedback_token: int = 0
+var _stt_state: SttState = SttState.STT_IDLE
+var _stt_indicator_row: HBoxContainer = null
+var _stt_dot: ColorRect = null
+var _stt_label: Label = null
+var _stt_tween: Tween = null
 
 @onready var challenge_panel: PanelContainer = $Control/ChallengePanel
 @onready var speech_challenge_label: Label = $Control/ChallengePanel/MarginContainer/ChallengeVBox/SpeechChallengeLabel
@@ -42,6 +55,7 @@ func _ready() -> void:
 	var viewport := get_viewport()
 	if viewport:
 		viewport.size_changed.connect(_center_life_hud)
+	_create_stt_indicator()
 
 
 func _notification(what: int) -> void:
@@ -300,50 +314,96 @@ func _hide_feedback_after_delay(token: int) -> void:
 	feedback_closed.emit()
 
 
+func _create_stt_indicator() -> void:
+	_stt_indicator_row = HBoxContainer.new()
+	_stt_indicator_row.name = "SttIndicatorRow"
+	_stt_indicator_row.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_stt_indicator_row.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	
+	_stt_dot = ColorRect.new()
+	_stt_dot.name = "SttDot"
+	_stt_dot.custom_minimum_size = Vector2(14, 14)
+	_stt_indicator_row.add_child(_stt_dot)
+	
+	_stt_label = Label.new()
+	_stt_label.name = "SttLabel"
+	_stt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_stt_label.add_theme_font_size_override("font_size", 14)
+	_stt_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9, 1))
+	_stt_indicator_row.add_child(_stt_label)
+	
+	# Add to the top of the HUD (above hearts)
+	var control = get_node_or_null("Control")
+	if control:
+		control.add_child(_stt_indicator_row)
+		_stt_indicator_row.move_child(_stt_dot, 0)
+		_stt_indicator_row.move_child(_stt_label, 1)
+		_stt_indicator_row.position = Vector2(control.size.x - 180, 10)
+	
+	set_stt_state(SttState.STT_IDLE)
+
+
+func set_stt_state(state: SttState) -> void:
+	_stt_state = state
+	if _stt_indicator_row == null or _stt_dot == null or _stt_label == null:
+		return
+	
+	# Kill existing tween
+	if _stt_tween and _stt_tween.is_valid():
+		_stt_tween.kill()
+	_stt_tween = null
+	
+	match state:
+		SttState.STT_IDLE:
+			_stt_dot.visible = true
+			_stt_label.visible = true
+			_stt_label.text = "Mic: Off"
+			_stt_dot.add_theme_color_override("bg_color", Color(0.4, 0.4, 0.4, 1))
+			_stt_dot.modulate = Color(1, 1, 1, 1)
+		
+		SttState.STT_LISTENING:
+			_stt_dot.visible = true
+			_stt_label.visible = true
+			_stt_label.text = "Listening..."
+			_stt_dot.add_theme_color_override("bg_color", Color(0.9, 0.15, 0.15, 1))
+			_stt_dot.modulate = Color(1, 1, 1, 1)
+			
+			_stt_tween = _stt_dot.create_tween()
+			_stt_tween.set_loops()
+			_stt_tween.tween_property(_stt_dot, "modulate:a", 0.3, 0.5)
+			_stt_tween.tween_property(_stt_dot, "modulate:a", 1.0, 0.5)
+			_stt_tween.set_process_mode(Tween.TWEEN_PROCESS_MODE_ALWAYS)
+		
+		SttState.STT_PROCESSING:
+			_stt_dot.visible = true
+			_stt_label.visible = true
+			_stt_label.text = "Processing..."
+			_stt_dot.add_theme_color_override("bg_color", Color(0.95, 0.75, 0.1, 1))
+			_stt_dot.modulate = Color(1, 1, 1, 1)
+			
+			_stt_tween = _stt_dot.create_tween()
+			_stt_tween.set_loops()
+			_stt_tween.tween_property(_stt_dot, "modulate:a", 0.5, 0.3)
+			_stt_tween.tween_property(_stt_dot, "modulate:a", 1.0, 0.3)
+			_stt_tween.set_process_mode(Tween.TWEEN_PROCESS_MODE_ALWAYS)
+		
+		SttState.STT_ERROR:
+			_stt_dot.visible = true
+			_stt_label.visible = true
+			_stt_label.text = "Mic Error"
+			_stt_dot.add_theme_color_override("bg_color", Color(0.8, 0.1, 0.1, 1))
+			_stt_dot.modulate = Color(1, 1, 1, 1)
+		
+		SttState.STT_UNAVAILABLE:
+			_stt_dot.visible = true
+			_stt_label.visible = true
+			_stt_label.text = "STT Unavailable"
+			_stt_dot.add_theme_color_override("bg_color", Color(0.5, 0.5, 0.5, 1))
+			_stt_dot.modulate = Color(1, 1, 1, 1)
+
+
 func set_mic_state(listening: bool) -> void:
-	if not has_node("MicIndicatorRow"):
-		var row = HBoxContainer.new()
-		row.name = "MicIndicatorRow"
-		row.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		
-		var dot = ColorRect.new()
-		dot.name = "MicDot"
-		dot.custom_minimum_size = Vector2(12, 12)
-		row.add_child(dot)
-		
-		var label = Label.new()
-		label.name = "MicLabel"
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.add_theme_font_size_override("font_size", 16)
-		row.add_child(label)
-		
-		challenge_vbox.add_child(row)
-		row.move_child(dot, 0)
-		row.move_child(label, 1)
-	
-	var row = get_node("MicIndicatorRow")
-	var dot = row.get_node("MicDot")
-	var label = row.get_node("MicLabel")
-	
 	if listening:
-		dot.visible = true
-		label.visible = true
-		label.text = "Listening..."
-		dot.add_theme_color_override("bg_color", Color(0.9, 0.15, 0.15, 1))
-		
-		var tween = dot.create_tween()
-		tween.set_loops()
-		tween.tween_property(dot, "modulate:a", 0.3, 0.5)
-		tween.tween_property(dot, "modulate:a", 1.0, 0.5)
-		tween.set_process_mode(2)  # TWEEN_PROCESS_MODE_ALWAYS = 2
-		dot.set_meta("_mic_tween", tween)
+		set_stt_state(SttState.STT_LISTENING)
 	else:
-		dot.visible = true
-		label.visible = true
-		label.text = "Mic off"
-		dot.add_theme_color_override("bg_color", Color(0.4, 0.4, 0.4, 1))
-		dot.modulate = Color(1, 1, 1, 1)
-		var existing_tween = dot.get_meta("_mic_tween", null)
-		if existing_tween and existing_tween is Tween:
-			existing_tween.kill()
-		dot.remove_meta("_mic_tween")
+		set_stt_state(SttState.STT_IDLE)

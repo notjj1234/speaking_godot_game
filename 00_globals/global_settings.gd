@@ -1,155 +1,197 @@
-extends Node
+# global_settings.gd
+# Global settings singleton for game configuration
+
+class_name SettingsManager extends Node
+
+enum SpeechDifficulty {
+	DIFFICULTY_EASY = 0,
+	DIFFICULTY_NORMAL = 1,
+	DIFFICULTY_HARD = 2
+}
 
 signal settings_changed
 
-const SETTINGS_PATH := "user://settings.cfg"
-const MUSIC_DEFAULTS := {"volume": 0.7, "muted": false}
-const SFX_DEFAULTS := {"volume": 0.7, "muted": false}
-const DISPLAY_DEFAULTS := {"fullscreen": false}
-const STT_DEFAULTS := {"language": "en"}
-const INPUT_DEFAULTS := {"touch_controls": false}
+var music_volume: float = 0.8
+var music_muted: bool = false
+var sfx_volume: float = 0.8
+var sfx_muted: bool = false
+var fullscreen: bool = true
+var stt_language: String = "en"
+var touch_controls_forced: bool = false
+var speech_difficulty: SpeechDifficulty = SpeechDifficulty.DIFFICULTY_NORMAL
+var ui_scale: float = 1.0
+var reduce_motion: bool = false
+var color_blind_mode: bool = false
 
-var music_volume: float = MUSIC_DEFAULTS.volume
-var music_muted: bool = MUSIC_DEFAULTS.muted
-var sfx_volume: float = SFX_DEFAULTS.volume
-var sfx_muted: bool = SFX_DEFAULTS.muted
-var fullscreen: bool = DISPLAY_DEFAULTS.fullscreen
-var stt_language: String = STT_DEFAULTS.language
-var touch_controls_forced: bool = INPUT_DEFAULTS.touch_controls
+const SETTINGS_PATH = "user://settings.cfg"
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_load_settings()
-	_migrate_legacy_music_settings()
-	_apply_all()
+	load_settings()
+	apply_settings()
 
-func _load_settings() -> void:
-	var config := ConfigFile.new()
-	if config.load(SETTINGS_PATH) != OK:
+
+func load_settings() -> void:
+	var config = ConfigFile.new()
+	var err = config.load(SETTINGS_PATH)
+	if err != OK:
+		print("[SettingsManager] No settings file found, using defaults")
 		return
-	music_volume = clampf(float(config.get_value("music", "volume", MUSIC_DEFAULTS.volume)), 0.0, 1.0)
-	music_muted = bool(config.get_value("music", "muted", MUSIC_DEFAULTS.muted))
-	sfx_volume = clampf(float(config.get_value("sfx", "volume", SFX_DEFAULTS.volume)), 0.0, 1.0)
-	sfx_muted = bool(config.get_value("sfx", "muted", SFX_DEFAULTS.muted))
-	fullscreen = bool(config.get_value("display", "fullscreen", DISPLAY_DEFAULTS.fullscreen))
-	stt_language = str(config.get_value("stt", "language", STT_DEFAULTS.language))
-	touch_controls_forced = bool(config.get_value("input", "touch_controls", INPUT_DEFAULTS.touch_controls))
+	
+	music_volume = config.get_value("audio", "music_volume", 0.8)
+	music_muted = config.get_value("audio", "music_muted", false)
+	sfx_volume = config.get_value("audio", "sfx_volume", 0.8)
+	sfx_muted = config.get_value("audio", "sfx_muted", false)
+	fullscreen = config.get_value("video", "fullscreen", true)
+	stt_language = config.get_value("speech", "stt_language", "en")
+	touch_controls_forced = config.get_value("input", "touch_controls_forced", false)
+	speech_difficulty = SpeechDifficulty(config.get_value("speech", "speech_difficulty", 1))
+	ui_scale = config.get_value("accessibility", "ui_scale", 1.0)
+	reduce_motion = config.get_value("accessibility", "reduce_motion", false)
+	color_blind_mode = config.get_value("accessibility", "color_blind_mode", false)
 
-func _save_settings() -> void:
-	var config := ConfigFile.new()
-	config.set_value("music", "volume", music_volume)
-	config.set_value("music", "muted", music_muted)
-	config.set_value("sfx", "volume", sfx_volume)
-	config.set_value("sfx", "muted", sfx_muted)
-	config.set_value("display", "fullscreen", fullscreen)
-	config.set_value("stt", "language", stt_language)
-	config.set_value("input", "touch_controls", touch_controls_forced)
-	config.save(SETTINGS_PATH)
 
-func _migrate_legacy_music_settings() -> void:
-	var legacy_path := "user://music_settings.cfg"
-	if not FileAccess.file_exists(legacy_path):
-		return
-	var config := ConfigFile.new()
-	if config.load(legacy_path) != OK:
-		return
-	if config.has_section_key("music", "volume"):
-		music_volume = clampf(float(config.get_value("music", "volume", MUSIC_DEFAULTS.volume)), 0.0, 1.0)
-	if config.has_section_key("music", "muted"):
-		music_muted = bool(config.get_value("music", "muted", MUSIC_DEFAULTS.muted))
-	_save_settings()
+func save_settings() -> void:
+	var config = ConfigFile.new()
+	config.set_value("audio", "music_volume", music_volume)
+	config.set_value("audio", "music_muted", music_muted)
+	config.set_value("audio", "sfx_volume", sfx_volume)
+	config.set_value("audio", "sfx_muted", sfx_muted)
+	config.set_value("video", "fullscreen", fullscreen)
+	config.set_value("speech", "stt_language", stt_language)
+	config.set_value("input", "touch_controls_forced", touch_controls_forced)
+	config.set_value("speech", "speech_difficulty", int(speech_difficulty))
+	config.set_value("accessibility", "ui_scale", ui_scale)
+	config.set_value("accessibility", "reduce_motion", reduce_motion)
+	config.set_value("accessibility", "color_blind_mode", color_blind_mode)
+	
+	var err = config.save(SETTINGS_PATH)
+	if err != OK:
+		print("[SettingsManager] Failed to save settings: ", err)
 
-func _apply_all() -> void:
-	_apply_music()
-	_apply_sfx()
-	_apply_display()
-	_apply_stt()
-	_apply_input()
 
-func _apply_music() -> void:
-	var mm = get_node_or_null("/root/MusicManager")
-	if mm:
-		mm.set_volume_linear(music_volume)
-		mm.set_muted(music_muted)
-
-func _apply_sfx() -> void:
-	if sfx_muted or sfx_volume <= 0.001:
-		AudioServer.set_bus_mute(AudioServer.get_bus_index("SFX"), true)
-		AudioServer.set_bus_volume_db(AudioServer.get_bus_index("SFX"), -80.0)
-	else:
-		AudioServer.set_bus_mute(AudioServer.get_bus_index("SFX"), false)
-		AudioServer.set_bus_volume_db(AudioServer.get_bus_index("SFX"), linear_to_db(sfx_volume))
-
-func _apply_display() -> void:
+func apply_settings() -> void:
+	# Apply audio settings
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Music"), linear_to_db(music_volume))
+	AudioServer.set_bus_mute(AudioServer.get_bus_index("Music"), music_muted)
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("SFX"), linear_to_db(sfx_volume))
+	AudioServer.set_bus_mute(AudioServer.get_bus_index("SFX"), sfx_muted)
+	
+	# Apply video settings
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED)
-
-func _apply_stt() -> void:
+	
+	# Apply STT language
 	var stt = get_node_or_null("/root/STTManager")
 	if stt and stt.has_method("set_language"):
 		stt.set_language(stt_language)
+	
+	# Apply accessibility
+	if has_node("/root/PlayerHud"):
+		var hud = get_node("/root/PlayerHud")
+		if hud.has_method("set_ui_scale"):
+			hud.set_ui_scale(ui_scale)
+		if hud.has_method("set_reduce_motion"):
+			hud.set_reduce_motion(reduce_motion)
 
-func _apply_input() -> void:
-	if has_node("/root/TouchControls"):
-		var tc = get_node("/root/TouchControls")
-		if tc.has_method("set_force_touch_ui"):
-			tc.set_force_touch_ui(touch_controls_forced)
 
-func set_music_volume(value: float) -> void:
-	music_volume = clampf(value, 0.0, 1.0)
-	_apply_music()
-	_save_settings()
+func set_music_volume(volume: float) -> void:
+	music_volume = clampf(volume, 0.0, 1.0)
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Music"), linear_to_db(music_volume))
 	settings_changed.emit()
+
 
 func set_music_muted(muted: bool) -> void:
 	music_muted = muted
-	_apply_music()
-	_save_settings()
+	AudioServer.set_bus_mute(AudioServer.get_bus_index("Music"), music_muted)
 	settings_changed.emit()
 
-func set_sfx_volume(value: float) -> void:
-	sfx_volume = clampf(value, 0.0, 1.0)
-	_apply_sfx()
-	_save_settings()
+
+func set_sfx_volume(volume: float) -> void:
+	sfx_volume = clampf(volume, 0.0, 1.0)
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("SFX"), linear_to_db(sfx_volume))
 	settings_changed.emit()
+
 
 func set_sfx_muted(muted: bool) -> void:
 	sfx_muted = muted
-	_apply_sfx()
-	_save_settings()
+	AudioServer.set_bus_mute(AudioServer.get_bus_index("SFX"), sfx_muted)
 	settings_changed.emit()
+
 
 func set_fullscreen(enabled: bool) -> void:
 	fullscreen = enabled
-	_apply_display()
-	_save_settings()
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED)
 	settings_changed.emit()
 
+
 func set_stt_language(lang: String) -> void:
-	stt_language = lang.strip_edges()
-	_apply_stt()
-	_save_settings()
+	stt_language = lang
+	var stt = get_node_or_null("/root/STTManager")
+	if stt and stt.has_method("set_language"):
+		stt.set_language(lang)
 	settings_changed.emit()
+
 
 func set_touch_controls_forced(enabled: bool) -> void:
 	touch_controls_forced = enabled
-	_apply_input()
-	_save_settings()
+	var touch = get_node_or_null("/root/TouchControls")
+	if touch and touch.has_method("apply_touch_ui_enabled"):
+		touch.apply_touch_ui_enabled()
 	settings_changed.emit()
 
+
+func set_speech_difficulty(diff: SpeechDifficulty) -> void:
+	speech_difficulty = diff
+	settings_changed.emit()
+
+
+func get_speech_difficulty() -> SpeechDifficulty:
+	return speech_difficulty
+
+
+func set_ui_scale(scale: float) -> void:
+	ui_scale = clampf(scale, 0.5, 2.0)
+	if has_node("/root/PlayerHud"):
+		var hud = get_node("/root/PlayerHud")
+		if hud.has_method("set_ui_scale"):
+			hud.set_ui_scale(ui_scale)
+	settings_changed.emit()
+
+
+func set_reduce_motion(enabled: bool) -> void:
+	reduce_motion = enabled
+	if has_node("/root/PlayerHud"):
+		var hud = get_node("/root/PlayerHud")
+		if hud.has_method("set_reduce_motion"):
+			hud.set_reduce_motion(reduce_motion)
+	settings_changed.emit()
+
+
+func set_color_blind_mode(enabled: bool) -> void:
+	color_blind_mode = enabled
+	settings_changed.emit()
+
+
 func reset_progress() -> void:
-	var save_path := "user://save.sav"
-	if FileAccess.file_exists(save_path):
-		FileAccess.remove(save_path)
-	var persistence_path := "user://settings.cfg"
-	if FileAccess.file_exists(persistence_path):
-		var config := ConfigFile.new()
-		config.load(persistence_path)
-		config.erase_section("music")
-		config.erase_section("sfx")
-		config.erase_section("display")
-		config.erase_section("stt")
-		config.erase_section("input")
-		config.save(persistence_path)
-	_load_settings()
-	_apply_all()
+	# Reset all progression data
+	var save = get_node_or_null("/root/SaveManager")
+	if save and save.has_method("reset_save"):
+		save.reset_save()
+	
+	var player_mgr = get_node_or_null("/root/PlayerManager")
+	if player_mgr:
+		player_mgr.bonfire_points = 0
+		player_mgr.vitality_rank = 0
+		player_mgr.might_rank = 0
+		player_mgr.haste_rank = 0
+		player_mgr.crit_rank = 0
+		player_mgr.sword_equipped = false
+		if player_mgr.has_method("apply_combat_modifiers"):
+			player_mgr.apply_combat_modifiers()
+	
+	var word_tracker = get_node_or_null("/root/WordTracker")
+	if word_tracker and word_tracker.has_method("clear_word_list"):
+		word_tracker.clear_word_list()
+	
+	print("[SettingsManager] Progress reset")
 	settings_changed.emit()

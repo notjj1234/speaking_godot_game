@@ -18,6 +18,7 @@ var _confirming_reset: bool = false
 @onready var fullscreen_button: Button = %FullscreenButton
 @onready var language_button: Button = %LanguageButton
 @onready var touch_button: Button = %TouchButton
+@onready var difficulty_button: Button = %DifficultyButton
 @onready var reset_button: Button = %ResetButton
 @onready var close_button: Button = %CloseButton
 
@@ -33,6 +34,7 @@ func _ready() -> void:
 	_bind(%FullscreenButton, %TouchFullscreen, _on_fullscreen_pressed)
 	_bind(%LanguageButton, %TouchLanguage, _on_language_pressed)
 	_bind(%TouchButton, %TouchTouch, _on_touch_pressed)
+	_bind(%DifficultyButton, %TouchDifficulty, _on_difficulty_pressed)
 	_bind(%ResetButton, %TouchReset, _on_reset_pressed)
 	_bind(%CloseButton, %TouchClose, _on_close_pressed)
 	
@@ -50,6 +52,7 @@ func _process(_delta: float) -> void:
 	_align(%FullscreenButton, %TouchFullscreen)
 	_align(%LanguageButton, %TouchLanguage)
 	_align(%TouchButton, %TouchTouch)
+	_align(%DifficultyButton, %TouchDifficulty)
 	_align(%ResetButton, %TouchReset)
 	_align(%CloseButton, %TouchClose)
 
@@ -113,6 +116,10 @@ func _sync_controls() -> void:
 	language_button.text = _language_name(LANGUAGES[_language_index])
 	
 	touch_button.text = _touch_text(settings.touch_controls_forced)
+	
+	var diff_names := ["Easy", "Normal", "Hard"]
+	difficulty_button.text = diff_names[settings.speech_difficulty]
+	
 	reset_button.text = "Reset"
 	_confirming_reset = false
 
@@ -180,6 +187,16 @@ func _on_touch_pressed() -> void:
 	if settings:
 		settings.set_touch_controls_forced(not settings.touch_controls_forced)
 		touch_button.text = _touch_text(settings.touch_controls_forced)
+
+
+func _on_difficulty_pressed() -> void:
+	var settings = get_node_or_null("/root/SettingsManager")
+	if not settings:
+		return
+	var new_diff := (int(settings.speech_difficulty) + 1) % 3
+	settings.set_speech_difficulty(SettingsManager.SpeechDifficulty(new_diff))
+	var diff_names := ["Easy", "Normal", "Hard"]
+	difficulty_button.text = diff_names[new_diff]
 
 
 func _on_reset_pressed() -> void:
