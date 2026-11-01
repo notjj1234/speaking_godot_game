@@ -1,7 +1,8 @@
 # global_settings.gd
 # Global settings singleton for game configuration
 
-class_name SettingsManager extends Node
+# NOTE: no class_name — the autoload is already named SettingsManager.
+extends Node
 
 enum SpeechDifficulty {
 	DIFFICULTY_EASY = 0,
@@ -45,7 +46,8 @@ func load_settings() -> void:
 	fullscreen = config.get_value("video", "fullscreen", true)
 	stt_language = config.get_value("speech", "stt_language", "en")
 	touch_controls_forced = config.get_value("input", "touch_controls_forced", false)
-	speech_difficulty = SpeechDifficulty(config.get_value("speech", "speech_difficulty", 1))
+	var saved_difficulty := clampi(int(config.get_value("speech", "speech_difficulty", 1)), 0, SpeechDifficulty.size() - 1)
+	speech_difficulty = SpeechDifficulty.values()[saved_difficulty]
 	ui_scale = config.get_value("accessibility", "ui_scale", 1.0)
 	reduce_motion = config.get_value("accessibility", "reduce_motion", false)
 	color_blind_mode = config.get_value("accessibility", "color_blind_mode", false)

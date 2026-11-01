@@ -15,7 +15,7 @@ func exit() -> void:
 func process(delta: float) -> State:
 	# If there's movement, update velocity
 	if player.direction != Vector2.ZERO:
-		player.velocity = player.direction * move_speed
+		player.velocity = player.direction.normalized() * move_speed
 		if player.set_direction():
 			player.update_animation("walk")
 	else:

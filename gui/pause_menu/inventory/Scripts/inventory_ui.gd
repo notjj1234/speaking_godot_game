@@ -6,7 +6,7 @@ var focus_index: int = 0
 
 @export var data: InventoryData
 
-@onready var pause_menu: CanvasLayer = $"../../.."
+@onready var pause_menu: CanvasLayer = PauseMenu
 
 func _ready() -> void:
 	PauseMenu.shown.connect(update_inventory)

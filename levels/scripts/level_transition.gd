@@ -53,23 +53,52 @@ func _place_player() -> void:
 		return
 
 	var spawn_position = global_position + LevelManager.position_offset
+	# Vertical gates (top/bottom) sit in narrow corridors. Carrying the previous
+	# level's X/Y offset drops the player into wall tiles mid-maze (level 02).
+	if side == SIDE.TOP or side == SIDE.BOTTOM:
+		spawn_position.x = global_position.x
+	elif side == SIDE.LEFT or side == SIDE.RIGHT:
+		spawn_position.y = global_position.y
 	PlayerManager.set_player_position(spawn_position)
 
-	# 🚨 Nudge the player slightly in the opposite direction of the transition
-	await get_tree().process_frame  # Wait one frame before nudging
+	# Nudge clear of wall tiles. Player collision radius is ~20px; 8px left them
+	# overlapping top/bottom borders (especially level 02 voice-only).
+	await get_tree().process_frame
 	var nudge := Vector2.ZERO
+	const CLEARANCE := 28.0
 
 	match side:
 		SIDE.LEFT:
-			nudge = Vector2(8, 0)
+			nudge = Vector2(CLEARANCE, 0)
 		SIDE.RIGHT:
-			nudge = Vector2(-8, 0)
+			nudge = Vector2(-CLEARANCE, 0)
 		SIDE.TOP:
-			nudge = Vector2(0, 8)
+			nudge = Vector2(0, CLEARANCE)
 		SIDE.BOTTOM:
-			nudge = Vector2(0, -8)
+			nudge = Vector2(0, -CLEARANCE)
 
 	PlayerManager.set_player_position(PlayerManager.player.global_position + nudge)
+	await get_tree().process_frame
+	_resolve_wall_overlap(nudge)
+
+
+func _resolve_wall_overlap(inward: Vector2) -> void:
+	var player := PlayerManager.player
+	if player == null or not is_instance_valid(player):
+		return
+	if not player.test_move(player.global_transform, Vector2.ZERO):
+		return
+	# Step further into the level until the capsule is free of solids.
+	var step := inward.normalized() * 8.0
+	if step == Vector2.ZERO:
+		step = Vector2(0, -8)
+	for _i in range(12):
+		PlayerManager.set_player_position(player.global_position + step)
+		await get_tree().process_frame
+		if not player.test_move(player.global_transform, Vector2.ZERO):
+			print("✅ Transition spawn resolved clear of walls at ", player.global_position)
+			return
+	push_warning("⚠️ Transition spawn still overlapping solids at %s" % player.global_position)
 
 
 func get_offset() -> Vector2:

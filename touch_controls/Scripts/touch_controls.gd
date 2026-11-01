@@ -12,20 +12,22 @@ extends CanvasLayer
 @onready var player_hud = $"/root/PlayerHud"  # Reference to the Player HUD for live transcription
 
 const DEFAULT_STRUGGLE_UNLOCK_COUNT := 3
-const DEFAULT_VOICE_COMMANDS := [
+# Longer phrases first so "stop please" wins over bare "stop".
+const DEFAULT_VOICE_COMMANDS: Array[String] = [
 	"move forward",
 	"move backwards",
 	"move backward",
 	"move left",
 	"move right",
-	"stop",
+	"stop please",
 	"stop moving",
+	"stop",
 	"halt",
 	"attack",
 ]
 
 var STRUGGLE_UNLOCK_COUNT: int = DEFAULT_STRUGGLE_UNLOCK_COUNT
-var VOICE_COMMANDS: Array[String] = DEFAULT_VOICE_COMMANDS
+var VOICE_COMMANDS: Array[String] = DEFAULT_VOICE_COMMANDS.duplicate()
 
 var mic_enabled: bool = false
 var mic_restart_timer: Timer = null
@@ -33,14 +35,30 @@ var _challenge_mic_active: bool = false
 var _mic_enabled_before_challenge: bool = false
 var _touch_ui_enabled: bool = true
 var _voice_only_mode: bool = false
+## Level 03+: mic toggle available, keyboard stays unlocked.
+var _optional_mic_mode: bool = false
 var _struggle_count: int = 0
 var _movement_unlocked: bool = false
+var _voice_only_gesture_hooked: bool = false
+## Guards against Button+TouchScreenButton both seeing one click (felt like hold-to-talk).
+var _mic_ui_syncing: bool = false
+var _mic_toggle_cooldown_until_msec: int = 0
 
 func _ready() -> void:
 	add_to_group("touch_controls")
-	mic_button.pressed.connect(_on_mic_button_pressed)
-	mic_touch_button.pressed.connect(_on_mic_touch_button_pressed)
-	
+	# Click/tap toggle — not hold. Use Button.toggled only; the overlapping
+	# TouchScreenButton used to fire on press and the Button on release, which
+	# turned the mic off as soon as you let go.
+	if mic_button:
+		mic_button.toggle_mode = true
+		mic_button.action_mode = BaseButton.ACTION_MODE_BUTTON_RELEASE
+		if not mic_button.toggled.is_connected(_on_mic_button_toggled):
+			mic_button.toggled.connect(_on_mic_button_toggled)
+	if mic_touch_button:
+		# Keep node for layout helpers, but do not let it steal press/release.
+		mic_touch_button.visible = false
+		mic_touch_button.set_process_mode(Node.PROCESS_MODE_DISABLED)
+
 	_update_mic_ui()
 	print("Touch Controls Ready: Mic state initialized to: ", mic_enabled)
 
@@ -58,8 +76,14 @@ func _ready() -> void:
 	if stt != null and stt.is_speech_available():
 		stt.listening_completed.connect(_on_listening_completed)
 		stt.error.connect(_on_stt_error)
+		if not stt.listening_started.is_connected(_on_mic_listening_started):
+			stt.listening_started.connect(_on_mic_listening_started)
+		if not stt.listening_stopped.is_connected(_on_mic_listening_stopped):
+			stt.listening_stopped.connect(_on_mic_listening_stopped)
 	else:
 		print("STT unavailable. Mic toggle will stay off.")
+		if player_hud and player_hud.has_method("set_stt_state"):
+			player_hud.set_stt_state(PlayerHudUI.SttState.STT_UNAVAILABLE)
 
 	# Timer for forcing mic restart if unresponsive
 	mic_restart_timer = Timer.new()
@@ -165,7 +189,7 @@ func set_suppressed_by_pause(suppressed: bool) -> void:
 func _process(_delta: float) -> void:
 	if not _touch_ui_enabled:
 		return
-	_align_touch_button(mic_button, mic_touch_button)
+	# Mic uses the Button only (no TouchScreenButton overlay — that caused hold).
 	_align_touch_button(interact_button, interact_touch_button)
 
 
@@ -236,25 +260,38 @@ func set_custom_voice_commands(commands: Array[String]) -> void:
 	print("✅ Custom voice commands set: ", commands)
 
 
-func _on_mic_button_pressed() -> void:
-	print("Mic button pressed.")
-	_toggle_microphone()
+func _on_mic_button_toggled(is_on: bool) -> void:
+	if _mic_ui_syncing:
+		return
+	print("Mic button toggled → ", is_on)
+	_set_microphone_enabled(is_on)
 
-func _on_mic_touch_button_pressed() -> void:
-	print("Touch mic button pressed.")
-	_toggle_microphone()
 
 func _toggle_microphone() -> void:
+	_set_microphone_enabled(not mic_enabled)
+
+
+func _set_microphone_enabled(want_on: bool) -> void:
 	if _challenge_mic_active:
 		print("Mic toggle ignored during speech challenge.")
+		_sync_mic_button_pressed(mic_enabled)
 		return
+	var now := Time.get_ticks_msec()
+	if now < _mic_toggle_cooldown_until_msec:
+		_sync_mic_button_pressed(mic_enabled)
+		return
+	_mic_toggle_cooldown_until_msec = now + 250
+
 	if _voice_only_mode:
+		# Voice-only stays armed; a tap only restarts listen if needed.
 		print("Mic toggle ignored during voice-only mode.")
 		if not mic_enabled:
 			mic_enabled = true
 			_start_listening()
 			_update_mic_ui()
 			_set_voice_banner_listening(true)
+		else:
+			_sync_mic_button_pressed(true)
 		return
 	var stt = _stt_manager()
 	if stt == null or not stt.is_speech_available():
@@ -263,15 +300,29 @@ func _toggle_microphone() -> void:
 		_update_mic_ui()
 		return
 
-	mic_enabled = not mic_enabled
-	print("Toggling microphone. New state: ", mic_enabled)
+	mic_enabled = want_on
+	print("Microphone enabled: ", mic_enabled)
 	if mic_enabled:
 		_start_listening()
 		_set_voice_banner_listening(_voice_only_mode)
+		if _optional_mic_mode and player_hud and player_hud.has_method("show_voice_commands_list"):
+			player_hud.show_voice_commands_list()
 	else:
 		_stop_listening()
 		_set_voice_banner_listening(false)
+		if PlayerManager.player and PlayerManager.player.has_method("stop_continuous_move"):
+			PlayerManager.player.stop_continuous_move()
+		if _optional_mic_mode and player_hud and player_hud.has_method("hide_voice_commands_list"):
+			player_hud.hide_voice_commands_list()
 	_update_mic_ui()
+
+
+func _sync_mic_button_pressed(is_on: bool) -> void:
+	if mic_button == null or not mic_button.toggle_mode:
+		return
+	_mic_ui_syncing = true
+	mic_button.set_pressed_no_signal(is_on)
+	_mic_ui_syncing = false
 
 func _start_listening() -> void:
 	print("Starting microphone...")
@@ -282,6 +333,8 @@ func _start_listening() -> void:
 		print("STT unavailable.")
 		mic_enabled = false
 		_update_mic_ui()
+		if _voice_only_mode:
+			_fail_open_voice_only("Speech is unavailable — keyboard unlocked.")
 
 func _stop_listening() -> void:
 	print("Stopping microphone...")
@@ -294,6 +347,7 @@ func _stt_manager():
 
 
 func begin_voice_only_mode() -> void:
+	_optional_mic_mode = false
 	_voice_only_mode = true
 	_struggle_count = 0
 	_movement_unlocked = false
@@ -301,23 +355,28 @@ func begin_voice_only_mode() -> void:
 	if _touch_ui_enabled:
 		_disable_arrow_buttons()
 		_disable_interact_button()
+		# Keep the mic button visible so a tap can satisfy the browser's
+		# user-gesture rule for SpeechRecognition.start().
+		_ensure_mic_button_visible()
 	var stt = _stt_manager()
 	if stt == null or not stt.is_speech_available():
 		print("⚠️ STT unavailable. Voice-only mode cannot start listening.")
 		_set_voice_banner_listening(false)
-		if _touch_ui_enabled:
-			_unlock_movement_buttons()
+		_fail_open_voice_only("Speech is unavailable — keyboard unlocked.")
 		return
+	PlayerManager.voice_only = true
 	mic_enabled = true
 	_start_listening()
 	_update_mic_ui()
 	_set_voice_banner_listening(true)
+	_hook_voice_only_gesture_retry()
 
 
 func end_voice_only_mode() -> void:
 	_voice_only_mode = false
 	_struggle_count = 0
 	_movement_unlocked = false
+	_unhook_voice_only_gesture_retry()
 	print("✅ Voice-only mode ended.")
 	if mic_restart_timer:
 		mic_restart_timer.stop()
@@ -326,15 +385,117 @@ func end_voice_only_mode() -> void:
 		mic_enabled = false
 		_update_mic_ui()
 	_set_voice_banner_listening(false)
+	PlayerManager.voice_only = false
+
+
+func begin_optional_mic_mode() -> void:
+	# Final tutorial (03) and onwards: user can toggle mic; WASD/attack stay free.
+	_voice_only_mode = false
+	_optional_mic_mode = true
+	PlayerManager.voice_only = false
+	_ensure_mic_button_visible()
+	mic_enabled = false
+	_update_mic_ui()
+	_set_voice_banner_listening(false)
+	print("✅ Optional mic mode — toggle Mic On for voice move/attack.")
+
+
+func end_optional_mic_mode() -> void:
+	_optional_mic_mode = false
+	if mic_restart_timer:
+		mic_restart_timer.stop()
+	if not _challenge_mic_active and mic_enabled:
+		_stop_listening()
+	mic_enabled = false
+	_update_mic_ui()
+	_set_voice_banner_listening(false)
+	if player_hud and player_hud.has_method("hide_voice_commands_list"):
+		player_hud.hide_voice_commands_list()
+	print("✅ Optional mic mode ended.")
+
+
+func _fail_open_voice_only(message: String) -> void:
+	# Never soft-lock the player: if the mic cannot run, restore keyboard/arrows.
+	_voice_only_mode = false
+	_unhook_voice_only_gesture_retry()
+	PlayerManager.voice_only = false
+	_set_voice_banner_listening(false)
+	mic_enabled = false
+	_update_mic_ui()
+	if _touch_ui_enabled:
+		_unlock_movement_buttons()
+	if player_hud and player_hud.has_method("show_arrows_unlocked_banner"):
+		player_hud.show_arrows_unlocked_banner()
+	var scene := get_tree().current_scene
+	if scene:
+		var tutorial := scene.find_child("TutorialDialog", true, false)
+		if tutorial and tutorial.has_method("show_custom_message"):
+			tutorial.show_custom_message(message, true)
+	print("⚠️ ", message)
+
+
+func _ensure_mic_button_visible() -> void:
+	if mic_button:
+		mic_button.visible = true
+	# Touch_Mic stays disabled — the Button alone is the click/tap toggle.
+	if mic_touch_button:
+		mic_touch_button.visible = false
+	# Desktop web hides the whole layer; show at least the right cluster so the
+	# player can tap Mic On and satisfy the browser gesture requirement.
+	if not _touch_ui_enabled:
+		visible = true
+		if left_cluster:
+			left_cluster.visible = false
+		if right_cluster:
+			right_cluster.visible = true
+			_disable_interact_button()
+			_disable_attack_button()
+
+
+func _hook_voice_only_gesture_retry() -> void:
+	if _voice_only_gesture_hooked:
+		return
+	set_process_unhandled_input(true)
+	_voice_only_gesture_hooked = true
+
+
+func _unhook_voice_only_gesture_retry() -> void:
+	_voice_only_gesture_hooked = false
+	set_process_unhandled_input(false)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not _voice_only_mode or not _voice_only_gesture_hooked:
+		return
+	if not mic_enabled:
+		return
+	# Any click/tap/key after entering the level can restart recognition once
+	# the browser has a user gesture (auto-start on load often fails on web).
+	var is_gesture := false
+	if event is InputEventMouseButton:
+		is_gesture = event.pressed
+	elif event is InputEventScreenTouch:
+		is_gesture = event.pressed
+	elif event is InputEventKey:
+		is_gesture = event.pressed and not event.echo
+	if not is_gesture:
+		return
+	print("🎤 Voice-only: retrying mic start after user gesture.")
+	_start_listening()
+	_set_voice_banner_listening(true)
+	# One retry hook is enough; the restart timer handles continuity after that.
+	_unhook_voice_only_gesture_retry()
+	get_viewport().set_input_as_handled()
 
 
 func _unlock_movement_buttons() -> void:
-	if _movement_unlocked or not _touch_ui_enabled:
+	if _movement_unlocked:
 		return
 	_movement_unlocked = true
-	_enable_movement_arrows()
 	PlayerManager.voice_only = false
-	_apply_safe_layout()
+	if _touch_ui_enabled:
+		_enable_movement_arrows()
+		_apply_safe_layout()
 	if player_hud and player_hud.has_method("show_arrows_unlocked_banner"):
 		player_hud.show_arrows_unlocked_banner()
 	var scene := get_tree().current_scene
@@ -392,7 +553,44 @@ func _force_mic_restart() -> void:
 
 func _update_mic_ui() -> void:
 	print("Updating UI. Mic Enabled: ", mic_enabled)
-	mic_button.text = "Mic On" if mic_enabled else "Mic Off"
+	if mic_button:
+		mic_button.text = "Mic On" if mic_enabled else "Mic Off"
+		_sync_mic_button_pressed(mic_enabled)
+	_sync_hud_mic_indicator()
+
+
+func _on_mic_listening_started() -> void:
+	if _challenge_mic_active:
+		return
+	if mic_button:
+		mic_button.text = "Mic On"
+	if player_hud and player_hud.has_method("set_mic_state"):
+		player_hud.set_mic_state(true)
+
+
+func _on_mic_listening_stopped() -> void:
+	if _challenge_mic_active:
+		return
+	# Keep "On" while the session is still armed (restart timer / voice-only retry).
+	_sync_hud_mic_indicator()
+
+
+func _sync_hud_mic_indicator() -> void:
+	if player_hud == null:
+		return
+	var stt = _stt_manager()
+	if stt == null or not stt.is_speech_available():
+		if player_hud.has_method("set_stt_state"):
+			player_hud.set_stt_state(PlayerHudUI.SttState.STT_UNAVAILABLE)
+		return
+	if not mic_enabled:
+		if player_hud.has_method("set_mic_state"):
+			player_hud.set_mic_state(false)
+		return
+	# Armed: show Listening when the provider is mid-listen; otherwise Mic On via LISTENING
+	# so the player can tell the session is live (not stuck on Mic: Off).
+	if player_hud.has_method("set_mic_state"):
+		player_hud.set_mic_state(true)
 
 func _on_listening_completed(transcription: String) -> void:
 	if _challenge_mic_active:
@@ -403,7 +601,10 @@ func _on_listening_completed(transcription: String) -> void:
 
 	var matched := false
 	var lower := transcription.to_lower()
-	for command in VOICE_COMMANDS:
+	# Prefer longer phrases ("stop please" before "stop").
+	var ordered: Array[String] = VOICE_COMMANDS.duplicate()
+	ordered.sort_custom(func(a: String, b: String) -> bool: return a.length() > b.length())
+	for command in ordered:
 		if lower.findn(command) != -1:
 			matched = true
 			await _execute_command(command)
@@ -424,6 +625,15 @@ func _on_mic_error(error_code: int, error_message: String) -> void:
 	if _challenge_mic_active:
 		return
 	print("Microphone error occurred: ", error_message, " (Code: ", error_code, ")")
+	if error_code == -1 and _voice_only_mode:
+		# Permission / start failure. Keep voice-only armed but re-hook a gesture
+		# so the next click can start recognition; do not soft-lock forever.
+		print("⚠️ Voice-only mic start failed. Waiting for a click/tap to retry.")
+		_hook_voice_only_gesture_retry()
+		_set_voice_banner_listening(false)
+		# Keep mic_enabled true (armed). HUD shows On so the player knows to tap again.
+		_update_mic_ui()
+		return
 	if error_code == 7:
 		print("Error 7 detected: Ignoring and forcing mic restart...")
 		_force_mic_restart()  
@@ -438,40 +648,33 @@ func _execute_command(command: String) -> void:
 
 	var is_facing_south = PlayerManager.player.cardinal_direction == Vector2.DOWN
 
+	# Continuous walk when mic session is live (voice-only OR optional mic On).
+	var use_continuous := _voice_only_mode or (_optional_mic_mode and mic_enabled)
+
 	match command:
 		"move forward":
-			if _voice_only_mode:
+			if use_continuous:
 				PlayerManager.player.start_continuous_move(PlayerManager.player.cardinal_direction)
 			else:
 				await PlayerManager.player.move_with_animation(PlayerManager.player.cardinal_direction)
 		"move backward", "move backwards":
-			if _voice_only_mode:
+			if use_continuous:
 				PlayerManager.player.start_continuous_move(-PlayerManager.player.cardinal_direction)
 			else:
 				await PlayerManager.player.move_with_animation(-PlayerManager.player.cardinal_direction)
 		"move left":
-			if _voice_only_mode:
-				if is_facing_south:
-					PlayerManager.player.start_continuous_move(Vector2.LEFT)
-				else:
-					PlayerManager.player.start_continuous_move(PlayerManager.player.cardinal_to_relative(Vector2.LEFT))
+			var left_dir := Vector2.LEFT if is_facing_south else PlayerManager.player.cardinal_to_relative(Vector2.LEFT)
+			if use_continuous:
+				PlayerManager.player.start_continuous_move(left_dir)
 			else:
-				if is_facing_south:
-					await PlayerManager.player.move_with_animation(Vector2.LEFT)
-				else:
-					await PlayerManager.player.move_with_animation(PlayerManager.player.cardinal_to_relative(Vector2.LEFT))
+				await PlayerManager.player.move_with_animation(left_dir)
 		"move right":
-			if _voice_only_mode:
-				if is_facing_south:
-					PlayerManager.player.start_continuous_move(Vector2.RIGHT)
-				else:
-					PlayerManager.player.start_continuous_move(PlayerManager.player.cardinal_to_relative(Vector2.RIGHT))
+			var right_dir := Vector2.RIGHT if is_facing_south else PlayerManager.player.cardinal_to_relative(Vector2.RIGHT)
+			if use_continuous:
+				PlayerManager.player.start_continuous_move(right_dir)
 			else:
-				if is_facing_south:
-					await PlayerManager.player.move_with_animation(Vector2.RIGHT)
-				else:
-					await PlayerManager.player.move_with_animation(PlayerManager.player.cardinal_to_relative(Vector2.RIGHT))
-		"stop", "stop moving", "halt":
+				await PlayerManager.player.move_with_animation(right_dir)
+		"stop", "stop moving", "halt", "stop please":
 			PlayerManager.player.stop_continuous_move()
 		"attack":
 			PlayerManager.player.attack_with_animation()

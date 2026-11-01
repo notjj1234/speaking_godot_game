@@ -3,16 +3,18 @@
 
 class_name SpeechMatcher extends RefCounted
 
-enum MatchStrategy:
-	STRATEGY_EXACT = 0      # Exact match (case-insensitive, trimmed)
-	STRATEGY_SUBSTRING = 1  # Target phrase appears anywhere in recognized text
-	STRATEGY_FUZZY = 2      # Token-based fuzzy matching (allow minor variations)
-	STRATEGY_PHONETIC = 3   # Phonetic matching for ESL learners (future)
+enum MatchStrategy {
+	STRATEGY_EXACT = 0,      # Exact match (case-insensitive, trimmed)
+	STRATEGY_SUBSTRING = 1,  # Target phrase appears anywhere in recognized text
+	STRATEGY_FUZZY = 2,      # Token-based fuzzy matching (allow minor variations)
+	STRATEGY_PHONETIC = 3,   # Phonetic matching for ESL learners (future)
+}
 
-enum Difficulty:
-	DIFFICULTY_EASY = 0     # Substring match, case-insensitive
-	DIFFICULTY_NORMAL = 1   # Fuzzy token match
-	DIFFICULTY_HARD = 2     # Exact match
+enum Difficulty {
+	DIFFICULTY_EASY = 0,     # Substring match, case-insensitive
+	DIFFICULTY_NORMAL = 1,   # Fuzzy token match
+	DIFFICULTY_HARD = 2,     # Exact match
+}
 
 static var _default_strategy: MatchStrategy = MatchStrategy.STRATEGY_SUBSTRING
 static var _default_difficulty: Difficulty = Difficulty.DIFFICULTY_NORMAL
@@ -26,7 +28,9 @@ static var _default_difficulty: Difficulty = Difficulty.DIFFICULTY_NORMAL
 func _init() -> void:
 	pass
 
-func match(recognized: String, target: String) -> bool:
+## Returns true when recognized speech matches the target under the current strategy.
+## Named matches() because `match` is a reserved keyword in GDScript.
+func matches(recognized: String, target: String) -> bool:
 	if recognized.is_empty() or target.is_empty():
 		return false
 	

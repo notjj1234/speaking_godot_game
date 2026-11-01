@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loqui Quest — pronunciation spike</title>
+<style>
+	:root { color-scheme: dark; }
+	body { font-family: system-ui, sans-serif; background: #14161d; color: #e8e8ee; margin: 1.5rem; max-width: 720px; }
+	h1 { font-size: 1.2rem; }
+	h1 small { font-weight: normal; color: #9aa0b0; }
+	button { font-size: 1rem; padding: .55rem 1rem; border-radius: .5rem; border: 1px solid #555; background: #2a2d3a; color: #e8e8ee; cursor: pointer; }
+	button.primary { background: #35549c; border-color: #5577cc; }
+	button:disabled { opacity: .45; cursor: default; }
+	#targets button { padding: .4rem .7rem; margin: .15rem; font-size: .9rem; }
+	#targets button.sel { background: #6d4c9c; border-color: #a277dd; }
+	.row { margin: .6rem 0; display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+	#status { font-size: .95rem; color: #b6bccd; }
+	#result { font-size: 1.05rem; min-height: 1.4em; }
+	#result .score { font-size: 1.6rem; font-weight: 700; color: #ffd766; }
+	pre#log { background: #0c0d12; border: 1px solid #333; border-radius: .5rem; padding: .7rem; height: 260px; overflow: auto; font-size: .78rem; white-space: pre-wrap; }
+	.spk { font-size: .85rem; color: #778; margin: .3rem 0 .9rem; }
+</style>
+</head>
+<body>
+<h1>Loqui Quest — pronunciation spike <small>(wav2vec2-ljspeech-gruut, local vendored)</small></h1>
+<p class="spk">Phase 0 spike. Fully vendored CDN-less runtime / no API keys — model loads entirely from <code>/extras/pronunciation/</code>.</p>
+
+<div class="row">
+	<button id="loadBtn">🔊 Load model (no mic needed)</button>
+	<button id="micBtn" class="primary" disabled>● Record</button>
+	<span id="status">idle</span>
+</div>
+<div class="spk">Countdown 1s → red while recording → click Record again (or silence) to stop.</div>
+
+<p><strong>Target word:</strong></p>
+<div id="targets"></div>
+<p id="result"></p>
+
+<pre id="log"></pre>
+
+<script type="module">
+const logEl = document.getElementById('log');
+const statusEl = document.getElementById('status');
+const resultEl = document.getElementById('result');
+const loadBtn = document.getElementById('loadBtn');
+const micBtn = document.getElementById('micBtn');
+const targetsEl = document.getElementById('targets');
+
+function log(kind, msg, alsoConsole = true) {
+	const line = `${kind} ${msg}`;
+	logEl.textContent += line + '\n';
+	logEl.scrollTop = logEl.scrollHeight;
+	if (alsoConsole) console.log(line);
+}
+window.addEventListener('error', (e) => log('❌', `Uncaught: ${e.message}`), true);
+
+// ---------------------------------------------------------------------------
+// Target words — token style mirrors model/vocab.json (gruut IPA, lowercase,
+// space-joined). These were read from the vendored vocab.json; the CLI-free
+// phoneme lists below are the spike's ground truth (no G2P needed here).
+// ---------------------------------------------------------------------------
+const TARGETS = {
+	hello:  'h ə l oʊ',
+	water:  'w ɔ t ɚ',
+	apple:  'æ p ə l',
+	cat:    'k æ t',
+	dog:    'd ɔ ɡ',
+	school: 's k u l',
+	friend: 'f ɹ ɛ n d',
+	book:   'b ʊ k',
+	happy:  'h æ p i',
+	sorry:  's ɑ ɹ i',
+};
+let currentTarget = 'hello';
+for (const word of Object.keys(TARGETS)) {
+	const b = document.createElement('button');
+	b.textContent = word;
+	if (word === currentTarget) b.classList.add('sel');
+	b.onclick = () => {
+		currentTarget = word;
+		targetsEl.querySelectorAll('button').forEach((x) => x.classList.remove('sel'));
+		b.classList.add('sel');
+		resultEl.textContent = '';
+	};
+	targetsEl.appendChild(b);
+}
+
+// ---------------------------------------------------------------------------
+// window.LQPron — the facade contract consumed verbatim by the later
+// integration task: load / beginCapture / endCaptureAndScore. Nothing else
+// crosses the bridge (worker replies are already wrapped in it).
+// ---------------------------------------------------------------------------
+//  load():                 Promise<{ ok: boolean, ms: number }>
+//  beginCapture():         Promise<boolean>          (false = mic unavailable)
+//  endCaptureAndScore(targetPhonemes: string):
+//                          Promise<{ score: number, phones: string, ms: number }>
+// targetPhonemes = space-separated IPA tokens from the gruut vocab, e.g.
+// 'h ə l oʊ'. endCaptureAndScore also tears the mic capture down.
+// ---------------------------------------------------------------------------
+const lqPron = (() => {
+	const SR = 16000;                    // model sample rate (preprocessor_config.json)
+	const worker = new Worker('worker.js', { type: 'module' });
+	let pending = null;                  // one in-flight request {resolve}
+	let capturedChunks = [];             // Float32Array[] at ctx.sampleRate
+	let recFrames = 0;
+	let audioCtx = null;
+	let micStream = null;
+	let node = null;                     // AudioWorkletNode or ScriptProcessorNode
+	let capturing = false;
+
+	worker.onmessage = (e) => {
+		const data = e.data || {};
+		// Worker log lines arrive already fully formed ("kind msg"), e.g.
+		// "✅ …", "⚠️ …", "❌ …" — mirror them verbatim (no kind remapping,
+		// no added prefix) so the <pre> log is faithful to what the worker sent.
+		if (data.log) { logEl.textContent += data.log + '\n'; logEl.scrollTop = logEl.scrollHeight; console.log(data.log); return; }
+		if (pending) { const r = pending; pending = null; r.resolve(data); }
+	};
+
+	function ask(message, transfer) {
+		// NOTE: `pending` is a SINGLE in-flight slot — one request/reply at a
+		// time. A second ask() while one is pending would overwrite the slot and
+		// the first caller would get the second request's reply dropped/mixed.
+		// Fine for this spike's strictly sequential flows; Task 9 replaces it
+		// with a proper request queue (one promise per message id).
+		return new Promise((resolve) => {
+			pending = { resolve };
+			worker.postMessage(message, transfer);
+		});
+	}
+
+	function speechCtx() {
+		return (audioCtx || (audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SR })));
+	}
+
+	async function startWorkletNode(stream, ctx) {
+		// Preferred: AudioWorklet (inline module via Blob URL — no extra file).
+		const workletCode = `
+			class LQCapture extends AudioWorkletProcessor {
+				process(inputs) {
+					const ch = inputs[0] && inputs[0][0];
+					if (ch) this.port.postMessage(ch.slice(0));
+					return true;
+				}
+			}
+			registerProcessor('lq-capture', LQCapture);
+		`;
+		const blobUrl = URL.createObjectURL(new Blob([workletCode], { type: 'application/javascript' }));
+		try {
+			await ctx.audioWorklet.addModule(blobUrl);
+			const n = new AudioWorkletNode(ctx, 'lq-capture');
+			n.port.onmessage = (e) => { if (capturing && e.data instanceof Float32Array) pushChunk(e.data); };
+			// Feed it via a MediaStreamSource; no output connection needed (no mic echo).
+			ctx.createMediaStreamSource(stream).connect(n);
+			return n;
+		} catch (e) {
+			log('⚠️', `AudioWorklet unavailable (${e.message || e}) — using ScriptProcessor fallback`);
+		}
+		// Fallback: ScriptProcessor (deprecated but universally supported).
+		const n = ctx.createScriptProcessor(4096, 1, 1);
+		n.onaudioprocess = (e) => {
+			const ch = e.inputBuffer.getChannelData(0);
+			if (capturing) pushChunk(new Float32Array(ch));
+		};
+		// ScriptProcessor only runs when wired to the destination — route through a muted gain.
+		const src = ctx.createMediaStreamSource(stream);
+		const mute = ctx.createGain(); mute.gain.value = 0;
+		src.connect(n); n.connect(mute); mute.connect(ctx.destination);
+		return n;
+	}
+
+	function pushChunk(chunk) { capturedChunks.push(chunk); recFrames += chunk.length; }
+
+	// Linear-interpolation downsample mono → 16 kHz.
+	function downsample(input, inRate) {
+		const ratio = inRate / SR;
+		const outLen = Math.floor(input.length / ratio);
+		const out = new Float32Array(outLen);
+		for (let i = 0; i < outLen; i++) {
+			const pos = i * ratio;
+			const i0 = Math.floor(pos);
+			const frac = pos - i0;
+			const i1 = Math.min(i0 + 1, input.length - 1);
+			out[i] = input[i0] * (1 - frac) + input[i1] * frac;
+		}
+		return out;
+	}
+
+	function releaseCapture() {
+		try { node && node.disconnect(); } catch (_) {}
+		try { node && node.port && (node.port.onmessage = null); } catch (_) {}
+		try { node && node.onaudioprocess && (node.onaudioprocess = null); } catch (_) {}
+		node = null;
+		micStream && micStream.getTracks().forEach((t) => t.stop());
+		micStream = null;
+		capturing = false;
+	}
+
+	return {
+		async load() {
+			log('✅', 'Sending load command to worker');
+			const reply = await ask({ cmd: 'load' });
+			if (reply.status === 'loaded') return { ok: true, ms: reply.ms, device: reply.device };
+			log('❌', `Load failed: ${reply.error}`);
+			return { ok: false, ms: reply.ms ?? 0 };
+		},
+
+		async beginCapture() {
+			if (capturing) return true;
+			if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+				log('❌', 'getUserMedia unavailable in this browser');
+				return false;
+			}
+			try {
+				log('ℹ️', 'Requesting microphone…');
+				micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+				const ctx = speechCtx();
+				if (ctx.state === 'suspended') await ctx.resume();
+				capturedChunks = [];
+				recFrames = 0;
+				capturing = true;
+				node = await startWorkletNode(micStream, ctx);
+				log('✅', `Capturing at ${ctx.sampleRate} Hz (AudioWorklet=${node instanceof AudioWorkletNode})`);
+				return true;
+			} catch (e) {
+				releaseCapture();
+				log('❌', `Mic capture failed: ${e?.message || e}`);
+				return false;
+			}
+		},
+
+		async endCaptureAndScore(targetPhonemes) {
+			try {
+				capturing = false; // stop ingesting new chunks immediately
+				// Explicit empty-capture guard: short-circuit with a clean reply
+				// instead of sending a zero-length buffer through the worker's
+				// generic error path (same {score,phones,error} shape it produces).
+				if (recFrames === 0) {
+					log('⚠️', 'Nothing captured — reply {score:0, phones:"", error:"empty capture"}');
+					return { score: 0, phones: '', error: 'empty capture', ms: 0 };
+				}
+				const raw = new Float32Array(recFrames);
+				let off = 0;
+				for (const c of capturedChunks) { raw.set(c, off); off += c.length; }
+				log('ℹ️', `Captured ${recFrames} samples @${audioCtx?.sampleRate} Hz`);
+				const pcm = downsample(raw, audioCtx?.sampleRate || SR);
+				const reply = await ask({ cmd: 'score', audio: pcm.buffer, target: targetPhonemes }, [pcm.buffer]);
+				if (reply.error) {
+					log('❌', `Score failed: ${reply.error}`);
+					return { score: 0, phones: '', ms: reply.ms ?? 0 };
+				}
+				return { score: reply.score, phones: reply.phones, ms: reply.ms };
+			} finally {
+				releaseCapture();
+			}
+		},
+	};
+})();
+window.LQPron = lqPron; // contract: load() / beginCapture() / endCaptureAndScore(targetPhonemes)
+
+// ---------------------------------------------------------------------------
+// /extras/ mount + IO verification (extra sanity check from inside the page)
+// ---------------------------------------------------------------------------
+async function checkMountedExtras() {
+	try {
+		const r = await fetch('/extras/pronunciation/model/config.json');
+		if (r.ok) log('✅', `/extras/ mount OK (config.json HTTP ${r.status})`);
+		else log('⚠️', `/extras/ mount broken for config.json (HTTP ${r.status})`);
+	} catch (e) { log('❌', `/extras/ mount fetch failed: ${e?.message || e}`); }
+}
+
+// ---------------------------------------------------------------------------
+// UI wiring through the facade
+// ---------------------------------------------------------------------------
+let recording = false;
+let modelLoaded = false; // Record-time model gate (mic button stays enabled even when load() failed)
+
+loadBtn.onclick = async () => {
+	loadBtn.disabled = true;
+	statusEl.textContent = 'loading model…';
+	const res = await lqPron.load();
+	modelLoaded = !!res.ok;
+	statusEl.textContent = res.ok ? `model ready (${res.ms} ms, ${res.device})` : `load FAILED: ${res.error ?? ''}`;
+	log(res.ok ? '✅' : '❌', `load() → {ok:${res.ok}, ms:${res.ms}}`);
+	micBtn.disabled = false;
+};
+
+micBtn.onclick = async () => {
+	if (!recording) {
+		// Mic button stays enabled even after a failed load — but abort record
+		// attempts with a clear message instead of producing a score-0 result.
+		if (!modelLoaded) {
+			log('❌', 'model not loaded — click Load model first');
+			statusEl.textContent = 'load the model before recording';
+			return;
+		}
+		resultEl.textContent = '';
+		const ok = await lqPron.beginCapture();
+		if (!ok) return;
+		recording = true;
+		micBtn.textContent = '■ Stop & score';
+		statusEl.textContent = 'recording… say the target word! (best: 1–2s)';
+	} else {
+		recording = false;
+		micBtn.textContent = '● Record';
+		statusEl.textContent = 'scoring…';
+		const res = await lqPron.endCaptureAndScore(TARGETS[currentTarget]);
+		statusEl.textContent = `done (${res.ms} ms)`;
+		resultEl.innerHTML = `<span class="score">${res.score}/100</span> — predicted: <code>${escapeHtml(res.phones || '(nothing)')}</code> vs target <code>${TARGETS[currentTarget]}</code>`;
+		log(res.score >= 75 ? '✅' : '⚠️', `score(${currentTarget}) = ${res.score} in ${res.ms} ms`);
+	}
+};
+
+function escapeHtml(s) { return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+// Kick things off without user gestures (mount check only; model load stays manual).
+checkMountedExtras();
+log('✅', 'Page ready — pick a target word, load the model, then record.');
+</script>
+</body>
+</html>

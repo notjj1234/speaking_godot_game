@@ -36,6 +36,7 @@ MusicManager="*res://audio/music_manager.gd"
 GameOver="*res://gui/game_over/game_over.tscn"
 Bonfire="*res://gui/bonfire/bonfire.tscn"
 SettingsManager="*res://00_globals/global_settings.gd"
+PronunciationManager="*res://speech_scoring/pronunciation_manager.gd"
 
 [debug]
 

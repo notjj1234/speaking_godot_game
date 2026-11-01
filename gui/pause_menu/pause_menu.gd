@@ -3,26 +3,33 @@ extends CanvasLayer
 signal shown
 signal hidden
 
-@onready var audio_stream_player: AudioStreamPlayer = $Control/AudioStreamPlayer
+@onready var audio_stream_player: AudioStreamPlayer = %AudioStreamPlayer
 
-@onready var button_save: Button = $Control/HBoxContainer/Button_Save
-@onready var button_load: Button = $Control/HBoxContainer/Button_Load
+# The pause menu is built from containers so it stays centered and scales with
+# the viewport at any browser aspect ratio. Nodes are addressed by unique name
+# so the layout can change without touching this script.
+@onready var button_save: Button = %Button_Save
+@onready var button_load: Button = %Button_Load
+@onready var button_main_menu: Button = %Button_MainMenu
 @onready var color_rect: ColorRect = $Control/ColorRect
-@onready var touch_save: TouchScreenButton = $Control/HBoxContainer/Touch_Save
-@onready var touch_load: TouchScreenButton = $Control/HBoxContainer/Touch_Load
+@onready var touch_save: TouchScreenButton = %Touch_Save
+@onready var touch_load: TouchScreenButton = %Touch_Load
 
 const INK := Color(0.12, 0.08, 0.04, 1)
 const BODY_FONT := preload("res://gui/fonts/Abaddon Light.ttf")
+const TITLE_SCENE := "res://levels/title_screen/title_screen.tscn"
 
-@onready var item_description: Label = $Control/ItemDescription
-@onready var word_rows: VBoxContainer = $Control/WordPanel/WordColumn/WordRows
-@onready var page_label: Label = $Control/WordPanel/WordColumn/Pager/PageLabel
-@onready var prev_page_button: Button = $Control/WordPanel/WordColumn/Pager/PrevPageButton
-@onready var next_page_button: Button = $Control/WordPanel/WordColumn/Pager/NextPageButton
-@onready var music_slider: HSlider = $Control/MusicPanel/MusicSlider
-@onready var music_mute_button: Button = $Control/MusicPanel/MusicButtons/MusicMute
-@onready var music_quieter_button: Button = $Control/MusicPanel/MusicButtons/MusicQuieter
-@onready var music_louder_button: Button = $Control/MusicPanel/MusicButtons/MusicLouder
+var _leaving_to_title: bool = false
+
+@onready var item_description: Label = %ItemDescription
+@onready var word_rows: VBoxContainer = %WordRows
+@onready var page_label: Label = %PageLabel
+@onready var prev_page_button: Button = %PrevPageButton
+@onready var next_page_button: Button = %NextPageButton
+@onready var music_slider: HSlider = %MusicSlider
+@onready var music_mute_button: Button = %MusicMute
+@onready var music_quieter_button: Button = %MusicQuieter
+@onready var music_louder_button: Button = %MusicLouder
 
 var is_paused: bool = false
 var current_page: int = 0
@@ -35,6 +42,7 @@ func _ready() -> void:
 	# Restore Save & Load functionality
 	button_save.pressed.connect(_on_save_pressed)
 	button_load.pressed.connect(_on_load_pressed)
+	button_main_menu.pressed.connect(_on_main_menu_pressed)
 
 	# Connect touchscreen buttons for Save & Load (if they exist)
 	if touch_save:
@@ -240,6 +248,24 @@ func _on_load_pressed() -> void:
 	await LevelManager.level_load_started
 	hide_pause_menu()
 
+
+func _on_main_menu_pressed() -> void:
+	if not is_paused or _leaving_to_title:
+		return
+	_leaving_to_title = true
+	print("🏠 Returning to main menu.")
+	# Drop transient UI state so the next visit starts clean.
+	current_page = 0
+	item_description.text = ""
+	# Music is stopped before the fade so the menu does not fade in over level music.
+	var music := get_node_or_null("/root/MusicManager")
+	if music and music.has_method("stop_for_menu"):
+		music.stop_for_menu()
+	PlayerManager.player_spawned = false
+	hide_pause_menu()
+	await LevelManager.load_new_level(TITLE_SCENE, "", Vector2.ZERO)
+	_leaving_to_title = false
+
 func update_item_description(new_text: String) -> void:
 	item_description.text = new_text
 
@@ -248,31 +274,31 @@ func play_audio(audio: AudioStream) -> void:
 	audio_stream_player.play()
 
 
-func _music() -> Node:
-	return get_node_or_null("/root/MusicManager")
+func _settings() -> Node:
+	return get_node_or_null("/root/SettingsManager")
 
 
 func _sync_music_controls() -> void:
-	var music := _music()
-	if music == null or music_slider == null:
+	var settings := _settings()
+	if settings == null or music_slider == null:
 		return
-	music_slider.set_value_no_signal(float(music.volume_linear) * 100.0)
-	music_mute_button.text = "Unmute" if music.muted else "Mute"
+	music_slider.set_value_no_signal(float(settings.music_volume) * 100.0)
+	music_mute_button.text = "Unmute" if settings.music_muted else "Mute"
 
 
 func _on_music_slider_changed(value: float) -> void:
-	var music := _music()
-	if music == null:
+	var settings := _settings()
+	if settings == null:
 		return
-	music.set_volume_linear(value / 100.0)
-	if music.muted and value > 0.0:
-		music.set_muted(false)
+	settings.set_music_volume(value / 100.0)
+	if settings.music_muted and value > 0.0:
+		settings.set_music_muted(false)
 	_sync_music_controls()
 
 
 func _add_desktop_touch_preview_button() -> void:
 	# Temporary. Desktop browsers hide the D-pad. This shows it so placement can be checked.
-	var music_panel := get_node_or_null("Control/MusicPanel")
+	var music_panel := get_node_or_null("%MusicPanel")
 	if music_panel == null or music_panel.get_node_or_null("DesktopTouchPreview") != null:
 		return
 	if MobileSafeLayout.wants_touch_ui():
@@ -309,26 +335,26 @@ func _on_music_gui_input(event: InputEvent, action: Callable) -> void:
 
 
 func _on_music_mute_pressed() -> void:
-	var music := _music()
-	if music == null:
+	var settings := _settings()
+	if settings == null:
 		return
-	music.set_muted(not music.muted)
+	settings.set_music_muted(not settings.music_muted)
 	_sync_music_controls()
 
 
 func _on_music_quieter_pressed() -> void:
-	var music := _music()
-	if music == null:
+	var settings := _settings()
+	if settings == null:
 		return
-	music.set_volume_linear(float(music.volume_linear) - 0.1)
+	settings.set_music_volume(float(settings.music_volume) - 0.1)
 	_sync_music_controls()
 
 
 func _on_music_louder_pressed() -> void:
-	var music := _music()
-	if music == null:
+	var settings := _settings()
+	if settings == null:
 		return
-	music.set_volume_linear(float(music.volume_linear) + 0.1)
-	if music.muted:
-		music.set_muted(false)
+	settings.set_music_volume(float(settings.music_volume) + 0.1)
+	if settings.music_muted:
+		settings.set_music_muted(false)
 	_sync_music_controls()

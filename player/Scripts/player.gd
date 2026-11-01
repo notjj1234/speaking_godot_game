@@ -27,20 +27,25 @@ func _ready() -> void:
 	update_hp(99)  # Initialize HUD with current HP
 
 func _process(_delta: float) -> void:
-	if PlayerManager.dialog_open or PlayerManager.voice_only:
+	if PlayerManager.dialog_open:
 		direction = Vector2.ZERO
+		return
+	if PlayerManager.voice_only:
+		# Continuous voice move owns facing/anim. Never zero direction while
+		# moving or Walk→Idle every frame and the walk animation never plays.
+		direction = _continuous_move_direction
 		return
 	direction = Vector2(
 		Input.get_axis("left", "right"),
 		Input.get_axis("up", "down"),
 	)
-
-func _physics_process(_delta: float) -> void:
-	if _continuous_move_direction != Vector2.ZERO and not PlayerManager.dialog_open and not PlayerManager.voice_only:
-		velocity = _continuous_move_direction * _continuous_move_speed
-		move_and_slide()
-	else:
-		move_and_slide()
+	# Optional mic + keyboard: WASD/arrows cancel voice continuous walk.
+	if direction != Vector2.ZERO and _continuous_move_direction != Vector2.ZERO:
+		stop_continuous_move()
+		direction = Vector2(
+			Input.get_axis("left", "right"),
+			Input.get_axis("up", "down"),
+		)
 
 func set_direction(force_update: bool = false) -> bool:
 	if direction == Vector2.ZERO and not force_update:
@@ -147,27 +152,43 @@ func start_continuous_move(direction_vector: Vector2) -> void:
 	_continuous_move_direction = direction_vector.normalized()
 	direction = _continuous_move_direction
 	set_direction(true)
-	
+
 	var walk_state = state_machine.get_node("Walk")
 	if walk_state:
 		state_machine.change_state(walk_state)
-		update_animation("walk")
+	update_animation("walk")
 
 
 func stop_continuous_move() -> void:
 	_continuous_move_direction = Vector2.ZERO
+	direction = Vector2.ZERO
 	var idle_state = state_machine.get_node("Idle")
 	if idle_state:
 		state_machine.change_state(idle_state)
-		update_animation("idle")
+	update_animation("idle")
 
 
 func _physics_process(_delta: float) -> void:
-	if _continuous_move_direction != Vector2.ZERO and not PlayerManager.dialog_open and not PlayerManager.voice_only:
-		velocity = _continuous_move_direction * _continuous_move_speed
-	else:
+	# Voice-driven movement owns velocity while it is active. Keyboard velocity
+	# comes from the Walk state (see states/state_walk.gd), so never zero it
+	# here or every physics tick would cancel keyboard movement.
+	if PlayerManager.dialog_open:
+		_continuous_move_direction = Vector2.ZERO
 		velocity = Vector2.ZERO
+	elif _continuous_move_direction != Vector2.ZERO:
+		velocity = _continuous_move_direction * _continuous_move_speed
+		# Keep walk anim alive even if the state machine briefly hiccups.
+		if animation_player and not String(animation_player.current_animation).begins_with("walk"):
+			update_animation("walk")
 	move_and_slide()
+	# Voice continuous move: stop when a wall blocks the intended direction
+	# (avoids sliding forever against a wall until the player says "stop please").
+	if _continuous_move_direction != Vector2.ZERO:
+		for i in get_slide_collision_count():
+			var col := get_slide_collision(i)
+			if col and col.get_normal().dot(_continuous_move_direction) < -0.5:
+				stop_continuous_move()
+				break
 
 func attack_with_animation() -> void:
 	if PlayerManager.dialog_open:

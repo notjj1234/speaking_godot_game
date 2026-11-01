@@ -21,14 +21,16 @@ static func get_for_level(level_node: Node) -> LevelMetadata:
 	
 	# Check for LevelMetadata resource on the level root
 	if level_node.has_meta("level_metadata"):
-		return level_node.get_meta("level_metadata")
+		var root_meta = level_node.get_meta("level_metadata")
+		if root_meta is LevelMetadata:
+			return root_meta
 	
-	# Check for child node with LevelMetadata
+	# Check for child node carrying a LevelMetadata resource in its metadata
 	for child in level_node.get_children():
-		if child is LevelMetadata:
-			return child
 		if child.has_meta("level_metadata"):
-			return child.get_meta("level_metadata")
+			var child_meta = child.get_meta("level_metadata")
+			if child_meta is LevelMetadata:
+				return child_meta
 	
 	return null
 

@@ -16,6 +16,7 @@ enum SttState {
 }
 
 const FEEDBACK_DURATION := 0.8
+const MAX_CHALLENGE_TRIES := 3
 
 var hearts: Array[HeartGUI] = []
 var target_sentence: String = ""
@@ -25,6 +26,8 @@ var _stt_indicator_row: HBoxContainer = null
 var _stt_dot: ColorRect = null
 var _stt_label: Label = null
 var _stt_tween: Tween = null
+var _tries_label: Label = null
+var _challenge_tries_remaining: int = PlayerHudUI.MAX_CHALLENGE_TRIES
 
 @onready var challenge_panel: PanelContainer = $Control/ChallengePanel
 @onready var speech_challenge_label: Label = $Control/ChallengePanel/MarginContainer/ChallengeVBox/SpeechChallengeLabel
@@ -38,6 +41,18 @@ var _stt_tween: Tween = null
 @onready var life_sprite: Sprite2D = $Control/Sprite2D
 @onready var voice_only_banner: PanelContainer = $Control/VoiceOnlyBanner
 @onready var voice_only_label: Label = $Control/VoiceOnlyBanner/VoiceOnlyLabel
+
+const VOICE_COMMAND_HELP: PackedStringArray = [
+	"move forward",
+	"move backward",
+	"move left",
+	"move right",
+	"stop please",
+	"attack",
+]
+
+var _voice_commands_panel: PanelContainer = null
+var _voice_commands_label: Label = null
 
 
 func _ready() -> void:
@@ -56,6 +71,8 @@ func _ready() -> void:
 	if viewport:
 		viewport.size_changed.connect(_center_life_hud)
 	_create_stt_indicator()
+	_create_tries_label()
+	_create_voice_commands_panel()
 
 
 func _notification(what: int) -> void:
@@ -83,12 +100,104 @@ func show_voice_only_banner() -> void:
 	if voice_only_label:
 		voice_only_label.text = "VOICE ONLY — keyboard disabled. Speak to move."
 	set_voice_only_listening(false)
+	show_voice_commands_list()
 
 
 func hide_voice_only_banner() -> void:
 	if voice_only_banner:
 		voice_only_banner.visible = false
 	set_voice_only_listening(false)
+	hide_voice_commands_list()
+
+
+func show_optional_mic_banner() -> void:
+	if voice_only_banner:
+		voice_only_banner.visible = true
+	if voice_only_label:
+		voice_only_label.text = "Mic optional — keyboard works. Toggle Mic On to speak."
+		voice_only_label.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+	set_voice_only_listening(false)
+	# Commands appear when the player turns the mic on.
+
+
+func hide_optional_mic_banner() -> void:
+	if voice_only_banner:
+		voice_only_banner.visible = false
+	set_voice_only_listening(false)
+	hide_voice_commands_list()
+
+
+func show_voice_commands_list() -> void:
+	if _voice_commands_panel == null:
+		_create_voice_commands_panel()
+	if _voice_commands_panel:
+		_voice_commands_panel.visible = true
+
+
+func hide_voice_commands_list() -> void:
+	if _voice_commands_panel:
+		_voice_commands_panel.visible = false
+
+
+func _create_voice_commands_panel() -> void:
+	if _voice_commands_panel != null:
+		return
+	var control := $Control as Control
+	if control == null:
+		return
+
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.06, 0.07, 0.09, 0.9)
+	style.border_color = Color(0.92, 0.92, 0.88, 0.85)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(6)
+	style.content_margin_left = 10
+	style.content_margin_top = 8
+	style.content_margin_right = 10
+	style.content_margin_bottom = 8
+
+	_voice_commands_panel = PanelContainer.new()
+	_voice_commands_panel.name = "VoiceCommandsPanel"
+	_voice_commands_panel.visible = false
+	_voice_commands_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_voice_commands_panel.add_theme_stylebox_override("panel", style)
+	_voice_commands_panel.anchor_left = 0.0
+	_voice_commands_panel.anchor_top = 0.5
+	_voice_commands_panel.anchor_right = 0.0
+	_voice_commands_panel.anchor_bottom = 0.5
+	_voice_commands_panel.offset_left = 8.0
+	_voice_commands_panel.offset_top = -78.0
+	_voice_commands_panel.offset_right = 168.0
+	_voice_commands_panel.offset_bottom = 78.0
+	_voice_commands_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+	_voice_commands_panel.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "COMMANDS"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_color_override("font_color", Color(0.95, 0.92, 0.55, 1))
+	title.add_theme_font_size_override("font_size", 12)
+	var bold := load("res://gui/fonts/Abaddon Bold.ttf")
+	if bold:
+		title.add_theme_font_override("font", bold)
+	vbox.add_child(title)
+
+	_voice_commands_label = Label.new()
+	var lines: PackedStringArray = PackedStringArray()
+	for cmd in VOICE_COMMAND_HELP:
+		lines.append("• " + cmd)
+	_voice_commands_label.text = "\n".join(lines)
+	_voice_commands_label.add_theme_color_override("font_color", Color(0.95, 0.95, 0.92, 1))
+	_voice_commands_label.add_theme_font_size_override("font_size", 11)
+	var body := load("res://gui/fonts/Abaddon Light.ttf")
+	if body:
+		_voice_commands_label.add_theme_font_override("font", body)
+	vbox.add_child(_voice_commands_label)
+
+	control.add_child(_voice_commands_panel)
 
 
 func show_arrows_unlocked_banner() -> void:
@@ -97,6 +206,7 @@ func show_arrows_unlocked_banner() -> void:
 	if voice_only_label:
 		voice_only_label.text = "Arrows unlocked — tap to move. Voice still works."
 		voice_only_label.add_theme_color_override("font_color", Color(0.95, 0.92, 0.55, 1))
+	show_voice_commands_list()
 
 
 func set_voice_only_listening(listening: bool) -> void:
@@ -142,6 +252,9 @@ func show_speech_challenge(sentence: String) -> void:
 	live_transcript_label.visible = true
 	challenge_feedback_label.text = ""
 	challenge_feedback_label.visible = false
+	if _tries_label != null:
+		_tries_label.visible = false
+		_tries_label.text = ""
 	if OS.has_feature("web"):
 		_configure_web_challenge_controls()
 	else:
@@ -184,6 +297,9 @@ func hide_speech_challenge() -> void:
 	if challenge_feedback_label:
 		challenge_feedback_label.text = ""
 		challenge_feedback_label.visible = false
+	if _tries_label != null:
+		_tries_label.visible = false
+		_tries_label.text = ""
 	hide_typed_fallback()
 	hide_speak_button()
 
@@ -238,11 +354,11 @@ func update_live_transcript(transcript: String) -> void:
 	print("Live transcription updated: ", transcript)
 
 
-func show_feedback(success: bool) -> void:
+func show_feedback(success: bool, score: int = -1) -> void:
 	if success:
 		# Success: hide challenge panel immediately, show floating toast
 		challenge_panel.visible = false
-		_show_success_toast()
+		_show_success_toast(score)
 	else:
 		# Failure: keep panel visible for retry
 		if not success:
@@ -260,7 +376,7 @@ func show_feedback(success: bool) -> void:
 		_hide_feedback_after_delay(token)
 
 
-func _show_success_toast() -> void:
+func _show_success_toast(score: int = 100) -> void:
 	if not has_node("ToastLabel"):
 		var toast = Label.new()
 		toast.name = "ToastLabel"
@@ -274,7 +390,10 @@ func _show_success_toast() -> void:
 		call_deferred("_position_toast")
 	
 	var toast = get_node("ToastLabel")
-	toast.text = "Success!"
+	if score > 0:
+		toast.text = "Success! (score %d)" % score
+	else:
+		toast.text = "Success!"
 	toast.visible = true
 	toast.modulate = Color(1, 1, 1, 1)
 	
@@ -314,11 +433,50 @@ func _hide_feedback_after_delay(token: int) -> void:
 	feedback_closed.emit()
 
 
+func _create_tries_label() -> void:
+	if challenge_vbox == null:
+		return
+	_tries_label = Label.new()
+	_tries_label.name = "TriesLabel"
+	_tries_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_tries_label.add_theme_font_size_override("font_size", 18)
+	_tries_label.add_theme_color_override("font_color", Color(0.95, 0.95, 0.95, 1))
+	challenge_vbox.add_child(_tries_label)
+
+
+func set_challenge_tries(remaining: int) -> void:
+	_challenge_tries_remaining = remaining
+	if _tries_label == null:
+		return
+	if remaining <= 0:
+		_tries_label.text = ""
+		_tries_label.visible = false
+		return
+	_tries_label.text = "Tries: " + str(remaining)
+	_tries_label.visible = true
+
+
+func show_score_feedback(score: int, tries_left: int) -> void:
+	# Score-based verdict for a speech challenge attempt (Task 10 wires real
+	# phoneme scores in; thresholds mirror the planned 75 pass mark).
+	var verdict := "Not quite — try again!"
+	var color := Color(0.8, 0.15, 0.08, 1)
+	if score >= 75:
+		verdict = "Good enough! (score %d)" % score
+		color = Color(0.05, 0.45, 0.15, 1)
+	elif score >= 50:
+		verdict = "Close! (score %d) — try again" % score
+		color = Color(0.95, 0.75, 0.1, 1)
+	if challenge_feedback_label != null:
+		challenge_feedback_label.text = verdict
+		challenge_feedback_label.add_theme_color_override("font_color", color)
+		challenge_feedback_label.visible = true
+
+
 func _create_stt_indicator() -> void:
 	_stt_indicator_row = HBoxContainer.new()
 	_stt_indicator_row.name = "SttIndicatorRow"
-	_stt_indicator_row.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_stt_indicator_row.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_stt_indicator_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	
 	_stt_dot = ColorRect.new()
 	_stt_dot.name = "SttDot"
@@ -372,7 +530,7 @@ func set_stt_state(state: SttState) -> void:
 			_stt_tween.set_loops()
 			_stt_tween.tween_property(_stt_dot, "modulate:a", 0.3, 0.5)
 			_stt_tween.tween_property(_stt_dot, "modulate:a", 1.0, 0.5)
-			_stt_tween.set_process_mode(Tween.TWEEN_PROCESS_MODE_ALWAYS)
+			_stt_tween.set_process_mode(Tween.TWEEN_PROCESS_IDLE)
 		
 		SttState.STT_PROCESSING:
 			_stt_dot.visible = true
@@ -385,7 +543,7 @@ func set_stt_state(state: SttState) -> void:
 			_stt_tween.set_loops()
 			_stt_tween.tween_property(_stt_dot, "modulate:a", 0.5, 0.3)
 			_stt_tween.tween_property(_stt_dot, "modulate:a", 1.0, 0.3)
-			_stt_tween.set_process_mode(Tween.TWEEN_PROCESS_MODE_ALWAYS)
+			_stt_tween.set_process_mode(Tween.TWEEN_PROCESS_IDLE)
 		
 		SttState.STT_ERROR:
 			_stt_dot.visible = true

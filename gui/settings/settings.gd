@@ -194,7 +194,7 @@ func _on_difficulty_pressed() -> void:
 	if not settings:
 		return
 	var new_diff := (int(settings.speech_difficulty) + 1) % 3
-	settings.set_speech_difficulty(SettingsManager.SpeechDifficulty(new_diff))
+	settings.set_speech_difficulty(SettingsManager.SpeechDifficulty.values()[new_diff])
 	var diff_names := ["Easy", "Normal", "Hard"]
 	difficulty_button.text = diff_names[new_diff]
 

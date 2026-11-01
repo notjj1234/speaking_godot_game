@@ -14,6 +14,14 @@ HOST = os.environ.get("HOST", "0.0.0.0")
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
 CERT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web-certs", "cert.pem")
 KEY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web-certs", "key.pem")
+# Extra mounts from the repo (besides the web build root):
+#   /extras/ -> web/extras/   vendored runtime assets (pronunciation spike model + JS)
+#   /tools/  -> tools/        standalone tool pages (pronunciation spike)
+REPO_ROOT = os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+MOUNTS = {
+	"/extras/": os.path.realpath(os.path.join(REPO_ROOT, "web", "extras")),
+	"/tools/": os.path.realpath(os.path.join(REPO_ROOT, "tools")),
+}
 
 
 def _local_ipv4_addresses() -> list[str]:
@@ -34,6 +42,21 @@ def _local_ipv4_addresses() -> list[str]:
 	return sorted(addrs)
 
 
+class MountedHandler(http.server.SimpleHTTPRequestHandler):
+	"""Serve the web build, plus repo folders mounted at /extras/ and /tools/."""
+
+	def translate_path(self, path: str) -> str:
+		path = path.split("?", 1)[0].split("#", 1)[0]
+		for prefix, folder in MOUNTS.items():
+			if path.startswith(prefix):
+				rel = os.path.normpath(path[len(prefix):])
+				if not rel.startswith(".."):
+					return os.path.join(folder, rel)
+			elif path == prefix.rstrip("/"):
+				return folder
+		return super().translate_path(path)
+
+
 def main() -> int:
 	if not os.path.isdir(ROOT):
 		print(f"Missing web build folder: {ROOT}", file=sys.stderr)
@@ -41,15 +64,21 @@ def main() -> int:
 	if not os.path.isfile(CERT) or not os.path.isfile(KEY):
 		print(f"Missing certs. Expected:\n  {CERT}\n  {KEY}", file=sys.stderr)
 		return 1
+	for prefix, folder in MOUNTS.items():
+		if not os.path.isdir(folder):
+			print(f"Missing mounted folder ({prefix}): {folder}", file=sys.stderr)
+			return 1
 
 	os.chdir(ROOT)
-	handler = http.server.SimpleHTTPRequestHandler
+	handler = MountedHandler
 	httpd = http.server.HTTPServer((HOST, PORT), handler)
 	context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 	context.load_cert_chain(certfile=CERT, keyfile=KEY)
 	httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
 
 	print("Serving Godot web build with HTTPS")
+	for prefix, folder in MOUNTS.items():
+		print(f"Mounted at: {prefix}  ({folder})")
 	print(f"On this Mac:  https://127.0.0.1:{PORT}/")
 	lan_ips = _local_ipv4_addresses()
 	if lan_ips:

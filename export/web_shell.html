@@ -121,6 +121,11 @@ body {
 		</div>
 
 		<script src="$GODOT_URL"></script>
+		<script type="module">
+			// Loqui Quest pronunciation-scoring facade (Task 9): boots the in-browser
+			// wav2vec2 phoneme worker and exposes window.LQPron for the Godot bridge.
+			import '/extras/pronunciation/window_lqpron.js';
+		</script>
 		<script>
 const GODOT_CONFIG = $GODOT_CONFIG;
 const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;

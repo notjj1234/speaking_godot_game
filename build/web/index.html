@@ -123,8 +123,13 @@ body {
 		</div>
 
 		<script src="index.js"></script>
+		<script type="module">
+			// Loqui Quest pronunciation-scoring facade (Task 9): boots the in-browser
+			// wav2vec2 phoneme worker and exposes window.LQPron for the Godot bridge.
+			import '/extras/pronunciation/window_lqpron.js';
+		</script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":1787716,"index.wasm":39513091},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":1878060,"index.wasm":39513091},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 

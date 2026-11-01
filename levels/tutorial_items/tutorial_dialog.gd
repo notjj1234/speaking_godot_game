@@ -18,24 +18,19 @@ var tutorial_messages := {
 		"In this level, you will see some slimes.",
 		"Kill them and see what happens."
 	],
-	"02": [
-		"Keyboard and mouse movement are locked.",
-		"Use your voice to go to the next level!",
-		"On a phone, arrows appear if voice fails a few times.",
-	],
+	# Level 02 uses the HUD command panel + voice-only banner — no center
+	# bubble (it blocked the maze). Keep messages empty so the dialog stays hidden.
+	"02": [],
 	"03": [
 		"Kill the goblin!",
-		"Don't worry you can't die in the tutorial."
+		"Keyboard works again. Toggle Mic On anytime for voice move or attack.",
+		"Don't worry — you can't die in the tutorial.",
 	],
 }
 
-# Persistent help for level 02
-var persistent_help := {
-	"02": [
-		"These are the commands",
-		"move forward, move backwards, move left, move right"
-	]
-}
+# Optional sticky help after intros. Level 02 intentionally omitted — commands
+# live on the left HUD panel instead of a center text box.
+var persistent_help := {}
 
 var messages = []
 var current_index := 0
@@ -54,11 +49,12 @@ func _ready():
 		messages = _playground_messages()
 	elif tutorial_messages.has(current_level):
 		messages = tutorial_messages[current_level] as Array[String]
-		if current_level == "02":
-			auto_advance = true
-			persistent = true
 	else:
 		messages = ["No tutorial available for this level."]
+
+	if messages.is_empty():
+		hide_message()
+		return
 
 	show_message(current_index)
 
