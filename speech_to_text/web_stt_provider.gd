@@ -165,6 +165,9 @@ func _eval_stop() -> void:
 
 
 func _on_js_result(args: Array) -> void:
+	# A finalized result can still arrive after stop(); never score a ghost attempt.
+	if not _session_active:
+		return
 	if args.is_empty():
 		return
 	var event = args[0]

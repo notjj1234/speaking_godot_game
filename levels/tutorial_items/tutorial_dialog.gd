@@ -37,6 +37,7 @@ var current_index := 0
 var auto_advance := true
 var persistent := false
 var advance_timer: Timer = null
+var skip_requested := false
 
 func _ready():
 	print("Current level name: ", current_level)
@@ -184,8 +185,15 @@ func _on_timer_timeout():
 func _input(event):
 	if PlayerManager.dialog_open:
 		return
+	if not visible:
+		return
 	if event.is_action_pressed("ui_accept") and visible:
-		next_message()
+		if skip_requested:
+			# OK press after skip just hides the dialog
+			hide_message()
+		else:
+			next_message()
+
 
 func show_custom_message(text: String, persist := false):
 	dialog_label.text = text

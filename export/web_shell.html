@@ -121,6 +121,105 @@ body {
 		</div>
 
 		<script src="$GODOT_URL"></script>
+		<script>
+			// Loqui Quest text-to-speech facade: exposes window.LQSpeak for the
+			// Godot bridge (speech_tts/web_tts_provider.gd). It must exist before
+			// the engine boots, and it must only speak when GDScript asks,
+			// because browsers block speech synthesis without a user gesture.
+			window.LQSpeak = {
+				rate: 1.0,
+				lang: 'en-US',
+				_utterance: null,
+				speak: function (text, requestId, onEnd) {
+					try {
+						if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) {
+							return false;
+						}
+						var phrase = String(text || '');
+						if (phrase.trim() === '') {
+							return false;
+						}
+						// Detach first: a cancelled utterance must never fire the
+						// callback for the utterance that replaces it.
+						this.detach();
+						window.speechSynthesis.cancel();
+						var utterance = new SpeechSynthesisUtterance(phrase);
+						utterance.lang = this.lang;
+						utterance.rate = this.rate;
+						utterance.pitch = 1.0;
+						utterance.volume = 1.0;
+						var voice = this.pickVoice();
+						if (voice) {
+							utterance.voice = voice;
+							if (voice.lang) {
+								utterance.lang = voice.lang;
+							}
+						}
+						var finished = false;
+						var finish = function () {
+							if (finished) {
+								return;
+							}
+							finished = true;
+							if (typeof onEnd === 'function') {
+								try { onEnd(requestId); } catch (e) { /* noop */ }
+							}
+						};
+						utterance.onend = finish;
+						utterance.onerror = finish;
+						this._utterance = utterance;
+						window.speechSynthesis.speak(utterance);
+						return true;
+					} catch (e) {
+						return false;
+					}
+				},
+				detach: function () {
+					if (this._utterance) {
+						this._utterance.onend = null;
+						this._utterance.onerror = null;
+						this._utterance = null;
+					}
+				},
+				cancel: function () {
+					this.detach();
+					try {
+						if (window.speechSynthesis) {
+							window.speechSynthesis.cancel();
+						}
+					} catch (e) { /* noop */ }
+				},
+				pickVoice: function () {
+					// getVoices() is empty until the browser loads its list, so
+					// pick at speak time instead of caching on page load.
+					try {
+						var voices = window.speechSynthesis.getVoices() || [];
+						var i;
+						for (i = 0; i < voices.length; i++) {
+							if (/^en[-_]US/i.test(voices[i].lang || '')) {
+								return voices[i];
+							}
+						}
+						for (i = 0; i < voices.length; i++) {
+							if (/^en/i.test(voices[i].lang || '')) {
+								return voices[i];
+							}
+						}
+					} catch (e) { /* noop */ }
+					return null;
+				},
+				isSpeaking: function () {
+					try {
+						if (!window.speechSynthesis) {
+							return false;
+						}
+						return !!(window.speechSynthesis.speaking || window.speechSynthesis.pending);
+					} catch (e) {
+						return false;
+					}
+				}
+			};
+		</script>
 		<script type="module">
 			// Loqui Quest pronunciation-scoring facade (Task 9): boots the in-browser
 			// wav2vec2 phoneme worker and exposes window.LQPron for the Godot bridge.

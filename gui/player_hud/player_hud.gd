@@ -28,6 +28,12 @@ var _stt_label: Label = null
 var _stt_tween: Tween = null
 var _tries_label: Label = null
 var _challenge_tries_remaining: int = PlayerHudUI.MAX_CHALLENGE_TRIES
+var _listen_row: HBoxContainer = null
+var _listen_button: Button = null
+var _listen_token: int = 0
+var _listen_pending: bool = false
+var _listen_pending_token: int = 0
+var _listen_warned: bool = false
 
 @onready var challenge_panel: PanelContainer = $Control/ChallengePanel
 @onready var speech_challenge_label: Label = $Control/ChallengePanel/MarginContainer/ChallengeVBox/SpeechChallengeLabel
@@ -72,6 +78,7 @@ func _ready() -> void:
 		viewport.size_changed.connect(_center_life_hud)
 	_create_stt_indicator()
 	_create_tries_label()
+	_create_listen_button()
 	_create_voice_commands_panel()
 
 
@@ -244,6 +251,8 @@ func update_max_hp(_max_hp: int) -> void:
 
 func show_speech_challenge(sentence: String) -> void:
 	_feedback_token += 1
+	# A new challenge must never start with the previous card's audio playing.
+	_stop_tts()
 	target_sentence = sentence
 	challenge_panel.visible = true
 	speech_challenge_label.text = "Say: " + sentence
@@ -255,11 +264,13 @@ func show_speech_challenge(sentence: String) -> void:
 	if _tries_label != null:
 		_tries_label.visible = false
 		_tries_label.text = ""
+	_apply_listen_button_size()
 	if OS.has_feature("web"):
 		_configure_web_challenge_controls()
 	else:
 		hide_typed_fallback()
 		hide_speak_button()
+	_refresh_listen_button()
 
 
 func _configure_web_challenge_controls() -> void:
@@ -287,6 +298,7 @@ func _focus_challenge_input() -> void:
 
 func hide_speech_challenge() -> void:
 	_feedback_token += 1
+	_stop_tts()
 	if challenge_panel:
 		challenge_panel.visible = false
 	if speech_challenge_label:
@@ -302,6 +314,7 @@ func hide_speech_challenge() -> void:
 		_tries_label.text = ""
 	hide_typed_fallback()
 	hide_speak_button()
+	_refresh_listen_button()
 
 
 func show_typed_fallback() -> void:
@@ -333,6 +346,8 @@ func hide_speak_button() -> void:
 
 
 func _on_speak_pressed() -> void:
+	# The Speak button re-arms the mic; never let it start under TTS audio.
+	_stop_tts()
 	speak_pressed.emit()
 
 
@@ -345,6 +360,9 @@ func _on_fallback_text_submitted(text: String) -> void:
 
 
 func _submit_fallback_text(text: String) -> void:
+	# Typed answers end the listening moment; stop playback before the mic
+	# can be re-armed by the challenge result path.
+	_stop_tts()
 	fallback_submitted.emit(text)
 
 
@@ -442,6 +460,126 @@ func _create_tries_label() -> void:
 	_tries_label.add_theme_font_size_override("font_size", 18)
 	_tries_label.add_theme_color_override("font_color", Color(0.95, 0.95, 0.95, 1))
 	challenge_vbox.add_child(_tries_label)
+
+
+func _create_listen_button() -> void:
+	if challenge_vbox == null or _listen_row != null:
+		return
+
+	_listen_row = HBoxContainer.new()
+	_listen_row.name = "ListenRow"
+	_listen_row.alignment = BoxContainer.ALIGNMENT_CENTER
+
+	_listen_button = Button.new()
+	_listen_button.name = "ListenButton"
+	_listen_button.text = "🔊 Listen"
+	_listen_button.tooltip_text = "Hear the word"
+	# Never steal focus from the typed fallback input on web.
+	_listen_button.focus_mode = Control.FOCUS_NONE
+	_listen_button.pressed.connect(_on_listen_pressed)
+	_listen_row.add_child(_listen_button)
+
+	challenge_vbox.add_child(_listen_row)
+	# Sit directly under the "Say:" line, above the transcript.
+	challenge_vbox.move_child(_listen_row, 1)
+	_apply_listen_button_size()
+	_refresh_listen_button()
+
+
+func _apply_listen_button_size() -> void:
+	if _listen_button == null:
+		return
+	if MobileSafeLayout.wants_touch_ui():
+		_listen_button.custom_minimum_size = Vector2(140, 44)
+	else:
+		_listen_button.custom_minimum_size = Vector2(130, 30)
+
+
+func _refresh_listen_button() -> void:
+	if _listen_row == null or _listen_button == null:
+		return
+
+	var tts = get_node_or_null("/root/TTSManager")
+	var available: bool = tts != null and tts.is_available()
+	if not available and not _listen_warned:
+		_listen_warned = true
+		print("⚠️ PlayerHud: TTS unavailable, hiding Listen button.")
+
+	_listen_row.visible = available and challenge_panel != null and challenge_panel.visible
+	# Stays enabled while speaking: a second press restarts the phrase.
+	_listen_button.disabled = (not available) or target_sentence.strip_edges().is_empty()
+
+
+func _on_listen_pressed() -> void:
+	var tts = get_node_or_null("/root/TTSManager")
+	if tts == null or not tts.is_available():
+		print("❌ PlayerHud: Listen pressed but TTS is unavailable.")
+		_refresh_listen_button()
+		return
+
+	var text: String = target_sentence.strip_edges()
+	if text.is_empty():
+		return
+
+	# Stop capture before any audio so the synthesizer never feeds the mic.
+	var stt = get_node_or_null("/root/STTManager")
+	if stt != null and stt.has_method("end_challenge_listen"):
+		stt.end_challenge_listen()
+
+	# Invalidate the previous press before stopping so its finish cannot
+	# re-arm the mic for this one.
+	_listen_token += 1
+	_listen_pending = false
+	tts.stop()
+	_listen_pending_token = _listen_token
+	_listen_pending = true
+	_refresh_listen_button()
+
+	if not tts.speech_finished.is_connected(_on_tts_speech_finished):
+		tts.speech_finished.connect(_on_tts_speech_finished)
+
+	# Keep this synchronous: web speech synthesis needs the button's user gesture.
+	var ok: bool = tts.speak(text)
+	if not ok:
+		print("❌ PlayerHud: Listen failed, re-arming mic.")
+		_listen_pending = false
+		_rearm_challenge_capture(_listen_pending_token)
+		_refresh_listen_button()
+		return
+	print("✅ PlayerHud: speaking target phrase for listening mode.")
+
+
+func _on_tts_speech_finished() -> void:
+	if not _listen_pending:
+		return
+	_listen_pending = false
+	_rearm_challenge_capture(_listen_pending_token)
+	_refresh_listen_button()
+
+
+func _rearm_challenge_capture(token: int) -> void:
+	if token != _listen_token:
+		return
+	if target_sentence.strip_edges().is_empty():
+		return
+	if challenge_panel == null or not challenge_panel.visible:
+		return
+	var word_tracker = get_node_or_null("/root/WordTracker")
+	if word_tracker != null and not bool(word_tracker.speech_challenge_active):
+		return
+	var stt = get_node_or_null("/root/STTManager")
+	if stt != null and stt.has_method("begin_challenge_listen"):
+		stt.begin_challenge_listen()
+
+
+func _stop_tts() -> void:
+	_listen_token += 1
+	_listen_pending = false
+	var tts = get_node_or_null("/root/TTSManager")
+	if tts != null:
+		tts.stop()
+	if _listen_button != null:
+		_refresh_listen_button()
 
 
 func set_challenge_tries(remaining: int) -> void:

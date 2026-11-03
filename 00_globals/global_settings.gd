@@ -13,7 +13,7 @@ enum SpeechDifficulty {
 signal settings_changed
 
 var music_volume: float = 0.8
-var music_muted: bool = false
+var music_muted: bool = true
 var sfx_volume: float = 0.8
 var sfx_muted: bool = false
 var fullscreen: bool = true

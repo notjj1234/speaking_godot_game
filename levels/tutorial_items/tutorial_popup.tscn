@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://bbgou3u2ufoxu"]
 
-[ext_resource type="Script" uid="uid://cxqqnebmmr5d3" path="res://levels/tutorial_items/tutorial_popup.gd" id="1"]
+[ext_resource type="Script" uid="uid://cxqqnebmmr5d3" path="res://levels/tutorial_items/tutorial_dialog.gd" id="1"]
 
 [node name="TutorialPopup" type="Control"]
 visible = false
@@ -20,7 +20,16 @@ layout_mode = 0
 text = "Tutorial text goes here"
 autowrap_mode = 2
 
-[node name="Button" type="Button" parent="Panel"]
+[node name="SkipButton" type="Button" parent="Panel"]
+layout_mode = 0
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+pivot_offset = Vector2(0, -20)
+text = "Skip tutorial"
+
+[node name="OKButton" type="Button" parent="Panel"]
 layout_mode = 0
 anchor_left = 0.5
 anchor_top = 1.0

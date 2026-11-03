@@ -38,6 +38,10 @@ func is_available() -> bool:
 	return bool(JavaScriptBridge.eval(_FACADE_READY_JS, true))
 
 
+func is_capturing() -> bool:
+	return _capture_state == "recording"
+
+
 func begin_capture() -> void:
 	if not bool(JavaScriptBridge.eval(_FACADE_READY_JS, true)):
 		_capture_state = "failed"

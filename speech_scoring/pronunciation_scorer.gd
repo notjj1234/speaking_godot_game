@@ -18,6 +18,10 @@ func is_available() -> bool:
 	return false
 
 
+func is_capturing() -> bool:
+	return false
+
+
 func begin_capture() -> void:
 	pass
 

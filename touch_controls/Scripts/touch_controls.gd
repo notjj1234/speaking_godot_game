@@ -560,18 +560,23 @@ func _update_mic_ui() -> void:
 
 
 func _on_mic_listening_started() -> void:
-	if _challenge_mic_active:
-		return
+	# Always update the button to reflect the listening state.
+	# The challenge path already manages its own visuals via mic_enabled,
+	# but the level UI should show what the provider is doing.
 	if mic_button:
 		mic_button.text = "Mic On"
-	if player_hud and player_hud.has_method("set_mic_state"):
+	# Sync the HUD dot only when not in a challenge (the challenge
+	# manages its own indicator during active challenges).
+	if not _challenge_mic_active and player_hud and player_hud.has_method("set_mic_state"):
 		player_hud.set_mic_state(true)
 
 
 func _on_mic_listening_stopped() -> void:
-	if _challenge_mic_active:
-		return
-	# Keep "On" while the session is still armed (restart timer / voice-only retry).
+	# Always update the button to reflect the listening stop.
+	if mic_button:
+		mic_button.text = "Mic Off"
+	# Sync the HUD dot regardless — it reflects mic_enabled which is the
+	# unified state (challenge sets it too, so this stays consistent).
 	_sync_hud_mic_indicator()
 
 

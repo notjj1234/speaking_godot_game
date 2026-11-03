@@ -38,6 +38,7 @@ var is_bouncing: bool = false
 var player: Player
 var invulnerable: bool = false
 var practice_dummy: bool = false
+var _tts_said_on_damage: bool = false
 
 var challenge_hurt_box: HurtBox  # Store the hurt_box during the speech challenge
 var _last_partial_match: String = ""
@@ -59,10 +60,28 @@ func _ready() -> void:
 	hit_box.damaged.connect(_take_damage)
 	max_hp = hp
 
-	# Start facing a random direction
+# Start facing a random direction
 	var directions = [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]
 	direction = directions[randi() % directions.size()]
 	set_direction(direction)
+
+# Brief, low-priority TTS: announce on spawn and on damage (if TTS is available).
+	var tts = TTSManager
+	if tts and tts.is_available():
+		_tts_said_on_spawn = true
+		tts.speak(get_name())
+
+# Brief, low-priority TTS: announce on damage (if TTS is available).
+func _take_damage(hurt_box: HurtBox) -> void:
+	var dealt := hurt_box.damage
+	if dealt == 0:
+		return
+	hurt.set("damage", 0)
+	enemy_damaged.emit(hurt_box)
+	var tts = TTSManager
+	if tts and tts.is_available() and not _tts_said_on_damage:
+		_tts_said_on_damage = true
+		tts.speak("Ouch")
 
 func _process(_delta): pass
 
@@ -433,8 +452,8 @@ func _host_challenge_fail() -> void:
 
 func _score_web_attempt(target_sentence: String) -> void:
 	# Web: score the just-finished captured clip against the target's phonemes.
-	# Waits on the scorer signal; stores the 0-100 score in _last_web_score
-	# (-1 when scoring is unavailable / no phoneme data / scoring failed).
+	# Stores the 0-100 score in _last_web_score (-1 when scoring is unavailable,
+	# no phoneme data, no capture running, or scoring failed).
 	_last_web_score = -1.0
 	var pm := get_node_or_null("/root/PronunciationManager")
 	if pm == null:
@@ -445,7 +464,20 @@ func _score_web_attempt(target_sentence: String) -> void:
 	var phonemes: String = pm.phonemes_for(target_sentence)
 	if phonemes.is_empty():
 		return
-	await scorer.capture_finished
+	# Nothing is recording, so there is no clip to score. Awaiting
+	# capture_finished here would park the paused challenge forever.
+	if not scorer.is_capturing():
+		return
+	# Ask the scorer to finish the clip, then bound the wait so a lost JS
+	# callback cannot freeze the paused tree.
+	var done := {"ok": false}
+	var on_done := func(_r: Dictionary) -> void:
+		done["ok"] = true
+	scorer.end_capture_and_score(phonemes, on_done)
+	if not done["ok"]:
+		var timer := get_tree().create_timer(6.0, true, false, true)
+		while not done["ok"] and timer.time_left > 0.0:
+			await get_tree().process_frame
 	_last_web_score = float(scorer.last_result.get("score", -1))
 
 
