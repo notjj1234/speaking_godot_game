@@ -1,6 +1,6 @@
 extends CanvasLayer
 
-const VERSION := "0.1.2"
+const VERSION := "0.2.4"
 
 
 func _ready() -> void:

@@ -14,6 +14,8 @@ signal hidden
 @onready var color_rect: ColorRect = $Control/ColorRect
 @onready var touch_save: TouchScreenButton = %Touch_Save
 @onready var touch_load: TouchScreenButton = %Touch_Load
+@onready var journal_button: Button = %JournalButton
+@onready var touch_journal: TouchScreenButton = %Touch_Journal
 
 const INK := Color(0.12, 0.08, 0.04, 1)
 const BODY_FONT := preload("res://gui/fonts/Abaddon Light.ttf")
@@ -49,6 +51,15 @@ func _ready() -> void:
 		touch_save.pressed.connect(_on_save_pressed)
 	if touch_load:
 		touch_load.pressed.connect(_on_load_pressed)
+	if journal_button:
+		journal_button.pressed.connect(_on_journal_pressed)
+	if touch_journal:
+		touch_journal.pressed.connect(_on_journal_pressed)
+		touch_journal.visible = true
+		if touch_journal.shape == null:
+			var shape := RectangleShape2D.new()
+			shape.size = Vector2(120, 32)
+			touch_journal.shape = shape
 
 	# Debugging: Log when save/load buttons are pressed
 	button_save.pressed.connect(func(): print("[DEBUG] Save button pressed."))
@@ -232,6 +243,26 @@ func _next_page() -> void:
 			update_word_list_display()
 		else:
 			print("[DEBUG] Already on last page. Can't go forward.")
+
+func _on_journal_pressed() -> void:
+	if not is_paused:
+		return
+	var tracker := get_node_or_null("/root/ProgressTracker")
+	if tracker and tracker.has_method("show_journal"):
+		tracker.show_journal()
+
+
+func _process(_delta: float) -> void:
+	if not visible or not is_paused:
+		return
+	if not MobileSafeLayout.uses_touch_button_twins():
+		return
+	if journal_button and touch_journal:
+		var rect := journal_button.get_global_rect()
+		touch_journal.global_position = rect.position + rect.size / 2.0
+		if touch_journal.shape is RectangleShape2D:
+			(touch_journal.shape as RectangleShape2D).size = rect.size
+
 
 func _on_save_pressed() -> void:
 	if not is_paused:

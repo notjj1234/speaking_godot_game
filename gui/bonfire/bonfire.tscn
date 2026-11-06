@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=3 uid="uid://cbonfirehorde01"]
+[gd_scene load_steps=24 format=3 uid="uid://cbonfirehorde01"]
 
 [ext_resource type="Script" path="res://gui/bonfire/bonfire.gd" id="1_script"]
 [ext_resource type="FontFile" uid="uid://0ow6by7f8lfy" path="res://gui/fonts/Abaddon Bold.ttf" id="2_bold"]
@@ -144,6 +144,9 @@ size = Vector2(220, 36)
 size = Vector2(220, 40)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_title"]
+size = Vector2(220, 40)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_journal"]
 size = Vector2(220, 40)
 
 [node name="Bonfire" type="CanvasLayer"]
@@ -406,6 +409,16 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
 text = "Equip sword"
 
+[node name="ResumeStageLabel" type="Label" parent="Control/CenterContainer/Panel/HBox/Right"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.97, 0.9, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.06, 0.03, 1)
+theme_override_constants/outline_size = 4
+theme_override_fonts/font = ExtResource("2_bold")
+theme_override_font_sizes/font_size = 15
+text = ""
+
 [node name="ContinueButton" type="Button" parent="Control/CenterContainer/Panel/HBox/Right"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(220, 38)
@@ -420,6 +433,22 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_go_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_go_pressed")
 theme_override_styles/focus = SubResource("StyleBoxFlat_go_hover")
 text = "Continue"
+
+[node name="JournalButton" type="Button" parent="Control/CenterContainer/Panel/HBox/Right"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 36)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 0.95, 1)
+theme_override_colors/font_pressed_color = Color(0.95, 0.9, 0.7, 1)
+theme_override_fonts/font = ExtResource("2_bold")
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+text = "Journal"
 
 [node name="TitleButton" type="Button" parent="Control/CenterContainer/Panel/HBox/Right"]
 unique_name_in_owner = true
@@ -471,6 +500,12 @@ shape_visible = false
 unique_name_in_owner = true
 position = Vector2(400, 320)
 shape = SubResource("RectangleShape2D_continue")
+shape_visible = false
+
+[node name="TouchJournal" type="TouchScreenButton" parent="Control"]
+unique_name_in_owner = true
+position = Vector2(400, 340)
+shape = SubResource("RectangleShape2D_journal")
 shape_visible = false
 
 [node name="TouchTitle" type="TouchScreenButton" parent="Control"]

@@ -9,9 +9,12 @@ class_name EnemyStateStun extends EnemyState
 
 @export var next_state: EnemyState
 
+const STUN_MAX_SEC := 0.45
+
 var _damage_position: Vector2
 var _direction: Vector2
 var _animation_finished: bool = false
+var _stun_elapsed: float = 0.0
 
 func init() -> void:
 	enemy.enemy_damaged.connect(_on_enemy_damaged)
@@ -20,6 +23,7 @@ func init() -> void:
 func enter() -> void:
 	enemy.invulnerable = true
 	_animation_finished = false
+	_stun_elapsed = 0.0
 	
 	# Enemy will follow the player based on its global position
 	_direction = enemy.global_position.direction_to(_damage_position)
@@ -28,17 +32,21 @@ func enter() -> void:
 	enemy.velocity = _direction * -knockback_speed
 	
 	enemy.update_animation(anim_name)
-	enemy.animation_player.animation_finished.connect(_on_animation_finished)
+	if not enemy.animation_player.animation_finished.is_connected(_on_animation_finished):
+		enemy.animation_player.animation_finished.connect(_on_animation_finished)
 	
 	pass
 
 func exit() -> void:
 	enemy.invulnerable = false
-	enemy.animation_player.animation_finished.disconnect(_on_animation_finished)
+	if enemy.animation_player.animation_finished.is_connected(_on_animation_finished):
+		enemy.animation_player.animation_finished.disconnect(_on_animation_finished)
 	pass
 
 func process(_delta: float) -> EnemyState:
-	if _animation_finished == true:
+	_stun_elapsed += _delta
+	# Hard cap so a missed animation_finished cannot leave the enemy unhittable.
+	if _animation_finished or _stun_elapsed >= STUN_MAX_SEC:
 		return next_state
 	# Decrease velocity of enemy
 	enemy.velocity -= enemy.velocity * decelerate_speed * _delta

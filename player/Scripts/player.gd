@@ -11,6 +11,7 @@ var cardinal_direction: Vector2 = Vector2.DOWN
 var direction: Vector2 = Vector2.ZERO
 
 var invulnerable: bool = false
+var _invuln_token: int = 0
 var hp: int = 6
 var max_hp: int = 6
 
@@ -90,29 +91,56 @@ func _take_damage(hurt_box: HurtBox) -> void:
 
 	if hp > 0:
 		player_damaged.emit(hurt_box)
+		return
+
+	var scene := get_tree().current_scene
+	if scene != null and scene.name == "EndlessHorde":
+		# Skip player_damaged/stun: its make_invulnerable await would re-enable
+		# the hitbox after bonfire revive and apply the killing blow again.
+		cancel_invulnerability()
+		invulnerable = true
+		if hit_box:
+			hit_box.monitoring = false
+		var word_tracker := get_node_or_null("/root/WordTracker")
+		if word_tracker:
+			word_tracker.speech_challenge_active = false
+		var stage := 1
+		var stage_val = scene.get("_stage")
+		if stage_val != null:
+			stage = maxi(int(stage_val), 1)
+		var tracker := get_node_or_null("/root/ProgressTracker")
+		if tracker and tracker.has_method("record_horde_death"):
+			tracker.record_horde_death(stage)
+		var game_over := get_node_or_null("/root/GameOver")
+		if game_over and game_over.has_method("show_defeat"):
+			game_over.show_defeat()
 	else:
 		player_damaged.emit(hurt_box)
-		var scene := get_tree().current_scene
-		if scene != null and scene.name == "EndlessHorde":
-			invulnerable = true
-			hit_box.monitoring = false
-			var game_over := get_node_or_null("/root/GameOver")
-			if game_over and game_over.has_method("show_defeat"):
-				game_over.show_defeat()
-		else:
-			update_hp(99)
+		update_hp(99)
 
 func update_hp(delta: int) -> void:
 	hp = clampi(hp + delta, 0, max_hp)
 	if player_hud != null:
 		player_hud.update_hp(hp, max_hp)
 
-func make_invulnerable(_duration: float = 1.0) -> void:
-	invulnerable = true
-	hit_box.monitoring = false
-	await get_tree().create_timer(_duration).timeout
+func cancel_invulnerability() -> void:
+	_invuln_token += 1
 	invulnerable = false
-	hit_box.monitoring = true
+	if hit_box:
+		hit_box.monitoring = true
+
+func make_invulnerable(_duration: float = 1.0) -> void:
+	_invuln_token += 1
+	var token := _invuln_token
+	invulnerable = true
+	if hit_box:
+		hit_box.monitoring = false
+	await get_tree().create_timer(_duration).timeout
+	if token != _invuln_token:
+		return
+	invulnerable = false
+	if hit_box:
+		hit_box.monitoring = true
 
 func move_with_animation(direction_vector: Vector2) -> void:
 	if PlayerManager.dialog_open:

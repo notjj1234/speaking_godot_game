@@ -12,6 +12,8 @@ var available_words: Array = []  # ✅ List of words from Google Sheets
 var available_sentences: Array = []  # ✅ List of sentences from Google Sheets
 
 var speech_challenge_active: bool = false
+## Set by Endless Horde while a stage is active; 0 means use the playground picker.
+var horde_stage: int = 0
 
 var next_challenge_type := "word"  # Start with a word
 
@@ -152,6 +154,111 @@ func get_random_speech_challenge() -> String:
 	print("✅ [INFO] Selected challenge:", selected_challenge)
 	return selected_challenge
 
+
+## Stage-aware pick for Endless Horde. Prefers the stage's band; if empty, tries
+## harder bands first, then easier, then any phrase, then "cat".
+func get_speech_challenge_for_stage(stage: int) -> String:
+	_ensure_local_corpus_merged()
+	_apply_builtin_defaults()
+	if available_words.is_empty() and available_sentences.is_empty():
+		return "cat"
+
+	var target_band := HordeCurve.band_for_stage(stage)
+	var tracker := get_node_or_null("/root/ProgressTracker")
+	if tracker \
+			and tracker.has_method("horde_warmup") \
+			and tracker.has_method("horde_stuck_stage") \
+			and bool(tracker.horde_warmup()) \
+			and int(tracker.horde_stuck_stage()) == stage:
+		target_band = maxi(0, HordeCurve.band_for_stage(stage) - 1)
+	# Exact band first.
+	var pool := _phrases_in_band(target_band)
+	if not pool.is_empty():
+		var picked: String = pool[randi() % pool.size()]
+		print("✅ [INFO] Stage ", stage, " band ", target_band, " challenge:", picked)
+		return picked
+	# Prefer harder content before falling back to baby words on late stages.
+	for band in range(target_band + 1, 4):
+		pool = _phrases_in_band(band)
+		if not pool.is_empty():
+			var harder: String = pool[randi() % pool.size()]
+			print("✅ [INFO] Stage ", stage, " harder band ", band, " challenge:", harder)
+			return harder
+	for band in range(target_band - 1, -1, -1):
+		pool = _phrases_in_band(band)
+		if not pool.is_empty():
+			var easier: String = pool[randi() % pool.size()]
+			print("✅ [INFO] Stage ", stage, " easier band ", band, " challenge:", easier)
+			return easier
+
+	# Any loaded phrase as last resort before literal fallback.
+	var any_pool: Array = []
+	any_pool.append_array(available_words)
+	any_pool.append_array(available_sentences)
+	if not any_pool.is_empty():
+		var any_pick: String = any_pool[randi() % any_pool.size()]
+		print("✅ [INFO] Stage ", stage, " fallback any phrase:", any_pick)
+		return any_pick
+	return "cat"
+
+
+## Keep local sentences.txt phrases available even if Sheets replaced the lists.
+func _ensure_local_corpus_merged() -> void:
+	if not FileAccess.file_exists(LOCAL_SENTENCES_PATH):
+		return
+	var file := FileAccess.open(LOCAL_SENTENCES_PATH, FileAccess.READ)
+	if file == null:
+		return
+	var known: Dictionary = {}
+	for w in available_words:
+		known[str(w).strip_edges().to_lower()] = true
+	for s in available_sentences:
+		known[str(s).strip_edges().to_lower()] = true
+	var added := 0
+	while not file.eof_reached():
+		var line := file.get_line().strip_edges()
+		if line.is_empty():
+			continue
+		var key := line.to_lower()
+		if known.has(key):
+			continue
+		known[key] = true
+		added += 1
+		if line.split(" ", false).size() > 1:
+			available_sentences.append(line)
+		else:
+			available_words.append(line)
+	file.close()
+	if added > 0:
+		print("✅ [INFO] Merged ", added, " local phrases into challenge pools.")
+
+
+func _phrases_in_band(band: int) -> Array:
+	var result: Array = []
+	for phrase in available_words:
+		if _band_of_phrase(str(phrase)) == band:
+			result.append(phrase)
+	for phrase in available_sentences:
+		if _band_of_phrase(str(phrase)) == band:
+			result.append(phrase)
+	return result
+
+
+func _band_of_phrase(phrase: String) -> int:
+	var tokens := phrase.strip_edges().split(" ", false)
+	var n := tokens.size()
+	if n <= 0:
+		return 0
+	if n == 1:
+		var length := tokens[0].length()
+		if length <= 4:
+			return 0
+		return 1
+	if n <= 3:
+		return 2
+	return 3
+
+
 # ✅ Add spoken word or sentence
 func add_spoken_word(word: String) -> bool:
 	word = word.strip_edges().to_lower()
@@ -174,6 +281,10 @@ func add_spoken_word(word: String) -> bool:
 
 	emit_signal("word_list_updated")  
 	print("✅ Emitted word_list_updated signal")
+
+	var progress := get_node_or_null("/root/ProgressTracker")
+	if progress and progress.has_method("record_phrase"):
+		progress.record_phrase(word)
 
 	# ✅ Fix: Differentiate between word and sentence before saving
 	if word.split(" ").size() > 1:  # ✅ Correctly check multi-word sentences

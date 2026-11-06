@@ -27,6 +27,7 @@ var _stt_dot: ColorRect = null
 var _stt_label: Label = null
 var _stt_tween: Tween = null
 var _tries_label: Label = null
+var _warmup_label: Label = null
 var _challenge_tries_remaining: int = PlayerHudUI.MAX_CHALLENGE_TRIES
 var _listen_row: HBoxContainer = null
 var _listen_button: Button = null
@@ -78,6 +79,7 @@ func _ready() -> void:
 		viewport.size_changed.connect(_center_life_hud)
 	_create_stt_indicator()
 	_create_tries_label()
+	_create_warmup_label()
 	_create_listen_button()
 	_create_voice_commands_panel()
 
@@ -261,9 +263,7 @@ func show_speech_challenge(sentence: String) -> void:
 	live_transcript_label.visible = true
 	challenge_feedback_label.text = ""
 	challenge_feedback_label.visible = false
-	if _tries_label != null:
-		_tries_label.visible = false
-		_tries_label.text = ""
+	_refresh_warmup_label()
 	_apply_listen_button_size()
 	if OS.has_feature("web"):
 		_configure_web_challenge_controls()
@@ -271,6 +271,7 @@ func show_speech_challenge(sentence: String) -> void:
 		hide_typed_fallback()
 		hide_speak_button()
 	_refresh_listen_button()
+	set_challenge_tries(_challenge_tries_remaining)
 
 
 func _configure_web_challenge_controls() -> void:
@@ -312,6 +313,9 @@ func hide_speech_challenge() -> void:
 	if _tries_label != null:
 		_tries_label.visible = false
 		_tries_label.text = ""
+	if _warmup_label != null:
+		_warmup_label.visible = false
+		_warmup_label.text = ""
 	hide_typed_fallback()
 	hide_speak_button()
 	_refresh_listen_button()
@@ -439,7 +443,9 @@ func _on_toast_finished(toast: Label) -> void:
 
 
 func _hide_feedback_after_delay(token: int) -> void:
-	await get_tree().create_timer(FEEDBACK_DURATION).timeout
+	# process_always=true: speech challenges pause the tree; a normal timer
+	# never fires, feedback_closed never emits, and enemies stay unhittable.
+	await get_tree().create_timer(FEEDBACK_DURATION, true).timeout
 	if token != _feedback_token:
 		feedback_closed.emit()
 		return
@@ -462,6 +468,45 @@ func _create_tries_label() -> void:
 	challenge_vbox.add_child(_tries_label)
 
 
+func _create_warmup_label() -> void:
+	if challenge_vbox == null or _warmup_label != null:
+		return
+	_warmup_label = Label.new()
+	_warmup_label.name = "WarmupLabel"
+	_warmup_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_warmup_label.visible = false
+	_warmup_label.text = ""
+	var bold := load("res://gui/fonts/Abaddon Bold.ttf")
+	if bold:
+		_warmup_label.add_theme_font_override("font", bold)
+	_warmup_label.add_theme_font_size_override("font_size", 16)
+	_warmup_label.add_theme_color_override("font_color", Color(0.95, 0.92, 0.55, 1))
+	challenge_vbox.add_child(_warmup_label)
+	# Above the "Say:" line when shown.
+	challenge_vbox.move_child(_warmup_label, 0)
+
+
+func _refresh_warmup_label() -> void:
+	if _warmup_label == null:
+		return
+	var show_warmup := false
+	var tracker := get_node_or_null("/root/ProgressTracker")
+	var word_tracker := get_node_or_null("/root/WordTracker")
+	if tracker \
+			and word_tracker \
+			and tracker.has_method("horde_warmup") \
+			and tracker.has_method("horde_stuck_stage") \
+			and bool(tracker.horde_warmup()) \
+			and int(tracker.horde_stuck_stage()) == int(word_tracker.get("horde_stage")):
+		show_warmup = true
+	if show_warmup:
+		_warmup_label.text = "Warm-up"
+		_warmup_label.visible = true
+	else:
+		_warmup_label.text = ""
+		_warmup_label.visible = false
+
+
 func _create_listen_button() -> void:
 	if challenge_vbox == null or _listen_row != null:
 		return
@@ -477,11 +522,15 @@ func _create_listen_button() -> void:
 	# Never steal focus from the typed fallback input on web.
 	_listen_button.focus_mode = Control.FOCUS_NONE
 	_listen_button.pressed.connect(_on_listen_pressed)
+	var bold := load("res://gui/fonts/Abaddon Bold.ttf")
+	if bold:
+		_listen_button.add_theme_font_override("font", bold)
 	_listen_row.add_child(_listen_button)
 
 	challenge_vbox.add_child(_listen_row)
 	# Sit directly under the "Say:" line, above the transcript.
-	challenge_vbox.move_child(_listen_row, 1)
+	if speech_challenge_label != null:
+		challenge_vbox.move_child(_listen_row, speech_challenge_label.get_index() + 1)
 	_apply_listen_button_size()
 	_refresh_listen_button()
 
@@ -489,10 +538,7 @@ func _create_listen_button() -> void:
 func _apply_listen_button_size() -> void:
 	if _listen_button == null:
 		return
-	if MobileSafeLayout.wants_touch_ui():
-		_listen_button.custom_minimum_size = Vector2(140, 44)
-	else:
-		_listen_button.custom_minimum_size = Vector2(130, 30)
+	_listen_button.custom_minimum_size = Vector2(220, 48)
 
 
 func _refresh_listen_button() -> void:

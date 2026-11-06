@@ -7,8 +7,8 @@
 class_name AndroidTTSProvider
 extends TTSSpeechProvider
 
-const TTS_RATE := 0.85
-const TTS_VOLUME := 90
+const TTS_RATE := 0.95
+const TTS_VOLUME := 100
 
 var _speaking := false
 var _voice_id := ""
@@ -60,16 +60,37 @@ func is_speaking() -> bool:
 
 
 func _pick_voice() -> String:
+	# Prefer a clear American English system voice over the first "en" hit
+	# (which can be a quiet / novelty pack on some devices).
+	var best_id := ""
+	var best_score := -9999
+	for voice in DisplayServer.tts_get_voices():
+		var language := String(voice.get("language", "")).to_lower().replace("_", "-")
+		var name := String(voice.get("name", "")).to_lower()
+		var id := String(voice.get("id", ""))
+		var score := 0
+		if language == "en-us" or language.begins_with("en-us"):
+			score += 100
+		elif language.begins_with("en"):
+			score += 30
+		else:
+			continue
+		if "us" in name or "america" in name or "english (united states)" in name:
+			score += 40
+		if "whisper" in name or "compact" in name or "novelty" in name:
+			score -= 200
+		if "uk" in name or "gb" in name or "british" in name:
+			score -= 60
+		if score > best_score:
+			best_score = score
+			best_id = id
+	if best_id != "":
+		return best_id
+
 	var english := DisplayServer.tts_get_voices_for_language("en")
 	if english.size() > 0:
 		return english[0]
-
 	var voices := DisplayServer.tts_get_voices()
-	for voice in voices:
-		var language := String(voice.get("language", ""))
-		if language.to_lower().begins_with("en"):
-			return String(voice.get("id", ""))
-
 	if voices.size() > 0:
 		print("⚠️ AndroidTTSProvider: no English voice, using default.")
 		return String(voices[0].get("id", ""))

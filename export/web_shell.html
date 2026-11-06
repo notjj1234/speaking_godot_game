@@ -127,7 +127,7 @@ body {
 			// the engine boots, and it must only speak when GDScript asks,
 			// because browsers block speech synthesis without a user gesture.
 			window.LQSpeak = {
-				rate: 1.0,
+				rate: 0.95,
 				lang: 'en-US',
 				_utterance: null,
 				speak: function (text, requestId, onEnd) {
@@ -144,16 +144,15 @@ body {
 						this.detach();
 						window.speechSynthesis.cancel();
 						var utterance = new SpeechSynthesisUtterance(phrase);
-						utterance.lang = this.lang;
+						// Always force American English — do not inherit a quiet
+						// novelty voice's lang tag.
+						utterance.lang = 'en-US';
 						utterance.rate = this.rate;
 						utterance.pitch = 1.0;
 						utterance.volume = 1.0;
 						var voice = this.pickVoice();
 						if (voice) {
 							utterance.voice = voice;
-							if (voice.lang) {
-								utterance.lang = voice.lang;
-							}
 						}
 						var finished = false;
 						var finish = function () {
@@ -189,22 +188,54 @@ body {
 						}
 					} catch (e) { /* noop */ }
 				},
+				_voiceScore: function (voice) {
+					var name = String(voice.name || '').toLowerCase();
+					var lang = String(voice.lang || '').toLowerCase().replace('_', '-');
+					var score = 0;
+					if (lang === 'en-us') {
+						score += 100;
+					} else if (lang.indexOf('en-us') === 0) {
+						score += 90;
+					} else if (lang.indexOf('en') === 0) {
+						score += 30;
+					} else {
+						return -1000;
+					}
+					// Prefer OS / system American voices over novelty packs.
+					if (voice.localService) {
+						score += 60;
+					}
+					if (/(google us english|microsoft (david|zira|mark|aria|guy|jenny)|samantha|alex|victoria|fred|susan|ava|allison|nathan|siri|zoe)/.test(name)) {
+						score += 80;
+					}
+					if (/(female|male|english)/.test(name) && /us|america|american/.test(name)) {
+						score += 40;
+					}
+					// Quiet / novelty / non-standard voices.
+					if (/(whisper|whispering|compact|novelty|bad news|good news|bells|zarvox|trinoids|boing|bubbles|cellos|organ|princess|ralph|junior|kathy)/.test(name)) {
+						score -= 250;
+					}
+					if (/(espeak|mbrola|festival|robot|echo|google UK|en-gb|british|australian|indian)/.test(name)) {
+						score -= 80;
+					}
+					return score;
+				},
 				pickVoice: function () {
 					// getVoices() is empty until the browser loads its list, so
 					// pick at speak time instead of caching on page load.
 					try {
 						var voices = window.speechSynthesis.getVoices() || [];
+						var best = null;
+						var bestScore = -9999;
 						var i;
 						for (i = 0; i < voices.length; i++) {
-							if (/^en[-_]US/i.test(voices[i].lang || '')) {
-								return voices[i];
+							var s = this._voiceScore(voices[i]);
+							if (s > bestScore) {
+								bestScore = s;
+								best = voices[i];
 							}
 						}
-						for (i = 0; i < voices.length; i++) {
-							if (/^en/i.test(voices[i].lang || '')) {
-								return voices[i];
-							}
-						}
+						return bestScore > 0 ? best : null;
 					} catch (e) { /* noop */ }
 					return null;
 				},
@@ -219,6 +250,17 @@ body {
 					}
 				}
 			};
+			// Warm the voice list early so the first Listen press is not muted/empty.
+			if (window.speechSynthesis) {
+				try {
+					window.speechSynthesis.getVoices();
+					if (typeof window.speechSynthesis.onvoiceschanged !== 'undefined') {
+						window.speechSynthesis.onvoiceschanged = function () {
+							window.speechSynthesis.getVoices();
+						};
+					}
+				} catch (e) { /* noop */ }
+			}
 		</script>
 		<script type="module">
 			// Loqui Quest pronunciation-scoring facade (Task 9): boots the in-browser

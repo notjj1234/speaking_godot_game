@@ -38,6 +38,7 @@ var is_bouncing: bool = false
 var player: Player
 var invulnerable: bool = false
 var practice_dummy: bool = false
+var _tts_said_on_spawn: bool = false
 var _tts_said_on_damage: bool = false
 
 var challenge_hurt_box: HurtBox  # Store the hurt_box during the speech challenge
@@ -65,23 +66,14 @@ func _ready() -> void:
 	direction = directions[randi() % directions.size()]
 	set_direction(direction)
 
-# Brief, low-priority TTS: announce on spawn and on damage (if TTS is available).
+# Brief TTS on spawn: speak the enemy type only (slime / goblin / beetle),
+	# never the raw node name (which can be Slime2, @CharacterBody2D@…, etc.).
 	var tts = TTSManager
 	if tts and tts.is_available():
-		_tts_said_on_spawn = true
-		tts.speak(get_name())
-
-# Brief, low-priority TTS: announce on damage (if TTS is available).
-func _take_damage(hurt_box: HurtBox) -> void:
-	var dealt := hurt_box.damage
-	if dealt == 0:
-		return
-	hurt.set("damage", 0)
-	enemy_damaged.emit(hurt_box)
-	var tts = TTSManager
-	if tts and tts.is_available() and not _tts_said_on_damage:
-		_tts_said_on_damage = true
-		tts.speak("Ouch")
+		var announce := _spawn_announce_name()
+		if not announce.is_empty():
+			_tts_said_on_spawn = true
+			tts.speak(announce)
 
 func _process(_delta): pass
 
@@ -305,7 +297,13 @@ func _take_damage(hurt_box: HurtBox) -> void:
 
 		if word_tracker:
 			word_tracker.speech_challenge_active = true
-			var challenge = word_tracker.get_random_speech_challenge()
+			var challenge: String
+			var stage := _horde_challenge_stage(word_tracker)
+			if stage > 0:
+				challenge = word_tracker.get_speech_challenge_for_stage(stage)
+				print("✅ Horde stage ", stage, " challenge:", challenge)
+			else:
+				challenge = word_tracker.get_random_speech_challenge()
 			_start_speech_challenge(challenge, hurt_box)
 		else:
 			print("[ERROR] WordTracker not found! Using fallback sentence.")
@@ -404,6 +402,9 @@ func _on_speech_result(success: bool, score: int = -1) -> void:
 
 	if success:
 		print("Speech challenge passed! Storing word:", player_hud.target_sentence)
+		var progress := get_node_or_null("/root/ProgressTracker")
+		if progress and progress.has_method("record_kill"):
+			progress.record_kill(_progress_kill_kind())
 		enemy_destroyed.emit(challenge_hurt_box)
 
 		if has_node("/root/WordTracker"):
@@ -495,7 +496,8 @@ func _wait_feedback_and_resume() -> void:
 	if player_hud != null:
 		await player_hud.feedback_closed
 	else:
-		await get_tree().create_timer(PlayerHudUI.FEEDBACK_DURATION).timeout
+		# Must tick while the challenge has the tree paused.
+		await get_tree().create_timer(PlayerHudUI.FEEDBACK_DURATION, true).timeout
 	_resume_game_after_challenge()
 
 func _on_speech_error(error_code) -> void:
@@ -537,6 +539,53 @@ func _stt_manager():
 
 func _is_web() -> bool:
 	return OS.has_feature("web")
+
+
+func _spawn_announce_name() -> String:
+	## Clean spoken label for spawn TTS. "other" stays silent.
+	var kind := _progress_kill_kind()
+	match kind:
+		"slime", "goblin", "beetle":
+			return kind
+		_:
+			return ""
+
+
+func _horde_challenge_stage(word_tracker: Node) -> int:
+	# Prefer the WordTracker flag set by Endless Horde; fall back to the live
+	# scene stage so a missed assign still scales speech with the stage loop.
+	if word_tracker != null:
+		var flagged := int(word_tracker.get("horde_stage"))
+		if flagged > 0:
+			return flagged
+	var scene := get_tree().current_scene
+	if scene == null:
+		return 0
+	if String(scene.name) != "EndlessHorde":
+		return 0
+	var stage_val = scene.get("_stage")
+	if stage_val == null:
+		return 0
+	return maxi(int(stage_val), 0)
+
+
+func _progress_kill_kind() -> String:
+	var n := String(name).to_lower()
+	if "slime" in n:
+		return "slime"
+	if "goblin" in n:
+		return "goblin"
+	if "beetle" in n:
+		return "beetle"
+	# Split children keep scene name; also check scene file path.
+	var path := scene_file_path.to_lower()
+	if "slime" in path:
+		return "slime"
+	if "goblin" in path:
+		return "goblin"
+	if "beetle" in path:
+		return "beetle"
+	return "other"
 
 
 func _normalize_web_text(text: String) -> String:

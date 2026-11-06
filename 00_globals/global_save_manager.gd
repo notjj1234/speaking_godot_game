@@ -26,6 +26,37 @@ var current_save: Dictionary = {
 	}
 }
 
+var _boot_progress_loaded := false
+
+
+func _ready() -> void:
+	# ProgressTracker is registered after SaveManager; defer until it exists.
+	call_deferred("_boot_load_progress_only")
+
+
+func _boot_load_progress_only() -> void:
+	if _boot_progress_loaded:
+		return
+	_boot_progress_loaded = true
+	if not has_save():
+		return
+	var file := FileAccess.open(SAVE_PATH + "save.sav", FileAccess.READ)
+	if file == null:
+		return
+	var json := JSON.new()
+	var err := json.parse(file.get_line())
+	if err != OK:
+		return
+	var save_dict = json.get_data()
+	if not (save_dict is Dictionary):
+		return
+	# Do NOT replace current_save or warp the scene. Progress only.
+	if save_dict.has("progress") and save_dict.progress is Dictionary:
+		var tracker := get_node_or_null("/root/ProgressTracker")
+		if tracker and tracker.has_method("load_from_save"):
+			tracker.load_from_save(save_dict.progress)
+
+
 func has_save() -> bool:
 	return FileAccess.file_exists(SAVE_PATH + "save.sav")
 
@@ -35,6 +66,9 @@ func save_game() -> void:
 	update_scene_path()
 	update_item_data()
 	update_bonfire_data()
+	var tracker := get_node_or_null("/root/ProgressTracker")
+	if tracker and tracker.has_method("snapshot"):
+		current_save["progress"] = tracker.snapshot()
 	var file := FileAccess.open(SAVE_PATH + "save.sav", FileAccess.WRITE)
 	if file == null:
 		print("❌ SaveManager: Failed to open save file for writing")
@@ -56,6 +90,13 @@ func load_game() -> void:
 	json.parse(file.get_line())
 	var save_dict : Dictionary = json.get_data() as Dictionary
 	current_save = save_dict
+
+	var tracker := get_node_or_null("/root/ProgressTracker")
+	if tracker and tracker.has_method("load_from_save"):
+		var progress: Dictionary = {}
+		if current_save.has("progress") and current_save.progress is Dictionary:
+			progress = current_save.progress
+		tracker.load_from_save(progress)
 	
 	LevelManager.load_new_level(current_save.scene_path, "", Vector2.ZERO)
 	
@@ -85,7 +126,10 @@ func update_scene_path() -> void:
 	for c in get_tree().root.get_children():
 		if c is Level:
 			p = c.scene_file_path
-	current_save.scene_path = p
+			break
+	# Keep previous scene_path when no Level is current (e.g. title screen).
+	if p != "":
+		current_save.scene_path = p
 	
 func update_item_data() -> void:
 	current_save.items = PlayerManager.INVENTORY_DATA.get_save_data()

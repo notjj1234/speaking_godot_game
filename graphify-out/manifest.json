@@ -1,0 +1,620 @@
+{
+  ".vs/AARPG-main/v17/DocumentLayout.json": {
+    "mtime": 1784188271.456045,
+    "seen": 1793776080.645153,
+    "ast_hash": "d5996cc8639d3ef91dfd59d5cf400824",
+    "semantic_hash": ""
+  },
+  ".vs/ProjectSettings.json": {
+    "mtime": 1784188271.4563458,
+    "seen": 1793776080.6451561,
+    "ast_hash": "dfea8ab09c8108ab159b6d8f203ead68",
+    "semantic_hash": ""
+  },
+  ".vs/VSWorkspaceState.json": {
+    "mtime": 1784188271.456423,
+    "seen": 1793776080.6451578,
+    "ast_hash": "30dde0e81f1c4e565181d3af85dbf256",
+    "semantic_hash": ""
+  },
+  ".vscode/settings.json": {
+    "mtime": 1788417287.2018223,
+    "seen": 1793776080.645159,
+    "ast_hash": "9a1a9b83d9750bfd58bdd4000d01628e",
+    "semantic_hash": ""
+  },
+  "addons/speech_to_text_android/android/build.gradle.kts": {
+    "mtime": 1790837966.6594298,
+    "seen": 1793776080.64516,
+    "ast_hash": "a822b79a2bb4aade8fda2fb32a9c3e2e",
+    "semantic_hash": ""
+  },
+  "addons/speech_to_text_android/android/plugin/build.gradle.kts": {
+    "mtime": 1790838667.1469646,
+    "seen": 1793776080.645161,
+    "ast_hash": "0469695fc5c675f14b9540b20b288e74",
+    "semantic_hash": ""
+  },
+  "addons/speech_to_text_android/android/plugin/src/main/java/com/loquiquest/speechtotext/SpeechToTextPlugin.kt": {
+    "mtime": 1790838392.9249432,
+    "seen": 1793776080.6451619,
+    "ast_hash": "eba900fd004912d06e7cc8e5a8726486",
+    "semantic_hash": ""
+  },
+  "addons/speech_to_text_android/android/settings.gradle.kts": {
+    "mtime": 1790839418.041778,
+    "seen": 1793776080.6451619,
+    "ast_hash": "5b42c211b0084031d72d6266c9209267",
+    "semantic_hash": ""
+  },
+  "addons/speech_to_text_android/package_aar.py": {
+    "mtime": 1790839546.8876512,
+    "seen": 1793776080.645163,
+    "ast_hash": "162f48d0749e775191d1ed6727e1dec7",
+    "semantic_hash": ""
+  },
+  "android/plugins/BluetoothPlugin/BluetoothPlugin.java": {
+    "mtime": 1784188271.4633155,
+    "seen": 1793776080.645164,
+    "ast_hash": "5a90ffd77801ead7e2dc890580c5ba0d",
+    "semantic_hash": ""
+  },
+  "android/plugins/BluetoothPlugin/NonNull.java": {
+    "mtime": 1784188271.4633749,
+    "seen": 1793776080.645164,
+    "ast_hash": "24f50519e977d383748a35abcbc51628",
+    "semantic_hash": ""
+  },
+  "android/plugins/src/com/example/godotgame/BluetoothPlugin.java": {
+    "mtime": 1784188271.4636478,
+    "seen": 1793776080.645165,
+    "ast_hash": "47d37c9dae25d77651b2a8efcdc7322a",
+    "semantic_hash": ""
+  },
+  "ios/plugins/loqui_speech/build_xcframework.sh": {
+    "mtime": 1790839538.200984,
+    "seen": 1793776080.6451662,
+    "ast_hash": "7c49c1cd052d4741d089f758fa7e8a66",
+    "semantic_hash": ""
+  },
+  "ios/plugins/loqui_speech/src/loqui_speech.h": {
+    "mtime": 1790838039.5365255,
+    "seen": 1793776080.6451662,
+    "ast_hash": "951a4a5abd14eeec3dce7468a9e0acb3",
+    "semantic_hash": ""
+  },
+  "ios/plugins/loqui_speech/src/loqui_speech.mm": {
+    "mtime": 1790840580.434282,
+    "seen": 1793776080.645167,
+    "ast_hash": "7ad33a7fccb0549bc543cf6ca3b76393",
+    "semantic_hash": ""
+  },
+  "sentence_data/phoneme_normalization.json": {
+    "mtime": 1793262513.2208307,
+    "seen": 1793776080.645168,
+    "ast_hash": "e7e52a66ea79af236fbf45050caa2e85",
+    "semantic_hash": ""
+  },
+  "sentence_data/phonemes.json": {
+    "mtime": 1793262513.22072,
+    "seen": 1793776080.6451688,
+    "ast_hash": "93bf8a8ebd7cfd00ec05909d80d856c8",
+    "semantic_hash": ""
+  },
+  "tools/gen_phonemes.py": {
+    "mtime": 1793262510.403188,
+    "seen": 1793776080.6451688,
+    "ast_hash": "29ef7fe45f4db9acaa1eb3a23f3e3a63",
+    "semantic_hash": ""
+  },
+  "tools/pronunciation_spike/worker.js": {
+    "mtime": 1793258994.8149374,
+    "seen": 1793776080.64517,
+    "ast_hash": "756b544b91adada5cc5d4bbce1f5811f",
+    "semantic_hash": ""
+  },
+  "web/extras/pronunciation/espeak-ng/espeakng.min.js": {
+    "mtime": 1793258325.8976684,
+    "seen": 1793776080.64517,
+    "ast_hash": "a7b2f7f15cc03e6a24da949518455fb4",
+    "semantic_hash": ""
+  },
+  "web/extras/pronunciation/espeak-ng/espeakng.worker.js": {
+    "mtime": 1793258326.9110844,
+    "seen": 1793776080.645171,
+    "ast_hash": "623696a4a798d73e3020bca0598f8300",
+    "semantic_hash": ""
+  },
+  "web/extras/pronunciation/model/config.json": {
+    "mtime": 1793258162.427211,
+    "seen": 1793776080.6451719,
+    "ast_hash": "e548189d97d69ea5680000b7a5203de0",
+    "semantic_hash": ""
+  },
+  "web/extras/pronunciation/model/preprocessor_config.json": {
+    "mtime": 1793258163.0808346,
+    "seen": 1793776080.645173,
+    "ast_hash": "16d4416ec5ebcc125907094f2103e3f6",
+    "semantic_hash": ""
+  },
+  "web/extras/pronunciation/model/special_tokens_map.json": {
+    "mtime": 1793258163.9028485,
+    "seen": 1793776080.645173,
+    "ast_hash": "9a3e2c29d548ff9c0a1f616b0603f331",
+    "semantic_hash": ""
+  },
+  "web/extras/pronunciation/model/tokenizer_config.json": {
+    "mtime": 1793258164.1463008,
+    "seen": 1793776080.645174,
+    "ast_hash": "76e8cf2645f0431ae67f64ee98cb379d",
+    "semantic_hash": ""
+  },
+  "web/extras/pronunciation/model/vocab.json": {
+    "mtime": 1793258162.6711411,
+    "seen": 1793776080.645175,
+    "ast_hash": "26ac986d40add4c1f70b47eaf861736b",
+    "semantic_hash": ""
+  },
+  "web/extras/pronunciation/ort-wasm-simd-threaded.jsep.mjs": {
+    "mtime": 1793258930.1202934,
+    "seen": 1793776080.645175,
+    "ast_hash": "6f8ef5f89a9b90dd632e632794c373c0",
+    "semantic_hash": ""
+  },
+  "web/extras/pronunciation/transformers.min.js": {
+    "mtime": 1793258325.456751,
+    "seen": 1793776080.6451762,
+    "ast_hash": "e65fb77815da31875e872b39f8e82cb6",
+    "semantic_hash": ""
+  },
+  "web/extras/pronunciation/window_lqpron.js": {
+    "mtime": 1793262791.1203122,
+    "seen": 1793776080.6451762,
+    "ast_hash": "e1d3143d4bea1293aef9d55790b485f7",
+    "semantic_hash": ""
+  },
+  "web/extras/pronunciation/worker.js": {
+    "mtime": 1793343891.7267241,
+    "seen": 1793776080.6451771,
+    "ast_hash": "756b544b91adada5cc5d4bbce1f5811f",
+    "semantic_hash": ""
+  },
+  ".cursor/skills/prompt-master/SKILL.md": {
+    "mtime": 1783926164.9641526,
+    "seen": 1793776080.645178,
+    "ast_hash": "572f0b8a586f637d114a9823bafe96a9",
+    "semantic_hash": ""
+  },
+  "AGENTS.md": {
+    "mtime": 1788417971.1932356,
+    "seen": 1793776080.645178,
+    "ast_hash": "4fc7c264fb12939389f1b2503387b1c7",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1784188271.4579794,
+    "seen": 1793776080.6451788,
+    "ast_hash": "6ec52fdc71b2bde65cad34363086ad01",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-10-29-pronunciation-scoring-plan.md": {
+    "mtime": 1793257750.0818858,
+    "seen": 1793776080.64518,
+    "ast_hash": "6d361d2439b35223fce592e443aba581",
+    "semantic_hash": ""
+  },
+  "export/web_shell.html": {
+    "mtime": 1793776855.6937783,
+    "seen": 1793781211.456408,
+    "ast_hash": "a2f16905b767807f783785a870fffdaa",
+    "semantic_hash": ""
+  },
+  "godot-whisper/samples/godot_whisper/README.md": {
+    "mtime": 1784188271.4684815,
+    "seen": 1793776080.645181,
+    "ast_hash": "3401da080b37ed98bf5baf322cade42c",
+    "semantic_hash": ""
+  },
+  "sentence_data/sentences.txt": {
+    "mtime": 1793775814.0309906,
+    "seen": 1793776080.645182,
+    "ast_hash": "5fdc7d3801da2d6a756a3492502df619",
+    "semantic_hash": ""
+  },
+  "tools/pronunciation_spike/SPIKE-RESULTS.md": {
+    "mtime": 1793258558.690135,
+    "seen": 1793776080.645182,
+    "ast_hash": "476c26a39fcf8b86ee5aa35f8a63dca7",
+    "semantic_hash": ""
+  },
+  "tools/pronunciation_spike/index.html": {
+    "mtime": 1793259009.546747,
+    "seen": 1793776080.645183,
+    "ast_hash": "f26e67908de70b8e852efbd39384347f",
+    "semantic_hash": ""
+  },
+  "web/extras/pronunciation/espeak-ng/README.md": {
+    "mtime": 1793258360.5748544,
+    "seen": 1793776080.645184,
+    "ast_hash": "cd5efcc7945741a81f53b4cc1b70bdaf",
+    "semantic_hash": ""
+  },
+  "addons/collapse_folders/collapse-all.svg": {
+    "mtime": 1784188271.4581225,
+    "seen": 1793776080.645184,
+    "ast_hash": "ee5db4c5a2dd0cc80ad60259c1821e32",
+    "semantic_hash": ""
+  },
+  "addons/virtual_joystick/previews/Logo.svg": {
+    "mtime": 1784188271.4603112,
+    "seen": 1793776080.645185,
+    "ast_hash": "c6851522c8970aaafcc3da237d6a8deb",
+    "semantic_hash": ""
+  },
+  "addons/virtual_joystick/previews/ShowcasePreview.png": {
+    "mtime": 1784188271.460922,
+    "seen": 1793776080.645186,
+    "ast_hash": "ae70ab05dcf693bac3b59c0e4d93b823",
+    "semantic_hash": ""
+  },
+  "addons/virtual_joystick/previews/joystick_icon.png": {
+    "mtime": 1784188271.4615812,
+    "seen": 1793776080.645186,
+    "ast_hash": "188e637a9c5226cae3ca3019bc1a2dc1",
+    "semantic_hash": ""
+  },
+  "addons/virtual_joystick/textures/joystick_base_outline.png": {
+    "mtime": 1784188271.462081,
+    "seen": 1793776080.6451871,
+    "ast_hash": "1d01c160312d23a1d03aedf7f5ba8e58",
+    "semantic_hash": ""
+  },
+  "addons/virtual_joystick/textures/joystick_tip.png": {
+    "mtime": 1784188271.4622002,
+    "seen": 1793776080.645188,
+    "ast_hash": "5e67598bc43721cb723697bf2e9e2364",
+    "semantic_hash": ""
+  },
+  "addons/virtual_joystick/textures/joystick_tip_arrows.png": {
+    "mtime": 1784188271.4623225,
+    "seen": 1793776080.645188,
+    "ast_hash": "86f50d43d8cb80e94bf061b3e60fcb04",
+    "semantic_hash": ""
+  },
+  "addons/virtual_joystick/virtual_joystick_icon.png": {
+    "mtime": 1784188271.4627082,
+    "seen": 1793776080.645189,
+    "ast_hash": "188e637a9c5226cae3ca3019bc1a2dc1",
+    "semantic_hash": ""
+  },
+  "enemies/beetle/Beetle.png": {
+    "mtime": 1790668390.100952,
+    "seen": 1793776080.64519,
+    "ast_hash": "8227a806564ae58be66cf85071bae36b",
+    "semantic_hash": ""
+  },
+  "enemies/goblin/goblin.png": {
+    "mtime": 1784188271.46391,
+    "seen": 1793776080.64519,
+    "ast_hash": "14b100e006c81f3e3e551adc60bcca87",
+    "semantic_hash": ""
+  },
+  "enemies/slime/DestroySmoke.png": {
+    "mtime": 1784188271.4656866,
+    "seen": 1793776080.645191,
+    "ast_hash": "3e16358a73fae33bd16ac540258a96f2",
+    "semantic_hash": ""
+  },
+  "enemies/slime/Slime.png": {
+    "mtime": 1784188271.4659164,
+    "seen": 1793776080.645192,
+    "ast_hash": "2e3369252bebc30835af177a3f24d916",
+    "semantic_hash": ""
+  },
+  "gui/dialog_system/icons/answer_bubble.svg": {
+    "mtime": 1784188271.471504,
+    "seen": 1793776080.645192,
+    "ast_hash": "146e5e060197161e39e53f51d8a0f57b",
+    "semantic_hash": ""
+  },
+  "gui/dialog_system/icons/chat_bubble.svg": {
+    "mtime": 1784188271.4716415,
+    "seen": 1793776080.6451929,
+    "ast_hash": "72f740c8e746104c34462330d4c3f4e4",
+    "semantic_hash": ""
+  },
+  "gui/dialog_system/icons/chat_bubbles.svg": {
+    "mtime": 1784188271.4717607,
+    "seen": 1793776080.645194,
+    "ast_hash": "9fcbfb31c840c9b7d7b4ac350ad89fde",
+    "semantic_hash": ""
+  },
+  "gui/dialog_system/icons/npc.svg": {
+    "mtime": 1784188271.4718888,
+    "seen": 1793776080.645194,
+    "ast_hash": "fce426bf84670846497d0dbcec209fcd",
+    "semantic_hash": ""
+  },
+  "gui/dialog_system/icons/npc_behavior.svg": {
+    "mtime": 1784188271.4720416,
+    "seen": 1793776080.645195,
+    "ast_hash": "0a7eabfee784047411a52fe9a8cba4b1",
+    "semantic_hash": ""
+  },
+  "gui/dialog_system/icons/picture_bubble.svg": {
+    "mtime": 1784188271.4721787,
+    "seen": 1793776080.645195,
+    "ast_hash": "667bb66703486d59a4b667a6f02dc33a",
+    "semantic_hash": ""
+  },
+  "gui/dialog_system/icons/question_bubble.svg": {
+    "mtime": 1784188271.4723463,
+    "seen": 1793776080.645196,
+    "ast_hash": "0d560e816554b69b095dd6ce2cba1858",
+    "semantic_hash": ""
+  },
+  "gui/dialog_system/icons/star_bubble.svg": {
+    "mtime": 1784188271.4724884,
+    "seen": 1793776080.6451972,
+    "ast_hash": "49540ff1546c511618dd07d8feaf7e8a",
+    "semantic_hash": ""
+  },
+  "gui/dialog_system/icons/text_bubble.svg": {
+    "mtime": 1784188271.472643,
+    "seen": 1793776080.6451972,
+    "ast_hash": "2dbd2eeac1faa3a79a6663fd863ff8b0",
+    "semantic_hash": ""
+  },
+  "gui/dialog_system/sprites/dialog_interactable.png": {
+    "mtime": 1784188271.473051,
+    "seen": 1793776080.645198,
+    "ast_hash": "397752dc3daae8caf1a7b943d32bd8c6",
+    "semantic_hash": ""
+  },
+  "gui/dialog_system/sprites/npc_sprite.png": {
+    "mtime": 1784188271.4733052,
+    "seen": 1793776080.645199,
+    "ast_hash": "05454d8c021df30705fb39f1060cff36",
+    "semantic_hash": ""
+  },
+  "gui/dialog_system/sprites/npc_sprite_02.png": {
+    "mtime": 1784188271.4735167,
+    "seen": 1793776080.645199,
+    "ast_hash": "f0963dc41b315c1014a2fd1705cbef91",
+    "semantic_hash": ""
+  },
+  "gui/dialog_system/sprites/portraits/hero_portrait.png": {
+    "mtime": 1784188271.4738069,
+    "seen": 1793776080.6451998,
+    "ast_hash": "e19877ba95b35154d623443252073f90",
+    "semantic_hash": ""
+  },
+  "gui/dialog_system/sprites/portraits/npc_portrait_01.png": {
+    "mtime": 1784188271.4740262,
+    "seen": 1793776080.645201,
+    "ast_hash": "97cbc15a6dbffa12d5afd80f3d5dca67",
+    "semantic_hash": ""
+  },
+  "gui/dialog_system/sprites/portraits/npc_portrait_02.png": {
+    "mtime": 1784188271.4742827,
+    "seen": 1793776080.645201,
+    "ast_hash": "e7de391a4f297830c92fd51911e72b4e",
+    "semantic_hash": ""
+  },
+  "gui/dialog_system/sprites/text-bubble.png": {
+    "mtime": 1784188271.4744139,
+    "seen": 1793776080.645202,
+    "ast_hash": "488bbe5ef694eacb1d020f8ff860cecf",
+    "semantic_hash": ""
+  },
+  "gui/player_hud/gui-health.png": {
+    "mtime": 1784188271.4765027,
+    "seen": 1793776080.645202,
+    "ast_hash": "5f1c8c0185a9694b396b9e334b38da1a",
+    "semantic_hash": ""
+  },
+  "icon.svg": {
+    "mtime": 1784188271.477455,
+    "seen": 1793776080.6452029,
+    "ast_hash": "0eed98577cbbf02f0bdc0f5c9f70465b",
+    "semantic_hash": ""
+  },
+  "interactables/treasure_chest/treasure-chest.png": {
+    "mtime": 1784188271.4777033,
+    "seen": 1793776080.645204,
+    "ast_hash": "5289389dd508df4e1ddaa26aea602a48",
+    "semantic_hash": ""
+  },
+  "items/Sprites/items.png": {
+    "mtime": 1784188271.4786572,
+    "seen": 1793776080.645204,
+    "ast_hash": "11a98be9f12a6e9fb2bda24f2517c1c8",
+    "semantic_hash": ""
+  },
+  "items/Sprites/sword.png": {
+    "mtime": 1790754093.0695753,
+    "seen": 1793776080.645205,
+    "ast_hash": "d4bf76f5c9f6278eb75c268f318f3e0f",
+    "semantic_hash": ""
+  },
+  "npc/icons/npc.svg": {
+    "mtime": 1784188271.4830248,
+    "seen": 1793776080.645206,
+    "ast_hash": "fce426bf84670846497d0dbcec209fcd",
+    "semantic_hash": ""
+  },
+  "npc/icons/npc_behavior.svg": {
+    "mtime": 1784188271.4831445,
+    "seen": 1793776080.645207,
+    "ast_hash": "0a7eabfee784047411a52fe9a8cba4b1",
+    "semantic_hash": ""
+  },
+  "npc/sprites/npc_sprite.png": {
+    "mtime": 1784188271.4847,
+    "seen": 1793776080.645207,
+    "ast_hash": "05454d8c021df30705fb39f1060cff36",
+    "semantic_hash": ""
+  },
+  "npc/sprites/npc_sprite_02.png": {
+    "mtime": 1784188271.4850001,
+    "seen": 1793776080.6452081,
+    "ast_hash": "f0963dc41b315c1014a2fd1705cbef91",
+    "semantic_hash": ""
+  },
+  "npc/sprites/portraits/hero_portrait.png": {
+    "mtime": 1784188271.4853115,
+    "seen": 1793776080.6452081,
+    "ast_hash": "e19877ba95b35154d623443252073f90",
+    "semantic_hash": ""
+  },
+  "npc/sprites/portraits/npc_portrait_01.png": {
+    "mtime": 1784188271.4855356,
+    "seen": 1793776080.645209,
+    "ast_hash": "97cbc15a6dbffa12d5afd80f3d5dca67",
+    "semantic_hash": ""
+  },
+  "npc/sprites/portraits/npc_portrait_02.png": {
+    "mtime": 1784188271.4857588,
+    "seen": 1793776080.64521,
+    "ast_hash": "e7de391a4f297830c92fd51911e72b4e",
+    "semantic_hash": ""
+  },
+  "player/Sprites/AttackSprite01.png": {
+    "mtime": 1784188271.4878929,
+    "seen": 1793776080.64521,
+    "ast_hash": "d8b7aa50fa53f96c30c5c2d2e0fdb06e",
+    "semantic_hash": ""
+  },
+  "player/Sprites/ExamplePlayerSprite.png": {
+    "mtime": 1784188271.488115,
+    "seen": 1793776080.645211,
+    "ast_hash": "cdcfe76257215325bbbf4448670357b1",
+    "semantic_hash": ""
+  },
+  "player/Sprites/PlayerSprite02.png": {
+    "mtime": 1784188271.4883015,
+    "seen": 1793776080.645212,
+    "ast_hash": "81d63b783717a7e49cf9cda2b65d0e7a",
+    "semantic_hash": ""
+  },
+  "player/Sprites/Shadow.png": {
+    "mtime": 1784188271.488433,
+    "seen": 1793776080.645212,
+    "ast_hash": "e64ee4acdb78c58399fce3bee12a4a83",
+    "semantic_hash": ""
+  },
+  "props/Sprites/Props.png": {
+    "mtime": 1784188271.489177,
+    "seen": 1793776080.645213,
+    "ast_hash": "237c593a74a2b589395f8a277f6b940f",
+    "semantic_hash": ""
+  },
+  "tile_maps/sprites/Grass-01.png": {
+    "mtime": 1784188271.4900265,
+    "seen": 1793776080.6452138,
+    "ast_hash": "1101d1f3d0d71616db7279a11f1b0954",
+    "semantic_hash": ""
+  },
+  "touch_controls/UsedIcons/Attack.png": {
+    "mtime": 1784188271.490756,
+    "seen": 1793776080.645215,
+    "ast_hash": "68cd1fe3865be23e2505963baf493c1c",
+    "semantic_hash": ""
+  },
+  "touch_controls/UsedIcons/Down.png": {
+    "mtime": 1784188271.4908693,
+    "seen": 1793776080.645216,
+    "ast_hash": "a984846a0932ad98221a9f90968f0bf6",
+    "semantic_hash": ""
+  },
+  "touch_controls/UsedIcons/Exit.png": {
+    "mtime": 1784188271.4909859,
+    "seen": 1793776080.645216,
+    "ast_hash": "d515e46eb8bd73d1ff27e88a9e96b391",
+    "semantic_hash": ""
+  },
+  "touch_controls/UsedIcons/Left.png": {
+    "mtime": 1784188271.4911013,
+    "seen": 1793776080.645217,
+    "ast_hash": "79845f7a1089f48d7dd054d8fa7816d9",
+    "semantic_hash": ""
+  },
+  "touch_controls/UsedIcons/Pause.png": {
+    "mtime": 1784188271.4912388,
+    "seen": 1793776080.6452181,
+    "ast_hash": "fb49fe71b25dd601f228c0228e0e67e3",
+    "semantic_hash": ""
+  },
+  "touch_controls/UsedIcons/Right.png": {
+    "mtime": 1784188271.491366,
+    "seen": 1793776080.6452181,
+    "ast_hash": "dff049fdbdbc397557456a765b8f02a8",
+    "semantic_hash": ""
+  },
+  "touch_controls/UsedIcons/Up.png": {
+    "mtime": 1784188271.4914765,
+    "seen": 1793776080.645219,
+    "ast_hash": "cad591cb8e19643b8abb98b143f12992",
+    "semantic_hash": ""
+  },
+  "audio/music/Bonetrousle.ogg": {
+    "mtime": 1790580097.85456,
+    "seen": 1793776080.64522,
+    "ast_hash": "aaa2bdee86c77f16f0785a21f266ef9a",
+    "semantic_hash": ""
+  },
+  "enemies/slime/hit_00.wav": {
+    "mtime": 1784188271.4661243,
+    "seen": 1793776080.64522,
+    "ast_hash": "2103be387a5728dafe306157a5665166",
+    "semantic_hash": ""
+  },
+  "enemies/slime/hit_01.wav": {
+    "mtime": 1784188271.4664884,
+    "seen": 1793776080.6452212,
+    "ast_hash": "f5956467e9ab3c7d013fc9d559a8826c",
+    "semantic_hash": ""
+  },
+  "gui/dialog_system/audio/voice_blip.wav": {
+    "mtime": 1784188271.471236,
+    "seen": 1793776080.6452212,
+    "ast_hash": "547cb7a6d9fe2d70f89b0947b807e360",
+    "semantic_hash": ""
+  },
+  "interactables/treasure_chest/treasure-open.wav": {
+    "mtime": 1784188271.477942,
+    "seen": 1793776080.645222,
+    "ast_hash": "e12ef4885abd4b6078ce4e4a9060b61f",
+    "semantic_hash": ""
+  },
+  "items/item_effects/hp-up.wav": {
+    "mtime": 1784188271.4790375,
+    "seen": 1793776080.645223,
+    "ast_hash": "35b8d658f5925441d5d4deff19da0abb",
+    "semantic_hash": ""
+  },
+  "items/item_pickup/hp-up.wav": {
+    "mtime": 1784188271.4795334,
+    "seen": 1793776080.645223,
+    "ast_hash": "35b8d658f5925441d5d4deff19da0abb",
+    "semantic_hash": ""
+  },
+  "player/Audio/SwordSwoosh.wav": {
+    "mtime": 1784188271.4860392,
+    "seen": 1793776080.6452239,
+    "ast_hash": "42ac842d31592d8d5db124141b726647",
+    "semantic_hash": ""
+  },
+  "player/Audio/hit_player.wav": {
+    "mtime": 1784188271.4861937,
+    "seen": 1793776080.645225,
+    "ast_hash": "e5a2e6b7fd8f9caa2e7ac471aaf58f3b",
+    "semantic_hash": ""
+  },
+  "tools/tests/test_combat_softlock_contracts.py": {
+    "mtime": 1793781198.487388,
+    "seen": 1793781211.456393,
+    "ast_hash": "c84736bf85ea16d2a624bf011cdbd6a4",
+    "semantic_hash": ""
+  }
+}

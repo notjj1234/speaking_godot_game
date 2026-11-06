@@ -120,11 +120,26 @@ func apply_combat_modifiers() -> void:
 func revive_for_horde() -> void:
 	if player == null:
 		return
-	player.invulnerable = false
-	if player.hit_box:
-		player.hit_box.monitoring = true
+	var word_tracker := get_node_or_null("/root/WordTracker")
+	if word_tracker:
+		word_tracker.speech_challenge_active = false
+	if player.has_method("cancel_invulnerability"):
+		player.cancel_invulnerability()
+	else:
+		player.invulnerable = false
+		if player.hit_box:
+			player.hit_box.monitoring = true
+	# Drop any leftover stun/attack state from the death blow.
+	if player.state_machine:
+		var idle := player.state_machine.get_node_or_null("Idle")
+		if idle:
+			player.state_machine.change_state(idle)
 	set_health(horde_max_hp(), horde_max_hp())
 	apply_combat_modifiers()
+	# Brief spawn grace so the killer's leftover overlap / first spawn cannot
+	# apply delayed contact damage the moment the run resumes.
+	if player.has_method("make_invulnerable"):
+		player.make_invulnerable(1.25)
 
 
 func convert_gems_to_points() -> void:

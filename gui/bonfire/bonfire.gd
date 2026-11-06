@@ -18,7 +18,9 @@ var _master_was_muted := false
 @onready var haste_button: Button = %HasteButton
 @onready var crit_button: Button = %CritButton
 @onready var equip_button: Button = %EquipButton
+@onready var resume_stage_label: Label = %ResumeStageLabel
 @onready var continue_button: Button = %ContinueButton
+@onready var journal_button: Button = %JournalButton
 @onready var title_button: Button = %TitleButton
 @onready var avatar_weapon: Sprite2D = %AvatarWeapon
 @onready var touch_vitality: TouchScreenButton = %TouchVitality
@@ -27,6 +29,7 @@ var _master_was_muted := false
 @onready var touch_crit: TouchScreenButton = %TouchCrit
 @onready var touch_equip: TouchScreenButton = %TouchEquip
 @onready var touch_continue: TouchScreenButton = %TouchContinue
+@onready var touch_journal: TouchScreenButton = %TouchJournal
 @onready var touch_title: TouchScreenButton = %TouchTitle
 
 
@@ -40,6 +43,7 @@ func _ready() -> void:
 	_bind(crit_button, touch_crit, _on_crit)
 	_bind(equip_button, touch_equip, _on_equip)
 	_bind(continue_button, touch_continue, _on_continue)
+	_bind(journal_button, touch_journal, _on_journal)
 	_bind(title_button, touch_title, _on_title)
 
 
@@ -59,6 +63,7 @@ func show_rest() -> void:
 	PlayerManager.convert_gems_to_points()
 	PlayerManager.set_health(PlayerManager.horde_max_hp(), PlayerManager.horde_max_hp())
 	_refresh()
+	_apply_resume_copy()
 	SaveManager.save_game()
 	continue_button.grab_focus()
 
@@ -72,6 +77,7 @@ func _process(_delta: float) -> void:
 	_align(crit_button, touch_crit)
 	_align(equip_button, touch_equip)
 	_align(continue_button, touch_continue)
+	_align(journal_button, touch_journal)
 	_align(title_button, touch_title)
 
 
@@ -157,8 +163,29 @@ func _on_equip() -> void:
 	_busy = false
 
 
+func _apply_resume_copy() -> void:
+	var resume := 0
+	var tracker := get_node_or_null("/root/ProgressTracker")
+	if tracker and tracker.has_method("horde_resume_stage"):
+		resume = int(tracker.horde_resume_stage())
+	if resume > 0:
+		resume_stage_label.text = "You reached Stage %d" % resume
+		continue_button.text = "Continue Stage %d" % resume
+	else:
+		resume_stage_label.text = ""
+		continue_button.text = "Continue"
+
+
 func _on_continue() -> void:
 	_leave(HORDE_PATH)
+
+
+func _on_journal() -> void:
+	if _busy or _navigating:
+		return
+	var tracker := get_node_or_null("/root/ProgressTracker")
+	if tracker and tracker.has_method("show_journal"):
+		tracker.show_journal()
 
 
 func _on_title() -> void:
