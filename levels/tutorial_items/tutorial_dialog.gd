@@ -4,7 +4,7 @@ class_name TutorialDialog extends Control
 
 const BANNER_WIDTH := 520.0
 const BANNER_HEIGHT := 84.0
-const TOP_MARGIN := 12.0
+const TOP_MARGIN := 96.0
 const INK := Color(0.12, 0.08, 0.04, 1)
 const BUBBLE := preload("res://gui/dialog_system/sprites/text-bubble.png")
 const BODY_FONT := preload("res://gui/fonts/Abaddon Light.ttf")
@@ -16,7 +16,9 @@ const BODY_FONT := preload("res://gui/fonts/Abaddon Light.ttf")
 var tutorial_messages := {
 	"01": [
 		"In this level, you will see some slimes.",
-		"Kill them and see what happens."
+		"Attack them until one falls...",
+		"When an enemy falls, the game pauses and shows a word.",
+		"Speak the word aloud to finish the enemy off — or type it as a backup.",
 	],
 	# Level 02 uses the HUD command panel + voice-only banner — no center
 	# bubble (it blocked the maze). Keep messages empty so the dialog stays hidden.
@@ -43,6 +45,7 @@ func _ready():
 	print("Current level name: ", current_level)
 	_apply_banner_style()
 	_apply_banner_layout()
+	mouse_filter = Control.MOUSE_FILTER_STOP
 	call_deferred("_apply_banner_layout")
 	_hide_duplicate_hud_chrome()
 
@@ -75,12 +78,13 @@ func _playground_messages() -> Array:
 			"Try walking around using the on-screen arrows.",
 			"Use the Attack button to destroy the bushes!",
 			"To pick up items, just run over them.",
+			"Nearby people are friendly. Walk up and tap Talk.",
 			"When you are ready, you can move on to the next level.",
 		]
 	return [
 		"Welcome to Loqui Quest's tutorial level!",
 		"Try walking around using WASD or the arrow keys.",
-		"Use comma or J to attack.",
+		"Press J to attack (the comma key works too).",
 		"To pick up items, just run over them.",
 		"Nearby people are friendly. Press E to talk.",
 		"When you are ready, you can move on to the next level.",
@@ -111,7 +115,7 @@ func _apply_banner_style() -> void:
 
 
 func _apply_banner_layout() -> void:
-	var top := 88.0 if current_level == "02" else TOP_MARGIN
+	var top := TOP_MARGIN
 	anchor_left = 0.5
 	anchor_right = 0.5
 	anchor_top = 0.0
@@ -183,16 +187,22 @@ func _on_timer_timeout():
 	next_message()
 
 func _input(event):
-	if PlayerManager.dialog_open:
+	if PlayerManager.dialog_open or not visible:
 		return
-	if not visible:
-		return
-	if event.is_action_pressed("ui_accept") and visible:
+	if event.is_action_pressed("ui_accept"):
 		if skip_requested:
-			# OK press after skip just hides the dialog
 			hide_message()
 		else:
 			next_message()
+		return
+	var tap_pos := Vector2.INF
+	if event is InputEventScreenTouch and event.pressed:
+		tap_pos = (event as InputEventScreenTouch).position
+	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		tap_pos = (event as InputEventMouseButton).position
+	if tap_pos != Vector2.INF and get_global_rect().has_point(tap_pos):
+		next_message()
+		get_viewport().set_input_as_handled()
 
 
 func show_custom_message(text: String, persist := false):

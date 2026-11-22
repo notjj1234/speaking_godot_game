@@ -777,6 +777,7 @@ position = Vector2(0, 1)
 texture = ExtResource("1_7y7re")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
+texture_filter = 1
 position = Vector2(0, -19)
 texture = ExtResource("2_7reob")
 hframes = 16

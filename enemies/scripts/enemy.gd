@@ -13,6 +13,22 @@ const DIR_4 = [Vector2.RIGHT, Vector2.DOWN, Vector2.LEFT, Vector2.UP]
 @export var move_speed: float = 30.0
 @export var bounce_delay: float = 0.3  # Pause before bouncing
 
+## When true, physics uses [member state_velocity] instead of
+## direction * move_speed. Chase states with non-cardinal movement
+## (orbit, retreat, charge) write state_velocity every tick. Default off
+## keeps Goblin/Slime/Beetle movement exactly as before.
+@export var uses_state_velocity: bool = false
+## Random 1-in-400 chaos pause mid-movement. Disable for enemies whose states
+## own their movement timing (a charge must not freeze mid-run).
+@export var chaos_pauses_enabled: bool = true
+## Slide collisions trigger the random-direction bounce. Disable for enemies
+## whose states handle wall contact themselves (e.g. charge -> stagger).
+@export var slide_bounce_enabled: bool = true
+
+## Desired velocity written by state scripts; consumed by physics only when
+## uses_state_velocity is true.
+var state_velocity: Vector2 = Vector2.ZERO
+
 @export_category("Split On Destroy")
 @export var splits_on_destroy: bool = false
 @export var split_count: int = 2
@@ -48,18 +64,28 @@ const MAX_CHALLENGE_TRIES := 3
 var challenge_tries_left: int = 0
 var max_hp: int = 0
 var _last_web_score: float = -1.0
+var _attempt_in_flight: bool = false
 
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var hit_box: HitBox = $HitBox
 @onready var state_machine: EnemyStateMachine = $EnemyStateMachine
 @onready var player_hud: PlayerHudUI = PlayerHud  # Reference to Player HUD
+var health_bar: EnemyHealthBar
 
 func _ready() -> void:
 	state_machine.Initialize(self)
+	add_to_group("enemy")
 	player = PlayerManager.player
 	hit_box.damaged.connect(_take_damage)
 	max_hp = hp
+	health_bar = EnemyHealthBar.new()
+	health_bar.position = Vector2(-20, -32)
+	health_bar.z_index = 10
+	# Constant on-screen size even for scaled enemies (e.g. split children).
+	health_bar.scale = Vector2.ONE / maxf(scale.x, 0.0001)
+	add_child(health_bar)
+	health_bar.setup(max_hp)
 
 # Start facing a random direction
 	var directions = [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]
@@ -85,20 +111,21 @@ func _physics_process(_delta):
 		return
 
 	# Optional chaos pause mid-movement
-	if randi() % 400 == 0:
+	if chaos_pauses_enabled and randi() % 400 == 0:
 		is_bouncing = true
 		velocity = Vector2.ZERO
 		await get_tree().create_timer(0.5).timeout
 		is_bouncing = false
 		return
 
-	velocity = direction * move_speed
+	velocity = state_velocity if uses_state_velocity else direction * move_speed
 	move_and_slide()
 
 	for i in get_slide_collision_count():
 		var collision = get_slide_collision(i)
 		if collision:
-			_handle_bounce()
+			if slide_bounce_enabled:
+				_handle_bounce()
 			break
 
 func _handle_bounce() -> void:
@@ -287,9 +314,13 @@ func _take_damage(hurt_box: HurtBox) -> void:
 		enemy_damaged.emit(hurt_box)
 		# Stay hittable so every swing can show a crit. The flinch still plays.
 		invulnerable = false
+		if health_bar:
+			health_bar.update_bar(hp)
 		return
 	hp -= dealt
 	DamageNumber.spawn(global_position + Vector2(randf_range(-8.0, 8.0), -22.0), dealt, crit, get_parent())
+	if health_bar:
+		health_bar.update_bar(hp)
 	if hp > 0:
 		enemy_damaged.emit(hurt_box)
 	else:
@@ -333,6 +364,9 @@ func _start_speech_challenge(target_sentence: String, hurt_box: HurtBox) -> void
 				stt.begin_challenge_listen()
 			else:
 				stt.listen()
+			# Record a mic clip for the phoneme forgiveness pass (scored only
+			# if the transcript misses).
+			_begin_web_scorer_capture()
 		return
 	if stt != null and stt.is_speech_available():
 		stt.listen()
@@ -341,6 +375,18 @@ func _start_speech_challenge(target_sentence: String, hurt_box: HurtBox) -> void
 		_show_typed_fallback()
 
 func _on_listening_completed(result: String) -> void:
+	# The scoring await below yields while STT signals stay connected; a second
+	# final transcript (or partial match) firing mid-await would double-count
+	# the attempt. Serialize attempts with this guard.
+	if _attempt_in_flight:
+		print("⚠️ Speech challenge: transcript ignored — an attempt is already in flight.")
+		return
+	_attempt_in_flight = true
+	await _on_listening_completed_impl(result)
+	_attempt_in_flight = false
+
+
+func _on_listening_completed_impl(result: String) -> void:
 	print("Listening completed: ", result)
 	if player_hud:
 		player_hud.update_live_transcript(result)
@@ -377,10 +423,6 @@ func _on_listening_completed(result: String) -> void:
 	if _is_web():
 		await _score_web_attempt(target_sentence)
 		sim = _last_web_score
-	if player_hud:
-		player_hud.show_feedback(false)
-	if _is_web():
-		_show_typed_fallback()
 	_register_challenge_attempt(sim)
 
 func _on_speech_result(success: bool, score: int = -1) -> void:
@@ -414,6 +456,10 @@ func _on_speech_result(success: bool, score: int = -1) -> void:
 			print("Error: WordTracker singleton not found! Cannot store the word.")
 		# EnemyStateDestroy handles queue_free after the destroy animation finishes
 
+		_flash_challenge_success()
+		# A short beat before unpausing so the flash and toast actually land —
+		# an instant resume makes kills feel like an interruption, not a reward.
+		await get_tree().create_timer(0.45, true, false, true).timeout
 		_resume_game_after_challenge()
 
 	else:
@@ -424,18 +470,25 @@ func _register_challenge_attempt(sim: float) -> void:
 	if sim >= 75.0:
 		_on_speech_result(true, int(roundi(sim)))
 		return
-	# Failed attempt → consume a try.
+	# Failed attempt → consume a try. The card stays up on every platform until
+	# the tries run out. Match rules are unchanged.
 	challenge_tries_left -= 1
 	print("Speech challenge failed. Tries left: ", challenge_tries_left, "/", MAX_CHALLENGE_TRIES)
+	if player_hud:
+		player_hud.set_challenge_tries(challenge_tries_left)
+		if challenge_tries_left > 0:
+			player_hud.show_feedback(false)
 	if challenge_tries_left > 0:
-		# Retry: web re-arms its listen loop here (typed fallback was already shown).
 		if _is_web():
-			var stt = _stt_manager()
-			if stt != null and stt.is_speech_available():
-				stt.listen()
-			return
-		# Keep the game paused until the retry feedback dismisses, then resume.
-		await _wait_feedback_and_resume()
+			_show_typed_fallback()
+		var stt = _stt_manager()
+		if stt != null and stt.is_speech_available():
+			stt.listen()
+			if _is_web():
+				# Fresh clip for the next attempt's forgiveness pass.
+				_begin_web_scorer_capture()
+		elif not _is_web():
+			_show_typed_fallback()
 		return
 	_host_challenge_fail()
 
@@ -443,12 +496,60 @@ func _register_challenge_attempt(sim: float) -> void:
 func _host_challenge_fail() -> void:
 	print("⚠️ Enemy restored to full HP. Speech challenge exhausted all tries (3/3).")
 	hp = max_hp
+	if health_bar:
+		health_bar.update_bar(hp)
 	challenge_hurt_box = null
 	challenge_tries_left = 0
 	_last_partial_match = ""
 	if player_hud:
-		player_hud.hide_speech_challenge()
+		player_hud.set_challenge_tries(0)
+		# Tell the player the runback cost — the heal is the punishment, so
+		# it must be visible, not just a line in the console.
+		player_hud.show_enemy_recovered()
 	await _wait_feedback_and_resume()
+
+
+func _flash_challenge_success() -> void:
+	if sprite == null:
+		return
+	sprite.modulate = Color(2.5, 2.5, 2.5)
+	var tween := sprite.create_tween()
+	tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tween.tween_property(sprite, "modulate", Color.WHITE, 0.4)
+
+
+func _web_scorer():
+	if not _is_web():
+		return null
+	var pm := get_node_or_null("/root/PronunciationManager")
+	if pm == null:
+		return null
+	return pm.get_scorer()
+
+
+func _begin_web_scorer_capture() -> void:
+	# Record a mic clip for the phoneme forgiveness pass. Only starts when the
+	# scorer is ready AND phoneme data exists for the target — otherwise the
+	# clip could never be scored and we'd hold the mic for nothing.
+	var scorer = _web_scorer()
+	if scorer == null or not scorer.is_available():
+		return
+	if player_hud == null:
+		return
+	var target := player_hud.target_sentence
+	if target.strip_edges().is_empty():
+		return
+	var pm := get_node_or_null("/root/PronunciationManager")
+	if pm == null or pm.phonemes_for(target).is_empty():
+		return
+	if not scorer.is_capturing():
+		scorer.begin_capture()
+
+
+func _abandon_web_scorer_capture() -> void:
+	var scorer = _web_scorer()
+	if scorer != null and scorer.is_capturing():
+		scorer.abandon_capture()
 
 
 func _score_web_attempt(target_sentence: String) -> void:
@@ -483,6 +584,7 @@ func _score_web_attempt(target_sentence: String) -> void:
 
 
 func _resume_game_after_challenge() -> void:
+	_abandon_web_scorer_capture()
 	if player_hud:
 		player_hud.hide_speech_challenge()
 	get_tree().paused = false
@@ -545,7 +647,7 @@ func _spawn_announce_name() -> String:
 	## Clean spoken label for spawn TTS. "other" stays silent.
 	var kind := _progress_kill_kind()
 	match kind:
-		"slime", "goblin", "beetle":
+		"slime", "goblin", "beetle", "orc", "skeleton", "bandit":
 			return kind
 		_:
 			return ""
@@ -577,6 +679,12 @@ func _progress_kill_kind() -> String:
 		return "goblin"
 	if "beetle" in n:
 		return "beetle"
+	if "orc" in n:
+		return "orc"
+	if "skeleton" in n:
+		return "skeleton"
+	if "bandit" in n:
+		return "bandit"
 	# Split children keep scene name; also check scene file path.
 	var path := scene_file_path.to_lower()
 	if "slime" in path:
@@ -585,6 +693,12 @@ func _progress_kill_kind() -> String:
 		return "goblin"
 	if "beetle" in path:
 		return "beetle"
+	if "orc" in path:
+		return "orc"
+	if "skeleton" in path:
+		return "skeleton"
+	if "bandit" in path:
+		return "bandit"
 	return "other"
 
 
@@ -651,6 +765,8 @@ func _on_stt_listening_stopped() -> void:
 
 
 func _on_partial_transcript(partial: String) -> void:
+	if _attempt_in_flight:
+		return
 	if player_hud:
 		player_hud.update_live_transcript(partial)
 

@@ -9,7 +9,7 @@ const BOSS_EVERY := 10
 
 
 static func spawn_total(stage: int) -> int:
-	return clampi(2 + stage, 3, 12)
+	return clampi(2 + stage + int((stage - 1) / 3), 3, 22)
 
 
 static func retry_quota(stage: int, short: bool) -> int:
@@ -19,12 +19,12 @@ static func retry_quota(stage: int, short: bool) -> int:
 	return maxi(3, int(ceil(float(full) / 2.0)))
 
 
-static func alive_cap() -> int:
-	return 6
+static func alive_cap(stage: int) -> int:
+	return clampi(5 + int(stage / 3), 6, 12)
 
 
 static func spawn_interval(stage: int) -> float:
-	return maxf(0.45, 1.25 - 0.04 * float(stage - 1))
+	return maxf(0.3, 1.25 - 0.05 * float(stage - 1))
 
 
 static func hp_multiplier(stage: int) -> float:
@@ -32,7 +32,11 @@ static func hp_multiplier(stage: int) -> float:
 
 
 static func speed_multiplier(stage: int) -> float:
-	return minf(1.35, 1.0 + 0.015 * float(stage - 1))
+	return minf(1.8, 1.0 + 0.04 * float(stage - 1))
+
+
+static func damage_multiplier(stage: int) -> float:
+	return minf(2.5, 1.0 + 0.08 * float(stage - 1))
 
 
 static func split_count_for(stage: int) -> int:
@@ -47,19 +51,38 @@ static func kind_for(stage: int, index: int) -> String:
 	if stage <= 4:
 		return "goblin" if index % 3 == 2 else "slime"
 	if stage <= 7:
-		match index % 3:
+		# Introduce orc alongside the original trio.
+		match index % 4:
 			0:
 				return "slime"
 			1:
 				return "goblin"
-			_:
+			2:
 				return "beetle"
-	# stage 8+
-	match index % 3:
-		0, 2:
-			return "goblin"
-		_:
+			_:
+				return "orc"
+	if stage <= 10:
+		match index % 4:
+			0:
+				return "goblin"
+			1:
+				return "beetle"
+			2:
+				return "orc"
+			_:
+				return "skeleton"
+	# stage 11+: full roster, beetle/orc/skeleton/bandit-heavy
+	match index % 5:
+		0:
 			return "beetle"
+		1:
+			return "orc"
+		2:
+			return "skeleton"
+		3:
+			return "bandit"
+		_:
+			return "goblin"
 
 
 static func is_boss_stage(_stage: int) -> bool:

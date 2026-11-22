@@ -14,16 +14,22 @@ signal hidden
 @onready var color_rect: ColorRect = $Control/ColorRect
 @onready var touch_save: TouchScreenButton = %Touch_Save
 @onready var touch_load: TouchScreenButton = %Touch_Load
+@onready var touch_main_menu: TouchScreenButton = %Touch_MainMenu
 @onready var journal_button: Button = %JournalButton
 @onready var touch_journal: TouchScreenButton = %Touch_Journal
+@onready var button_settings: Button = %Button_Settings
 
 const INK := Color(0.12, 0.08, 0.04, 1)
 const BODY_FONT := preload("res://gui/fonts/Abaddon Light.ttf")
 const TITLE_SCENE := "res://levels/title_screen/title_screen.tscn"
+const SETTINGS_SCENE := "res://gui/settings/settings.tscn"
 
 var _leaving_to_title: bool = false
+var _settings_node: SettingsNode = null
+var _load_confirm: ConfirmationDialog = null
 
 @onready var item_description: Label = %ItemDescription
+@onready var saved_note: Label = %SavedNote
 @onready var word_rows: VBoxContainer = %WordRows
 @onready var page_label: Label = %PageLabel
 @onready var prev_page_button: Button = %PrevPageButton
@@ -36,7 +42,6 @@ var _leaving_to_title: bool = false
 var is_paused: bool = false
 var current_page: int = 0
 var words_per_page: int = 5
-var _desktop_touch_preview: bool = false
 
 func _ready() -> void:
 	hide_pause_menu()
@@ -45,12 +50,16 @@ func _ready() -> void:
 	button_save.pressed.connect(_on_save_pressed)
 	button_load.pressed.connect(_on_load_pressed)
 	button_main_menu.pressed.connect(_on_main_menu_pressed)
+	if button_settings:
+		button_settings.pressed.connect(_on_settings_pressed)
 
 	# Connect touchscreen buttons for Save & Load (if they exist)
 	if touch_save:
 		touch_save.pressed.connect(_on_save_pressed)
 	if touch_load:
 		touch_load.pressed.connect(_on_load_pressed)
+	if touch_main_menu:
+		touch_main_menu.pressed.connect(_on_main_menu_pressed)
 	if journal_button:
 		journal_button.pressed.connect(_on_journal_pressed)
 	if touch_journal:
@@ -136,13 +145,15 @@ func show_pause_menu() -> void:
 	current_page = 0
 	_sync_music_controls()
 	update_word_list_display()
-	_add_desktop_touch_preview_button()
+	_align_menu_touch_twins()
 	_set_mobile_overlays_suppressed(true)
 
 func hide_pause_menu() -> void:
 	get_tree().paused = false
 	visible = false
 	is_paused = false
+	if saved_note:
+		saved_note.visible = false
 	hidden.emit()
 	_set_mobile_overlays_suppressed(false)
 
@@ -255,13 +266,26 @@ func _on_journal_pressed() -> void:
 func _process(_delta: float) -> void:
 	if not visible or not is_paused:
 		return
+	_align_menu_touch_twins()
+
+
+func _align_menu_touch_twins() -> void:
 	if not MobileSafeLayout.uses_touch_button_twins():
 		return
-	if journal_button and touch_journal:
-		var rect := journal_button.get_global_rect()
-		touch_journal.global_position = rect.position + rect.size / 2.0
-		if touch_journal.shape is RectangleShape2D:
-			(touch_journal.shape as RectangleShape2D).size = rect.size
+	_align_touch_twin(button_save, touch_save)
+	_align_touch_twin(button_load, touch_load)
+	_align_touch_twin(button_main_menu, touch_main_menu)
+	_align_touch_twin(journal_button, touch_journal)
+
+
+func _align_touch_twin(button: Control, touch: TouchScreenButton) -> void:
+	if button == null or touch == null or not button.visible:
+		return
+	var rect := button.get_global_rect()
+	touch.scale = Vector2.ONE
+	touch.global_position = rect.position + rect.size * 0.5
+	if touch.shape is RectangleShape2D:
+		(touch.shape as RectangleShape2D).size = rect.size
 
 
 func _on_save_pressed() -> void:
@@ -269,15 +293,58 @@ func _on_save_pressed() -> void:
 		return
 	print("[DEBUG] Save game triggered.")
 	SaveManager.save_game()
-	hide_pause_menu()
+	if saved_note:
+		saved_note.visible = true
+	await get_tree().create_timer(0.8, true).timeout
+	if is_paused:
+		hide_pause_menu()
 
 func _on_load_pressed() -> void:
 	if not is_paused:
 		return
+	if not SaveManager.has_save():
+		print("[DEBUG] Load pressed but no save exists.")
+		return
+	# Confirm first: unlike the title screen (which asks before loading), a
+	# mis-tap here would silently discard the current run.
+	if _load_confirm == null:
+		_load_confirm = ConfirmationDialog.new()
+		_load_confirm.title = "Load saved game?"
+		_load_confirm.dialog_text = "Progress since your last save will be lost."
+		_load_confirm.ok_button_text = "Load"
+		_load_confirm.process_mode = Node.PROCESS_MODE_ALWAYS
+		_load_confirm.confirmed.connect(_do_load_game)
+		add_child(_load_confirm)
+	_load_confirm.popup_centered()
+
+
+func _do_load_game() -> void:
 	print("[DEBUG] Load game triggered.")
 	SaveManager.load_game()
 	await LevelManager.level_load_started
 	hide_pause_menu()
+
+
+func _on_settings_pressed() -> void:
+	if not is_paused:
+		return
+	var settings := _ensure_settings()
+	if settings:
+		settings.show_settings()
+
+
+func _ensure_settings() -> SettingsNode:
+	if _settings_node == null:
+		var packed := load(SETTINGS_SCENE) as PackedScene
+		if packed == null:
+			print("❌ PauseMenu: settings scene missing at ", SETTINGS_SCENE)
+			return null
+		_settings_node = packed.instantiate() as SettingsNode
+		if _settings_node == null:
+			print("❌ PauseMenu: settings scene root is not a SettingsNode")
+			return null
+		add_child(_settings_node)
+	return _settings_node
 
 
 func _on_main_menu_pressed() -> void:
@@ -325,37 +392,6 @@ func _on_music_slider_changed(value: float) -> void:
 	if settings.music_muted and value > 0.0:
 		settings.set_music_muted(false)
 	_sync_music_controls()
-
-
-func _add_desktop_touch_preview_button() -> void:
-	# Temporary. Desktop browsers hide the D-pad. This shows it so placement can be checked.
-	var music_panel := get_node_or_null("%MusicPanel")
-	if music_panel == null or music_panel.get_node_or_null("DesktopTouchPreview") != null:
-		return
-	if MobileSafeLayout.wants_touch_ui():
-		return
-	var button := Button.new()
-	button.name = "DesktopTouchPreview"
-	button.text = "Show touch controls"
-	button.custom_minimum_size = Vector2(0, 36)
-	button.gui_input.connect(_on_desktop_preview_input.bind(button))
-	music_panel.add_child(button)
-
-
-func _on_desktop_preview_input(event: InputEvent, button: Button) -> void:
-	if not (event is InputEventScreenTouch and event.pressed):
-		return
-	get_viewport().set_input_as_handled()
-	_desktop_touch_preview = not _desktop_touch_preview
-	MobileSafeLayout.set_force_touch_ui(_desktop_touch_preview)
-	button.text = "Hide touch controls" if _desktop_touch_preview else "Show touch controls"
-	for node in get_tree().get_nodes_in_group("touch_controls"):
-		if node.has_method("apply_touch_ui_enabled"):
-			node.apply_touch_ui_enabled()
-	for node in get_tree().get_nodes_in_group("pause_button"):
-		if node.has_method("apply_touch_ui_enabled"):
-			node.apply_touch_ui_enabled()
-	print("🖥️ Desktop touch preview: ", "on" if _desktop_touch_preview else "off", ". Close the pause menu to see the buttons. Resize the window to switch portrait and landscape.")
 
 
 func _on_music_gui_input(event: InputEvent, action: Callable) -> void:

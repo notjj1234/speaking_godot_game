@@ -614,18 +614,21 @@ script = ExtResource("1_c5xc7")
 shape = SubResource("CircleShape2D_6ntk7")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
+texture_filter = 1
 position = Vector2(0, -21)
 texture = ExtResource("2_enqah")
 hframes = 16
 vframes = 3
 
 [node name="WeaponSprite" type="Sprite2D" parent="Sprite2D"]
+texture_filter = 1
 visible = false
 z_index = 1
 position = Vector2(10, 6)
 texture = ExtResource("15_sword")
 
 [node name="AttackEffectSprite" type="Sprite2D" parent="Sprite2D"]
+texture_filter = 1
 position = Vector2(0, 10)
 texture = ExtResource("3_s0ggu")
 hframes = 12
@@ -637,6 +640,7 @@ libraries = {
 autoplay = "no_attack"
 
 [node name="ShadowSprite" type="Sprite2D" parent="Sprite2D"]
+texture_filter = 1
 modulate = Color(0, 0, 0, 0.756863)
 show_behind_parent = true
 position = Vector2(0, 22)

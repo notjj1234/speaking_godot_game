@@ -42,6 +42,8 @@ var _movement_unlocked: bool = false
 var _voice_only_gesture_hooked: bool = false
 ## Guards against Button+TouchScreenButton both seeing one click (felt like hold-to-talk).
 var _mic_ui_syncing: bool = false
+var _interact_hidden_by_level: bool = false
+var _talk_requests: int = 0
 var _mic_toggle_cooldown_until_msec: int = 0
 
 func _ready() -> void:
@@ -242,12 +244,32 @@ func _disable_mic_button() -> void:
 	if has_node("Root/SafeArea/RightCluster/Touch_Mic"): $Root/SafeArea/RightCluster/Touch_Mic.visible = false
 	
 func _disable_interact_button() -> void:
-	if has_node("Root/SafeArea/RightCluster/Interact"): $Root/SafeArea/RightCluster/Interact.visible = false
-	if has_node("Root/SafeArea/RightCluster/Touch_Interact"): $Root/SafeArea/RightCluster/Touch_Interact.visible = false
+	_interact_hidden_by_level = true
+	_apply_interact_visibility()
+
+
+func set_talk_prompt(active: bool) -> void:
+	_talk_requests += 1 if active else -1
+	_talk_requests = maxi(_talk_requests, 0)
+	_apply_interact_visibility()
+
+
+func _apply_interact_visibility() -> void:
+	var talking := _talk_requests > 0 and not PlayerManager.dialog_open
+	var show := talking or not _interact_hidden_by_level
+	if interact_button:
+		interact_button.visible = show
+		if talking:
+			interact_button.text = "Talk"
+		elif show:
+			interact_button.text = "Interact"
+	if interact_touch_button:
+		interact_touch_button.visible = show
 
 
 func _disable_attack_button() -> void:
-	if has_node("Root/SafeArea/RightCluster/Attack"): $Root/SafeArea/RightCluster/Attack.visible = false
+	if has_node("Root/SafeArea/RightCluster/Attack"):
+		$Root/SafeArea/RightCluster/Attack.visible = false
 
 
 func set_struggle_unlock_count(count: int) -> void:
@@ -519,7 +541,9 @@ func begin_challenge_mic() -> void:
 	if mic_restart_timer:
 		mic_restart_timer.stop()
 	mic_enabled = true
-	_update_mic_ui()
+	# Keep the move-mic button on its pre-challenge label. The challenge card
+	# owns the listening status.
+	_update_mic_button_label(_mic_enabled_before_challenge or _voice_only_mode)
 
 
 func end_challenge_mic() -> void:
@@ -553,30 +577,38 @@ func _force_mic_restart() -> void:
 
 func _update_mic_ui() -> void:
 	print("Updating UI. Mic Enabled: ", mic_enabled)
-	if mic_button:
-		mic_button.text = "Mic On" if mic_enabled else "Mic Off"
-		_sync_mic_button_pressed(mic_enabled)
+	var show_on := mic_enabled
+	if _challenge_mic_active:
+		show_on = _mic_enabled_before_challenge or _voice_only_mode
+	_update_mic_button_label(show_on)
+	if _challenge_mic_active:
+		return
 	_sync_hud_mic_indicator()
 
 
+func _update_mic_button_label(show_on: bool) -> void:
+	if mic_button:
+		mic_button.text = "Mic On" if show_on else "Mic Off"
+		_sync_mic_button_pressed(show_on)
+
+
 func _on_mic_listening_started() -> void:
-	# Always update the button to reflect the listening state.
-	# The challenge path already manages its own visuals via mic_enabled,
-	# but the level UI should show what the provider is doing.
+	if _challenge_mic_active:
+		return
 	if mic_button:
 		mic_button.text = "Mic On"
-	# Sync the HUD dot only when not in a challenge (the challenge
-	# manages its own indicator during active challenges).
-	if not _challenge_mic_active and player_hud and player_hud.has_method("set_mic_state"):
+	if _voice_only_mode and player_hud and player_hud.has_method("set_voice_banner_message"):
+		player_hud.set_voice_banner_message("VOICE ONLY — keyboard disabled. Speak to move.")
+	if player_hud and player_hud.has_method("set_mic_state"):
 		player_hud.set_mic_state(true)
 
 
 func _on_mic_listening_stopped() -> void:
-	# Always update the button to reflect the listening stop.
+	if _challenge_mic_active:
+		_update_mic_button_label(_mic_enabled_before_challenge or _voice_only_mode)
+		return
 	if mic_button:
 		mic_button.text = "Mic Off"
-	# Sync the HUD dot regardless — it reflects mic_enabled which is the
-	# unified state (challenge sets it too, so this stays consistent).
 	_sync_hud_mic_indicator()
 
 
@@ -606,11 +638,20 @@ func _on_listening_completed(transcription: String) -> void:
 
 	var matched := false
 	var lower := transcription.to_lower()
+	# Match whole words only, so a word *containing* "stop" or "attack"
+	# inside another word never fires a command.
+	var tokens := Array(lower.split(" ", false))
 	# Prefer longer phrases ("stop please" before "stop").
 	var ordered: Array[String] = VOICE_COMMANDS.duplicate()
 	ordered.sort_custom(func(a: String, b: String) -> bool: return a.length() > b.length())
 	for command in ordered:
-		if lower.findn(command) != -1:
+		var cmd_tokens := Array(command.split(" ", false))
+		var found := true
+		for ct in cmd_tokens:
+			if not tokens.has(ct):
+				found = false
+				break
+		if found:
 			matched = true
 			await _execute_command(command)
 			break
@@ -631,12 +672,13 @@ func _on_mic_error(error_code: int, error_message: String) -> void:
 		return
 	print("Microphone error occurred: ", error_message, " (Code: ", error_code, ")")
 	if error_code == -1 and _voice_only_mode:
-		# Permission / start failure. Keep voice-only armed but re-hook a gesture
-		# so the next click can start recognition; do not soft-lock forever.
+		# Permission / start failure. Keep voice-only armed but tell the player
+		# the next tap retries. Do not leave the "keyboard disabled" line up.
 		print("⚠️ Voice-only mic start failed. Waiting for a click/tap to retry.")
 		_hook_voice_only_gesture_retry()
 		_set_voice_banner_listening(false)
-		# Keep mic_enabled true (armed). HUD shows On so the player knows to tap again.
+		if player_hud and player_hud.has_method("set_voice_banner_message"):
+			player_hud.set_voice_banner_message("Tap to try the mic.")
 		_update_mic_ui()
 		return
 	if error_code == 7:

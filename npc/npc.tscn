@@ -175,14 +175,14 @@ shape = SubResource("CircleShape2D_interact")
 
 [node name="PromptLabel" type="Label" parent="."]
 visible = false
-offset_left = -10.0
+offset_left = -28.0
 offset_top = -54.0
-offset_right = 10.0
+offset_right = 28.0
 offset_bottom = -36.0
 mouse_filter = 2
 theme_override_colors/font_color = Color(1, 1, 0.75, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 16
-text = "!"
+text = "Talk"
 horizontal_alignment = 1

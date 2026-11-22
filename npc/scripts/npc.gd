@@ -78,6 +78,7 @@ func _on_area_enter(_a: Area2D) -> void:
 	if not PlayerManager.interact_pressed.is_connected(player_interact):
 		PlayerManager.interact_pressed.connect(player_interact)
 	_set_prompt_visible(true)
+	_set_talk_button(true)
 
 
 func _on_area_exit(_a: Area2D) -> void:
@@ -85,6 +86,7 @@ func _on_area_exit(_a: Area2D) -> void:
 	if PlayerManager.interact_pressed.is_connected(player_interact):
 		PlayerManager.interact_pressed.disconnect(player_interact)
 	_set_prompt_visible(false)
+	_set_talk_button(false)
 
 
 func player_interact() -> void:
@@ -116,14 +118,23 @@ func _begin_talk() -> void:
 		update_direction(PlayerManager.player.global_position)
 	update_animation()
 	_set_prompt_visible(false)
+	_set_talk_button(false)
 
 
 func _end_talk() -> void:
 	do_behavior = true
 	do_behavior_enabled.emit()
 	_set_prompt_visible(_player_in_range)
+	if _player_in_range:
+		_set_talk_button(true)
 
 
 func _set_prompt_visible(show_prompt: bool) -> void:
 	if prompt_label:
 		prompt_label.visible = show_prompt and not PlayerManager.dialog_open
+
+
+func _set_talk_button(active: bool) -> void:
+	for node in get_tree().get_nodes_in_group("touch_controls"):
+		if node.has_method("set_talk_prompt"):
+			node.set_talk_prompt(active)

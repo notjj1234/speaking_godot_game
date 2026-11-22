@@ -13,6 +13,12 @@ const PANEL_BORDER := Color(0.86, 0.74, 0.32, 1)
 const DIM := Color(0.02, 0.08, 0.04, 0.45)
 const TEXT_LIGHT := Color(0.98, 0.96, 0.88, 1)
 
+# New UI matching title screen updated style (see title_screen.tscn StyleBoxFlat_primary_focus & StyleBoxFlat_secondary)
+const UI_BG_COLOR := Color(0.05, 0.14, 0.09, 1)
+const UI_ACCENT_COLOR := Color(0.16, 0.46, 0.24, 1)
+const UI_TEXT_COLOR := Color(0.98, 0.96, 0.88, 1)
+const UI_SUBTLE_COLOR := Color(0.96, 0.97, 0.9, 1)
+
 const ROWS_PER_PAGE := 5
 const BAR_SEGMENTS := 8
 const BAR_CELL := 8
@@ -20,7 +26,7 @@ const BAR_CELL := 8
 enum Tab { TODAY, PHRASES, BESTIARY }
 
 var _tab: Tab = Tab.TODAY
-var _phrases_today_only := true
+var _phrases_today_only := false
 var _phrase_page := 0
 
 var _dim: ColorRect
@@ -32,6 +38,7 @@ var _tab_bestiary: Button
 var _body: VBoxContainer
 var _back: Button
 var _touch_back: TouchScreenButton
+var _root: Control
 
 
 func _ready() -> void:
@@ -43,16 +50,40 @@ func _ready() -> void:
 
 func open() -> void:
 	_tab = Tab.TODAY
-	_phrases_today_only = true
+	_phrases_today_only = false
 	_phrase_page = 0
 	visible = true
 	_refresh()
+	# Layout may not be final this frame; align Back twin now and next frames.
+	_align_touch(_back, _touch_back)
+	call_deferred("_align_touch", _back, _touch_back)
 	if _back:
 		_back.grab_focus()
 
 
 func close() -> void:
+	if not visible:
+		return
 	visible = false
+	var vp := get_viewport()
+	if vp:
+		vp.gui_release_focus()
+	# Defer flush so a save error cannot interrupt teardown / twin restore.
+	call_deferred("_deferred_flush")
+
+
+func panel_global_rect() -> Rect2:
+	if _panel == null:
+		return Rect2()
+	return _panel.get_global_rect()
+
+
+func try_tap(pos: Vector2) -> bool:
+	# True if a journal button handled the tap.
+	return _try_press_button_at(pos)
+
+
+func _deferred_flush() -> void:
 	var tracker := get_node_or_null("/root/ProgressTracker")
 	if tracker and tracker.has_method("request_flush"):
 		tracker.request_flush()
@@ -63,6 +94,17 @@ func _input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("pause") or event.is_action_pressed("ui_cancel"):
 		close()
+		get_viewport().set_input_as_handled()
+		return
+	# Backup when gui_input does not fire (same Load-confirm pattern).
+	var tap_pos := _pointer_press_pos(event)
+	if tap_pos == Vector2.INF:
+		return
+	if _panel != null and not _panel.get_global_rect().has_point(tap_pos):
+		close()
+		get_viewport().set_input_as_handled()
+		return
+	if _try_press_button_at(tap_pos):
 		get_viewport().set_input_as_handled()
 
 
@@ -75,26 +117,27 @@ func _process(_delta: float) -> void:
 
 
 func _build() -> void:
-	var root := Control.new()
-	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	root.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(root)
+	_root = Control.new()
+	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_root.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_root)
 
 	_dim = ColorRect.new()
 	_dim.color = DIM
 	_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	root.add_child(_dim)
+	_dim.gui_input.connect(_on_dim_gui_input)
+	_root.add_child(_dim)
 
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(center)
+	_root.add_child(center)
 
 	_panel = PanelContainer.new()
 	_panel.custom_minimum_size = Vector2(560, 400)
 	var panel_style := StyleBoxFlat.new()
-	panel_style.bg_color = PANEL_FILL
+	panel_style.bg_color = UI_BG_COLOR
 	panel_style.border_color = PANEL_BORDER
 	panel_style.set_border_width_all(4)
 	panel_style.set_corner_radius_all(2)
@@ -149,7 +192,7 @@ func _build() -> void:
 	_touch_back.shape = shape
 	_touch_back.shape_visible = false
 	_touch_back.pressed.connect(close)
-	root.add_child(_touch_back)
+	_root.add_child(_touch_back)
 
 
 func _set_tab(tab: Tab) -> void:
@@ -194,9 +237,20 @@ func _fill_today() -> void:
 
 
 func _fill_phrases() -> void:
-	var switch := HBoxContainer.new()
-	switch.add_theme_constant_override("separation", 8)
-	switch.alignment = BoxContainer.ALIGNMENT_CENTER
+	var tracker := _tracker()
+	var map: Dictionary = tracker.phrases_map(_phrases_today_only) if tracker else {}
+	var keys: Array = map.keys()
+	keys.sort_custom(func(a, b):
+		var ca := int(map[a].get("count", 0)) if map[a] is Dictionary else 0
+		var cb := int(map[b].get("count", 0)) if map[b] is Dictionary else 0
+		if ca != cb:
+			return ca > cb
+		return str(a) < str(b)
+	)
+
+	var scope := HBoxContainer.new()
+	scope.alignment = BoxContainer.ALIGNMENT_CENTER
+	scope.add_theme_constant_override("separation", 8)
 	var today_btn := _make_pager_button("Today")
 	var all_btn := _make_pager_button("All")
 	today_btn.disabled = _phrases_today_only
@@ -211,20 +265,9 @@ func _fill_phrases() -> void:
 		_phrase_page = 0
 		_refresh()
 	)
-	switch.add_child(today_btn)
-	switch.add_child(all_btn)
-	_body.add_child(switch)
-
-	var tracker := _tracker()
-	var map: Dictionary = tracker.phrases_map(_phrases_today_only) if tracker else {}
-	var keys: Array = map.keys()
-	keys.sort_custom(func(a, b):
-		var ca := int(map[a].get("count", 0)) if map[a] is Dictionary else 0
-		var cb := int(map[b].get("count", 0)) if map[b] is Dictionary else 0
-		if ca != cb:
-			return ca > cb
-		return str(a) < str(b)
-	)
+	scope.add_child(today_btn)
+	scope.add_child(all_btn)
+	_body.add_child(scope)
 
 	var bubble := PanelContainer.new()
 	var style := StyleBoxTexture.new()
@@ -247,7 +290,7 @@ func _fill_phrases() -> void:
 
 	if keys.is_empty():
 		var empty := Label.new()
-		empty.text = "No words yet."
+		empty.text = "No words learned yet"
 		empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		empty.add_theme_font_override("font", LIGHT)
 		empty.add_theme_font_size_override("font_size", 14)
@@ -255,7 +298,7 @@ func _fill_phrases() -> void:
 		rows.add_child(empty)
 	else:
 		var start := _phrase_page * ROWS_PER_PAGE
-		var end := mini(start + ROWS_PER_PAGE, keys.size())
+		var end := min(start + ROWS_PER_PAGE, keys.size())
 		for i in range(start, end):
 			var phrase := str(keys[i])
 			var count := 0
@@ -268,33 +311,33 @@ func _fill_phrases() -> void:
 			row.add_theme_color_override("font_color", INK)
 			rows.add_child(row)
 
-	var page_count := 1
-	if keys.size() > 0:
-		page_count = int(ceil(float(keys.size()) / float(ROWS_PER_PAGE)))
-	var pager := HBoxContainer.new()
-	pager.alignment = BoxContainer.ALIGNMENT_CENTER
-	pager.add_theme_constant_override("separation", 8)
-	var prev := _make_pager_button("<")
-	var next := _make_pager_button(">")
-	var page_label := Label.new()
-	page_label.text = "%d / %d" % [_phrase_page + 1, page_count]
-	page_label.add_theme_font_override("font", LIGHT)
-	page_label.add_theme_font_size_override("font_size", 14)
-	page_label.add_theme_color_override("font_color", TEXT_LIGHT)
-	prev.disabled = _phrase_page <= 0 or keys.is_empty()
-	next.disabled = keys.is_empty() or (_phrase_page + 1) * ROWS_PER_PAGE >= keys.size()
-	prev.pressed.connect(func():
-		_phrase_page = maxi(_phrase_page - 1, 0)
-		_refresh()
-	)
-	next.pressed.connect(func():
-		_phrase_page += 1
-		_refresh()
-	)
-	pager.add_child(prev)
-	pager.add_child(page_label)
-	pager.add_child(next)
-	_body.add_child(pager)
+		var page_count := 1
+		if keys.size() > 0:
+			page_count = int(ceil(float(keys.size()) / float(ROWS_PER_PAGE)))
+		var pager := HBoxContainer.new()
+		pager.alignment = BoxContainer.ALIGNMENT_CENTER
+		pager.add_theme_constant_override("separation", 8)
+		var prev := _make_pager_button("<")
+		var next := _make_pager_button(">")
+		var page_label := Label.new()
+		page_label.text = "%d / %d" % [_phrase_page + 1, page_count]
+		page_label.add_theme_font_override("font", LIGHT)
+		page_label.add_theme_font_size_override("font_size", 14)
+		page_label.add_theme_color_override("font_color", TEXT_LIGHT)
+		prev.disabled = _phrase_page <= 0 or keys.is_empty()
+		next.disabled = keys.is_empty() or (_phrase_page + 1) * ROWS_PER_PAGE >= keys.size()
+		prev.pressed.connect(func():
+			_phrase_page = maxi(_phrase_page - 1, 0)
+			_refresh()
+		)
+		next.pressed.connect(func():
+			_phrase_page += 1
+			_refresh()
+		)
+		pager.add_child(prev)
+		pager.add_child(page_label)
+		pager.add_child(next)
+		_body.add_child(pager)
 
 
 func _fill_bestiary() -> void:
@@ -303,7 +346,7 @@ func _fill_bestiary() -> void:
 	var day: Dictionary = tracker.day_stats(tracker.today_key()) if tracker else {}
 	var life_kills: Dictionary = life.get("kills", {}) if life.get("kills") is Dictionary else {}
 	var day_kills: Dictionary = day.get("kills", {}) if day.get("kills") is Dictionary else {}
-	for kind in ["slime", "goblin", "beetle"]:
+	for kind in ["slime", "goblin", "beetle", "orc", "skeleton", "bandit"]:
 		var title := kind.capitalize()
 		_body.add_child(_line("%s lifetime" % title, str(int(life_kills.get(kind, 0)))))
 		_body.add_child(_line("%s today" % title, str(int(day_kills.get(kind, 0)))))
@@ -316,7 +359,7 @@ func _line(label: String, value: String) -> HBoxContainer:
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left.add_theme_font_override("font", LIGHT)
 	left.add_theme_font_size_override("font_size", 14)
-	left.add_theme_color_override("font_color", TEXT_LIGHT)
+	left.add_theme_color_override("font_color", UI_TEXT_COLOR)
 	var right := Label.new()
 	right.text = value
 	right.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -383,7 +426,7 @@ func _chart_row(title: String, days: Array, field: String) -> VBoxContainer:
 		day_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		day_label.add_theme_font_override("font", LIGHT)
 		day_label.add_theme_font_size_override("font_size", 10)
-		day_label.add_theme_color_override("font_color", TEXT_LIGHT)
+		day_label.add_theme_color_override("font_color", UI_TEXT_COLOR)
 		labels.add_child(day_label)
 
 	box.add_child(bars)
@@ -408,15 +451,37 @@ func _make_pager_button(text: String) -> Button:
 	normal.content_margin_right = 4
 	normal.content_margin_top = 2
 	normal.content_margin_bottom = 2
-	var off := normal.duplicate()
-	off.bg_color = Color(0.82, 0.78, 0.7, 0.6)
-	off.border_color = Color(0.35, 0.24, 0.12, 0.35)
 	btn.add_theme_stylebox_override("normal", normal)
 	btn.add_theme_stylebox_override("hover", normal)
 	btn.add_theme_stylebox_override("pressed", normal)
 	btn.add_theme_stylebox_override("focus", normal)
+	var off := normal.duplicate()
+	off.bg_color = Color(0.82, 0.78, 0.7, 0.6)
+	off.border_color = Color(0.35, 0.24, 0.12, 0.35)
 	btn.add_theme_stylebox_override("disabled", off)
+	# emulate_touch_from_mouse: Button.pressed does not fire; gui_input does.
+	btn.gui_input.connect(_on_button_gui_input.bind(btn))
 	return btn
+
+
+func _on_button_gui_input(event: InputEvent, button: Button) -> void:
+	if button == null or button.disabled:
+		return
+	if event is InputEventScreenTouch and event.pressed:
+		button.emit_signal("pressed")
+		button.accept_event()
+
+
+func _on_dim_gui_input(event: InputEvent) -> void:
+	if not visible:
+		return
+	var tap_pos := _pointer_press_pos(event)
+	if tap_pos == Vector2.INF:
+		return
+	if _panel != null and _panel.get_global_rect().has_point(tap_pos):
+		return
+	close()
+	_dim.accept_event()
 
 
 func _align_touch(button: Control, touch: TouchScreenButton) -> void:
@@ -426,3 +491,34 @@ func _align_touch(button: Control, touch: TouchScreenButton) -> void:
 	touch.global_position = rect.position + rect.size / 2.0
 	if touch.shape is RectangleShape2D:
 		(touch.shape as RectangleShape2D).size = rect.size
+
+
+func _pointer_press_pos(event: InputEvent) -> Vector2:
+	if event is InputEventScreenTouch and event.pressed:
+		return event.position
+	if event is InputEventMouseButton \
+			and event.pressed \
+			and event.button_index == MOUSE_BUTTON_LEFT:
+		return event.position
+	return Vector2.INF
+
+
+func _try_press_button_at(pos: Vector2) -> bool:
+	if _panel == null:
+		return false
+	var buttons: Array[Button] = []
+	_collect_buttons(_panel, buttons)
+	for btn in buttons:
+		if btn == null or not btn.visible or btn.disabled:
+			continue
+		if btn.get_global_rect().has_point(pos):
+			btn.emit_signal("pressed")
+			return true
+	return false
+
+
+func _collect_buttons(node: Node, out: Array[Button]) -> void:
+	if node is Button:
+		out.append(node as Button)
+	for child in node.get_children():
+		_collect_buttons(child, out)

@@ -117,6 +117,10 @@ func _take_damage(hurt_box: HurtBox) -> void:
 	else:
 		player_damaged.emit(hurt_box)
 		update_hp(99)
+		# Non-horde levels are practice: the full heal is a design rule, so
+		# surface it instead of letting the HP bar silently refill.
+		if player_hud != null and player_hud.has_method("show_practice_notice"):
+			player_hud.show_practice_notice()
 
 func update_hp(delta: int) -> void:
 	hp = clampi(hp + delta, 0, max_hp)

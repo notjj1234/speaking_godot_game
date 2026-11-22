@@ -147,3 +147,40 @@ func add_persistent_value(value: String) -> void:
 func check_persistent_value(value: String) -> bool:
 	var p = current_save.persistence as Array
 	return p.has(value)
+
+
+func reset_save() -> void:
+	# Wipe the save file and every piece of runtime progress it feeds.
+	if FileAccess.file_exists(SAVE_PATH + "save.sav"):
+		DirAccess.remove_absolute(SAVE_PATH + "save.sav")
+	current_save = {
+		scene_path = "",
+		player = {
+			hp = 1,
+			max_hp = 1,
+			pos_x = 0,
+			pos_y = 0
+		},
+		items = [],
+		persistence = [],
+		quests = [],
+		bonfire = {
+			"points": 0,
+			"vitality": 0,
+			"might": 0,
+			"haste": 0,
+			"crit": 0,
+			"sword_equipped": false
+		}
+	}
+	var tracker := get_node_or_null("/root/ProgressTracker")
+	if tracker and tracker.has_method("load_from_save"):
+		tracker.load_from_save({})
+	# Belt and braces: on some platforms (web/IndexedDB) remove reports OK but
+	# the file persists — write the fresh empty save so a reset survives reboot.
+	var wipe := FileAccess.open(SAVE_PATH + "save.sav", FileAccess.WRITE)
+	if wipe:
+		wipe.store_line(JSON.stringify(current_save))
+		wipe.close()
+	print("✅ SaveManager: save reset.")
+	game_saved.emit()

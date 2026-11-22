@@ -89,7 +89,7 @@ func streak() -> int:
 
 
 func recent_days(n: int) -> Array:
-	## Returns up to n date keys, oldest first, padded with empty trailing calendar days if needed.
+	# Returns up to n date keys, oldest first, padded with empty trailing calendar days if needed.
 	var result: Array = []
 	var today := today_key()
 	for i in range(n - 1, -1, -1):
@@ -147,12 +147,12 @@ func record_phrase(phrase: String) -> void:
 
 func record_kill(kind: String) -> void:
 	kind = kind.to_lower()
-	if kind not in ["slime", "goblin", "beetle", "other"]:
+	if kind not in ["slime", "goblin", "beetle", "orc", "skeleton", "bandit", "other"]:
 		kind = "other"
 	var life: Dictionary = _data["lifetime"]
 	var kills: Dictionary = life.get("kills", {})
 	if not (kills is Dictionary):
-		kills = {"slime": 0, "goblin": 0, "beetle": 0, "other": 0}
+		kills = {"slime": 0, "goblin": 0, "beetle": 0, "orc": 0, "skeleton": 0, "bandit": 0, "other": 0}
 	kills[kind] = int(kills.get(kind, 0)) + 1
 	life["kills"] = kills
 
@@ -161,7 +161,7 @@ func record_kill(kind: String) -> void:
 	var day_dict: Dictionary = _data["days"][day]
 	var day_kills: Dictionary = day_dict.get("kills", {})
 	if not (day_kills is Dictionary):
-		day_kills = {"slime": 0, "goblin": 0, "beetle": 0, "other": 0}
+		day_kills = {"slime": 0, "goblin": 0, "beetle": 0, "orc": 0, "skeleton": 0, "bandit": 0, "other": 0}
 	day_kills[kind] = int(day_kills.get(kind, 0)) + 1
 	day_dict["kills"] = day_kills
 	_trim_days()
@@ -189,7 +189,6 @@ func record_stage_reached(stage: int) -> void:
 	var day_dict: Dictionary = _data["days"][day]
 	day_dict["best_stage"] = maxi(int(day_dict.get("best_stage", 0)), stage)
 	_trim_days()
-	mark_dirty()
 
 
 func record_stage_cleared(stage: int) -> void:
@@ -205,22 +204,6 @@ func record_stage_cleared(stage: int) -> void:
 	_trim_days()
 	note_stage_cleared(stage)
 	mark_dirty()
-	request_flush()
-
-
-func record_horde_death(stage: int) -> void:
-	stage = maxi(stage, 1)
-	var run := _horde_run()
-	if int(run.get("stuck_stage", 0)) != stage:
-		run["stuck_stage"] = stage
-		run["deaths_on_stage"] = 1
-	else:
-		run["deaths_on_stage"] = int(run.get("deaths_on_stage", 0)) + 1
-	run["resume_stage"] = stage
-	run["short_retry"] = true
-	run["warmup"] = int(run["deaths_on_stage"]) >= 3
-	_data["horde_run"] = run
-	mark_dirty()
 
 
 func note_stage_cleared(stage: int) -> void:
@@ -233,6 +216,28 @@ func note_stage_cleared(stage: int) -> void:
 	run["short_retry"] = false
 	run["warmup"] = false
 	_data["horde_run"] = run
+
+
+func record_horde_death(stage: int) -> void:
+	# Called on an EndlessHorde defeat. Remembers the stage so the bonfire can
+	# offer "Continue Stage N", and arms the anti-frustration scaffolding the
+	# rest of the game already reads (horde_waves, HUD warm-up label).
+	stage = maxi(stage, 0)
+	if stage <= 0:
+		return
+	var run := _horde_run()
+	run["resume_stage"] = stage
+	if int(run.get("stuck_stage", 0)) == stage:
+		run["deaths_on_stage"] = int(run.get("deaths_on_stage", 0)) + 1
+	else:
+		run["stuck_stage"] = stage
+		run["deaths_on_stage"] = 1
+	var stuck := int(run.get("deaths_on_stage", 0)) >= 2
+	run["short_retry"] = stuck
+	run["warmup"] = stuck
+	_data["horde_run"] = run
+	mark_dirty()
+	request_flush()
 
 
 func horde_resume_stage() -> int:
@@ -272,11 +277,27 @@ func hide_journal() -> void:
 		_journal.close()
 	else:
 		_journal.visible = false
-	request_flush()
+		call_deferred("request_flush")
 
 
 func is_journal_open() -> bool:
 	return _journal != null and _journal.visible
+
+
+func journal_panel_rect() -> Rect2:
+	if _journal == null:
+		return Rect2()
+	if _journal.has_method("panel_global_rect"):
+		return _journal.panel_global_rect()
+	return Rect2()
+
+
+func journal_try_tap(pos: Vector2) -> bool:
+	if _journal == null or not _journal.visible:
+		return false
+	if _journal.has_method("try_tap"):
+		return bool(_journal.try_tap(pos))
+	return false
 
 
 # --- internals ---
@@ -317,15 +338,14 @@ func _horde_run() -> Dictionary:
 	if not (run is Dictionary):
 		run = _empty_horde_run()
 		_data["horde_run"] = run
-	else:
-		# Fill missing fields without dropping extras.
-		var merged := _merge_horde_run(run)
-		for key in run.keys():
-			if not merged.has(key):
-				merged[key] = run[key]
-		_data["horde_run"] = merged
-		run = merged
-	return run
+		return run
+	# Fill missing fields without dropping extras.
+	var merged := _merge_horde_run(run)
+	for key in run.keys():
+		if not merged.has(key):
+			merged[key] = run[key]
+	_data["horde_run"] = merged
+	return merged
 
 
 func _empty_lifetime() -> Dictionary:
@@ -335,7 +355,7 @@ func _empty_lifetime() -> Dictionary:
 		"best_stage": 0,
 		"words_spoken": 0,
 		"sentences_spoken": 0,
-		"kills": {"slime": 0, "goblin": 0, "beetle": 0, "other": 0},
+		"kills": {"slime": 0, "goblin": 0, "beetle": 0, "orc": 0, "skeleton": 0, "bandit": 0, "other": 0},
 		"collapsed_words": 0,
 		"collapsed_sentences": 0,
 	}
@@ -348,7 +368,7 @@ func _empty_day() -> Dictionary:
 		"best_stage": 0,
 		"words_spoken": 0,
 		"sentences_spoken": 0,
-		"kills": {"slime": 0, "goblin": 0, "beetle": 0, "other": 0},
+		"kills": {"slime": 0, "goblin": 0, "beetle": 0, "orc": 0, "skeleton": 0, "bandit": 0, "other": 0},
 		"phrases": {},
 	}
 
@@ -361,7 +381,7 @@ func _merge_lifetime(raw) -> Dictionary:
 		if raw.has(key):
 			base[key] = raw[key]
 	if not (base.get("kills") is Dictionary):
-		base["kills"] = {"slime": 0, "goblin": 0, "beetle": 0, "other": 0}
+		base["kills"] = {"slime": 0, "goblin": 0, "beetle": 0, "orc": 0, "skeleton": 0, "bandit": 0, "other": 0}
 	return base
 
 

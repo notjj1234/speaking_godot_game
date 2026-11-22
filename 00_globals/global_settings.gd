@@ -194,6 +194,12 @@ func reset_progress() -> void:
 	var word_tracker = get_node_or_null("/root/WordTracker")
 	if word_tracker and word_tracker.has_method("clear_word_list"):
 		word_tracker.clear_word_list()
+
+	# ProgressTracker too — without this the journal/streak data survives a
+	# "reset", which is exactly what the player asked to wipe.
+	var tracker = get_node_or_null("/root/ProgressTracker")
+	if tracker and tracker.has_method("load_from_save"):
+		tracker.load_from_save({})
 	
 	print("[SettingsManager] Progress reset")
 	settings_changed.emit()

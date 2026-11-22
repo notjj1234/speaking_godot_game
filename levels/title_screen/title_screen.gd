@@ -10,6 +10,8 @@ const SAVE_FILE_PATH := "user://save.sav"
 @onready var game_button: Button = $Control/CenterContainer/VBoxContainer/StartGame
 @onready var load_button: Button = $Control/CenterContainer/VBoxContainer/Load
 @onready var journal_button: Button = $Control/CenterContainer/VBoxContainer/Journal
+@onready var settings_button: Button = $Control/CenterContainer/VBoxContainer/Settings
+@onready var _settings_node: SettingsNode = null
 @onready var touch_tutorial_button: TouchScreenButton = $Control/TouchStartTutorial
 @onready var touch_game_button: TouchScreenButton = $Control/TouchStartGame
 @onready var touch_load_button: TouchScreenButton = $Control/TouchLoad
@@ -27,6 +29,7 @@ var _navigating: bool = false
 ## Continue? must not reopen it, so menu twins stay hidden until pointer-up.
 var _suppress_load_open: bool = false
 var _hold_menu_until_release: bool = false
+var _journal_was_open: bool = false
 
 
 func _ready() -> void:
@@ -46,6 +49,8 @@ func _ready() -> void:
 	game_button.pressed.connect(_on_game_pressed)
 	load_button.pressed.connect(_on_load_pressed)
 	journal_button.pressed.connect(_on_journal_pressed)
+	if settings_button:
+		settings_button.pressed.connect(_on_settings_pressed)
 	yes_button.pressed.connect(_on_load_yes_pressed)
 	no_button.pressed.connect(_on_load_no_pressed)
 	touch_tutorial_button.pressed.connect(_on_tutorial_pressed)
@@ -112,6 +117,7 @@ func _notification(what: int) -> void:
 
 
 func _process(_delta: float) -> void:
+	_sync_journal_overlay()
 	_align_menu_touch_buttons()
 
 
@@ -123,6 +129,24 @@ func _input(event: InputEvent) -> void:
 			if not _navigating and not load_confirm.visible:
 				_unlock_load()
 				_show_menu_twins()
+		return
+	# Journal overlay backup: Esc / outside tap / forward button taps.
+	if _is_journal_open():
+		if event.is_action_pressed("ui_cancel") or event.is_action_pressed("pause"):
+			_hide_journal()
+			get_viewport().set_input_as_handled()
+			return
+		var journal_tap := _pointer_press_pos(event)
+		if journal_tap != Vector2.INF:
+			var tracker := get_node_or_null("/root/ProgressTracker")
+			var panel := Rect2()
+			if tracker and tracker.has_method("journal_panel_rect"):
+				panel = tracker.journal_panel_rect()
+			if panel.size == Vector2.ZERO or not panel.has_point(journal_tap):
+				_hide_journal()
+			elif tracker and tracker.has_method("journal_try_tap"):
+				tracker.journal_try_tap(journal_tap)
+			get_viewport().set_input_as_handled()
 		return
 	if not load_confirm.visible or _navigating:
 		return
@@ -160,6 +184,11 @@ func _pointer_released(event: InputEvent) -> bool:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _is_journal_open():
+		if event.is_action_pressed("ui_cancel") or event.is_action_pressed("pause"):
+			_hide_journal()
+			get_viewport().set_input_as_handled()
+		return
 	if not load_confirm.visible:
 		return
 	if event.is_action_pressed("ui_cancel") or event.is_action_pressed("pause"):
@@ -167,12 +196,50 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+func _is_journal_open() -> bool:
+	var tracker := get_node_or_null("/root/ProgressTracker")
+	return tracker != null and tracker.has_method("is_journal_open") and bool(tracker.is_journal_open())
+
+
+func _hide_journal() -> void:
+	var tracker := get_node_or_null("/root/ProgressTracker")
+	if tracker and tracker.has_method("hide_journal"):
+		tracker.hide_journal()
+
+
+func _sync_journal_overlay() -> void:
+	var journal_open := _is_journal_open()
+	if journal_open and not _journal_was_open:
+		_park_menu_twins_for_journal()
+	elif not journal_open and _journal_was_open:
+		# Always restore twins after Journal closes so title never soft-locks.
+		if not _navigating and (load_confirm == null or not load_confirm.visible):
+			_hold_menu_until_release = false
+			_suppress_load_open = false
+			_unlock_load()
+			_show_menu_twins()
+			if tutorial_button:
+				tutorial_button.grab_focus()
+	_journal_was_open = journal_open
+
+
+func _park_menu_twins_for_journal() -> void:
+	touch_tutorial_button.visible = false
+	touch_game_button.visible = false
+	touch_load_button.visible = false
+	touch_journal_button.visible = false
+	touch_tutorial_button.position = Vector2(-4000, -4000)
+	touch_game_button.position = Vector2(-4000, -4000)
+	touch_load_button.position = Vector2(-4000, -4000)
+	touch_journal_button.position = Vector2(-4000, -4000)
+
+
 func _align_menu_touch_buttons() -> void:
 	if not MobileSafeLayout.uses_touch_button_twins():
 		return
 	# While Continue? is open, or until the dismissing click releases, do not
 	# move TouchLoad back onto Load — that same click would reopen the card.
-	if load_confirm.visible or _hold_menu_until_release:
+	if load_confirm.visible or _hold_menu_until_release or _is_journal_open():
 		return
 	_align_touch_button(tutorial_button, touch_tutorial_button)
 	_align_touch_button(game_button, touch_game_button)
@@ -190,7 +257,7 @@ func _align_touch_button(button: Control, touch: TouchScreenButton) -> void:
 
 
 func _on_tutorial_pressed() -> void:
-	if _navigating or load_confirm.visible:
+	if _navigating or load_confirm.visible or _is_journal_open():
 		return
 	_navigating = true
 	print("Starting Tutorial...")
@@ -204,7 +271,7 @@ func _on_tutorial_pressed() -> void:
 
 
 func _on_game_pressed() -> void:
-	if _navigating or load_confirm.visible:
+	if _navigating or load_confirm.visible or _is_journal_open():
 		return
 	_navigating = true
 	print("✅ Starting Endless Horde...")
@@ -215,7 +282,7 @@ func _on_game_pressed() -> void:
 
 
 func _on_load_pressed() -> void:
-	if load_button.disabled or _navigating or load_confirm.visible or _suppress_load_open or _hold_menu_until_release:
+	if load_button.disabled or _navigating or load_confirm.visible or _suppress_load_open or _hold_menu_until_release or _is_journal_open():
 		return
 	if not SaveManager.has_save():
 		return
@@ -390,11 +457,32 @@ func _read_save_dict() -> Dictionary:
 
 
 func _on_journal_pressed() -> void:
-	if _navigating or load_confirm.visible:
+	if _navigating or load_confirm.visible or _is_journal_open():
 		return
 	var tracker := get_node_or_null("/root/ProgressTracker")
-	if tracker and tracker.has_method("show_journal"):
-		tracker.show_journal()
+	if tracker == null or not tracker.has_method("show_journal"):
+		return
+	tracker.show_journal()
+	# Park only after a real open — avoids dead twins if open failed.
+	if _is_journal_open():
+		_park_menu_twins_for_journal()
+		_journal_was_open = true
+
+
+func _on_settings_pressed() -> void:
+	if _navigating or load_confirm.visible or _is_journal_open():
+		return
+	if _settings_node == null:
+		var packed := load("res://gui/settings/settings.tscn") as PackedScene
+		if packed == null:
+			print("❌ TitleScreen: settings scene missing")
+			return
+		_settings_node = packed.instantiate() as SettingsNode
+		if _settings_node == null:
+			print("❌ TitleScreen: settings scene root is not a SettingsNode")
+			return
+		add_child(_settings_node)
+	_settings_node.show_settings()
 
 
 func _prime_web_mic() -> void:

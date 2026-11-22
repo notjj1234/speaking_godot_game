@@ -14,6 +14,9 @@ const NORMAL_HP := 6
 const SLIME := preload("res://enemies/slime/slime.tscn")
 const GOBLIN := preload("res://enemies/goblin/goblin.tscn")
 const BEETLE := preload("res://enemies/beetle/beetle.tscn")
+const ORC := preload("res://enemies/orc/orc.tscn")
+const SKELETON := preload("res://enemies/skeleton/skeleton.tscn")
+const BANDIT := preload("res://enemies/bandit/bandit.tscn")
 const START_FONT := preload("res://gui/fonts/Abaddon Bold.ttf")
 
 var _stage := 0
@@ -81,7 +84,7 @@ func _process(delta: float) -> void:
 		_spawn_accum += delta
 		var interval := HordeCurve.spawn_interval(_stage)
 		while _spawned_count < _spawn_quota and _spawn_accum >= interval:
-			if _enemy_count() >= HordeCurve.alive_cap():
+			if _enemy_count() >= HordeCurve.alive_cap(_stage):
 				break
 			_spawn_accum -= interval
 			_spawn_one_enemy(_spawned_count)
@@ -343,6 +346,11 @@ func _spawn_one_enemy(index: int) -> void:
 	var mult := HordeCurve.hp_multiplier(_stage)
 	enemy.hp = maxi(1, roundi(float(base_hp) * mult))
 
+	# Scale outgoing damage (body contact + goblin's nested AttackHurtBox).
+	var damage_mult := HordeCurve.damage_multiplier(_stage)
+	for hb: HurtBox in enemy.find_children("*", "HurtBox"):
+		hb.damage = maxi(1, roundi(float(hb.damage) * damage_mult))
+
 	var splits := HordeCurve.split_count_for(_stage)
 	if kind == "beetle":
 		if splits <= 0:
@@ -384,6 +392,12 @@ func _scene_for_kind(kind: String) -> PackedScene:
 			return GOBLIN
 		"beetle":
 			return BEETLE
+		"orc":
+			return ORC
+		"skeleton":
+			return SKELETON
+		"bandit":
+			return BANDIT
 		_:
 			return SLIME
 

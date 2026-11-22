@@ -45,7 +45,7 @@ grow_horizontal = 2
 grow_vertical = 0
 theme_override_constants/separation = 12
 alignment = 0
-mouse_filter = 2
+mouse_filter = 0
 
 [node name="PortraitSlot" type="Control" parent="DialogUI/DialogBar"]
 clip_contents = true
@@ -91,3 +91,11 @@ bbcode_enabled = true
 text = ""
 fit_content = true
 scroll_active = false
+
+[node name="ContinueHint" type="Label" parent="DialogUI/DialogBar/ContentColumn"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.35, 0.24, 0.12, 1)
+theme_override_fonts/font = ExtResource("3_f7bgx")
+theme_override_font_sizes/font_size = 12
+text = "Tap or E"
+horizontal_alignment = 2

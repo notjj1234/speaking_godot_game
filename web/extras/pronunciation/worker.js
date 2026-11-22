@@ -184,14 +184,17 @@ async function score(audioBuffer, target) {
 }
 
 self.onmessage = async (event) => {
-	const { cmd, audio, target } = event.data || {};
+	const { cmd, audio, target, id } = event.data || {};
 	try {
 		if (cmd === 'load') {
 			await loadVocab();
 			self.postMessage(await loadModel());
 		} else if (cmd === 'score') {
 			const result = await score(audio, target ?? '');
-			self.postMessage(result);
+			// Tag with status + request id so the page facade can correlate the
+			// reply with its pending promise (plain {score,...} messages were
+			// never forwarded to the caller).
+			self.postMessage({ status: 'score', id, result });
 		} else {
 			log('⚠️', `Unknown command: ${cmd}`);
 		}
@@ -200,6 +203,6 @@ self.onmessage = async (event) => {
 		const err = String(e?.message || e);
 		log('⚠️', `${cmd ?? '?'} failed: ${err}`);
 		if (cmd === 'load') self.postMessage({ status: 'error', stage: 'load', error: err });
-		else if (cmd === 'score') self.postMessage({ score: 0, phones: '', ms: 0, stage: 'score', error: err });
+		else if (cmd === 'score') self.postMessage({ status: 'score-error', id, error: err });
 	}
 };

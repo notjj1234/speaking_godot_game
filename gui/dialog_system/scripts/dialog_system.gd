@@ -15,6 +15,7 @@ var _pending_portrait: Texture = null
 var _fit_token: int = 0
 
 @onready var name_label: Label = $DialogUI/DialogBar/ContentColumn/NameLabel
+@onready var dialog_bar: Control = $DialogUI/DialogBar
 @onready var content_column: Control = $DialogUI/DialogBar/ContentColumn
 @onready var text_panel: Control = $DialogUI/DialogBar/ContentColumn/PanelContainer
 @onready var portrait_slot: Control = $DialogUI/DialogBar/PortraitSlot
@@ -48,6 +49,9 @@ func show_dialog(speaker: String, portrait: Texture, lines: PackedStringArray, o
 	_on_finished = on_finished
 	is_open = true
 	PlayerManager.dialog_open = true
+	# Reading dialog shouldn't be a combat hazard: freeze enemies for the
+	# duration. Player movement is already gated by dialog_open.
+	_set_enemies_frozen(true)
 	visible = true
 	if name_label:
 		name_label.text = speaker
@@ -62,6 +66,7 @@ func close() -> void:
 		return
 	is_open = false
 	PlayerManager.dialog_open = false
+	_set_enemies_frozen(false)
 	visible = false
 	_stop_talk_anim()
 	_pending_portrait = null
@@ -71,6 +76,16 @@ func close() -> void:
 	_on_finished = Callable()
 	if callback.is_valid():
 		callback.call()
+
+
+func _set_enemies_frozen(frozen: bool) -> void:
+	for enemy in get_tree().get_nodes_in_group("enemy"):
+		if frozen:
+			# Remember the mode so close() can restore non-default setups.
+			enemy.set_meta("lq_prev_process_mode", enemy.process_mode)
+			enemy.process_mode = Node.PROCESS_MODE_DISABLED
+		else:
+			enemy.process_mode = int(enemy.get_meta("lq_prev_process_mode", Node.PROCESS_MODE_INHERIT))
 
 
 func _fit_portrait_to_textbox() -> void:
@@ -119,8 +134,9 @@ func _apply_portrait_size() -> void:
 	var frame_w: float = float(portrait.get_width()) / float(_portrait_hframes)
 	var frame_h: float = float(portrait.get_height())
 	if frame_w > 0.0 and frame_h > 0.0:
-		# Stretch independently so the sprite fills the slot with no side gaps.
-		portrait_sprite.scale = Vector2(target_h / frame_w, target_h / frame_h)
+		# One scale keeps the pixel portrait from stretching to fill the slot.
+		var fitted := minf(target_h / frame_w, target_h / frame_h)
+		portrait_sprite.scale = Vector2(fitted, fitted)
 	else:
 		portrait_sprite.scale = Vector2.ONE
 
@@ -173,5 +189,16 @@ func _input(event: InputEvent) -> void:
 	if Engine.is_editor_hint() or not is_open or not visible:
 		return
 	if event.is_action_pressed("ui_accept") or event.is_action_pressed("interact"):
+		_advance()
+		get_viewport().set_input_as_handled()
+		return
+	var tap_pos := Vector2.INF
+	if event is InputEventScreenTouch and event.pressed:
+		tap_pos = event.position
+	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		tap_pos = event.position
+	if tap_pos == Vector2.INF or dialog_bar == null:
+		return
+	if dialog_bar.get_global_rect().has_point(tap_pos):
 		_advance()
 		get_viewport().set_input_as_handled()

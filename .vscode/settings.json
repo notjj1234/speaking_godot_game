@@ -1,3 +1,16 @@
 {
-  "folder-color.pathColors": []
+  "folder-color.pathColors": [],
+  "java.configuration.runtimes": [
+    {
+      "name": "JavaSE-17",
+      "path": "/Users/JJ/.sdkman/candidates/java/17.0.9-tem",
+      "default": true
+    },
+    {
+      "name": "JavaSE-23",
+      "path": "/Users/JJ/.sdkman/candidates/java/23.0.1-tem"
+    }
+  ],
+  "java.import.gradle.java.home": "/Users/JJ/.sdkman/candidates/java/17.0.9-tem",
+  "java.configuration.updateBuildConfiguration": "automatic"
 }

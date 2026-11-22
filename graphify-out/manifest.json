@@ -18,9 +18,9 @@
     "semantic_hash": ""
   },
   ".vscode/settings.json": {
-    "mtime": 1788417287.2018223,
-    "seen": 1793776080.645159,
-    "ast_hash": "9a1a9b83d9750bfd58bdd4000d01628e",
+    "mtime": 1794553415.402423,
+    "seen": 1794553496.683955,
+    "ast_hash": "2bf745d62d2d209a912e2dc5547af4c9",
     "semantic_hash": ""
   },
   "addons/speech_to_text_android/android/build.gradle.kts": {
@@ -90,15 +90,15 @@
     "semantic_hash": ""
   },
   "sentence_data/phoneme_normalization.json": {
-    "mtime": 1793262513.2208307,
-    "seen": 1793776080.645168,
+    "mtime": 1794523219.9802349,
+    "seen": 1794553142.7743518,
     "ast_hash": "e7e52a66ea79af236fbf45050caa2e85",
     "semantic_hash": ""
   },
   "sentence_data/phonemes.json": {
-    "mtime": 1793262513.22072,
-    "seen": 1793776080.6451688,
-    "ast_hash": "93bf8a8ebd7cfd00ec05909d80d856c8",
+    "mtime": 1794523219.9800436,
+    "seen": 1794553142.7743528,
+    "ast_hash": "a257cbd9cd0c33d4421471629f4eff07",
     "semantic_hash": ""
   },
   "tools/gen_phonemes.py": {
@@ -168,15 +168,15 @@
     "semantic_hash": ""
   },
   "web/extras/pronunciation/window_lqpron.js": {
-    "mtime": 1793262791.1203122,
-    "seen": 1793776080.6451762,
-    "ast_hash": "e1d3143d4bea1293aef9d55790b485f7",
+    "mtime": 1794553067.8021705,
+    "seen": 1794553142.774364,
+    "ast_hash": "d29a4adc571c4c5a4e1b4cbc65a4c16b",
     "semantic_hash": ""
   },
   "web/extras/pronunciation/worker.js": {
-    "mtime": 1793343891.7267241,
-    "seen": 1793776080.6451771,
-    "ast_hash": "756b544b91adada5cc5d4bbce1f5811f",
+    "mtime": 1794523191.3811595,
+    "seen": 1794553142.774365,
+    "ast_hash": "71cd6f5a3e8f966239439b4d8ea9db99",
     "semantic_hash": ""
   },
   ".cursor/skills/prompt-master/SKILL.md": {
@@ -186,9 +186,9 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1788417971.1932356,
-    "seen": 1793776080.645178,
-    "ast_hash": "4fc7c264fb12939389f1b2503387b1c7",
+    "mtime": 1794523740.8103707,
+    "seen": 1794553142.774367,
+    "ast_hash": "3764ed286ae606e1dacf6f702447a4e5",
     "semantic_hash": ""
   },
   "README.md": {
@@ -615,6 +615,156 @@
     "mtime": 1793781198.487388,
     "seen": 1793781211.456393,
     "ast_hash": "c84736bf85ea16d2a624bf011cdbd6a4",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-11-13-design-audit.md": {
+    "mtime": 1794552564.8898842,
+    "seen": 1794553142.77437,
+    "ast_hash": "4ddaac6ca65489b88d2a98422de6e1d3",
+    "semantic_hash": ""
+  },
+  "tools/enemy_sprite_harden/paint_enemies.py": {
+    "mtime": 1794989260.7552943,
+    "seen": 1794989318.455764,
+    "ast_hash": "f744689c30685d03c2c5d13a66615f74",
+    "semantic_hash": ""
+  },
+  "tools/enemy_sprite_harden/PALETTE.md": {
+    "mtime": 1794988530.7655344,
+    "seen": 1794989318.4557838,
+    "ast_hash": "34ca2e2e0f7e1631d01d78912b567442",
+    "semantic_hash": ""
+  },
+  "enemies/bandit/bandit.png": {
+    "mtime": 1794989269.9894042,
+    "seen": 1794989318.455795,
+    "ast_hash": "b40587b129fb3131bec9b33726b6bdbf",
+    "semantic_hash": ""
+  },
+  "enemies/orc/orc.png": {
+    "mtime": 1794989268.9207768,
+    "seen": 1794989318.455797,
+    "ast_hash": "cfac083fa306f642c3e3545036f8e81c",
+    "semantic_hash": ""
+  },
+  "enemies/skeleton/skeleton.png": {
+    "mtime": 1794989270.9665442,
+    "seen": 1794989318.455798,
+    "ast_hash": "0a18b607d53ff4e8902b06534f8dc243",
+    "semantic_hash": ""
+  },
+  "tools/enemy_sprite_harden/refs/goblin_chase_down_0.png": {
+    "mtime": 1794988530.3451166,
+    "seen": 1794989318.455829,
+    "ast_hash": "adb92d61d64a6a825970938bd4231c93",
+    "semantic_hash": ""
+  },
+  "tools/enemy_sprite_harden/refs/goblin_chase_side_0.png": {
+    "mtime": 1794988530.3471293,
+    "seen": 1794989318.45583,
+    "ast_hash": "e491cd49cafc3b75dd85f71461884d25",
+    "semantic_hash": ""
+  },
+  "tools/enemy_sprite_harden/refs/goblin_sheet.png": {
+    "mtime": 1794988530.7651243,
+    "seen": 1794989318.455831,
+    "ast_hash": "1a52eb3b373a4fe01e20c6fca3f88c58",
+    "semantic_hash": ""
+  },
+  "tools/enemy_sprite_harden/refs/goblin_walk_down_0.png": {
+    "mtime": 1794988530.3363345,
+    "seen": 1794989318.455832,
+    "ast_hash": "adb92d61d64a6a825970938bd4231c93",
+    "semantic_hash": ""
+  },
+  "tools/enemy_sprite_harden/refs/goblin_walk_down_1.png": {
+    "mtime": 1794988530.338587,
+    "seen": 1794989318.455832,
+    "ast_hash": "93bca6dbe33ae137e2d2035608b38931",
+    "semantic_hash": ""
+  },
+  "tools/enemy_sprite_harden/refs/goblin_walk_side_0.png": {
+    "mtime": 1794988530.342935,
+    "seen": 1794989318.4558332,
+    "ast_hash": "e491cd49cafc3b75dd85f71461884d25",
+    "semantic_hash": ""
+  },
+  "tools/enemy_sprite_harden/refs/goblin_walk_up_0.png": {
+    "mtime": 1794988530.340849,
+    "seen": 1794989318.4558342,
+    "ast_hash": "dafa67555e52a186f0e02a29fea3f080",
+    "semantic_hash": ""
+  },
+  "tools/enemy_sprite_harden/work/bandit_sheet.png": {
+    "mtime": 1794989270.4617963,
+    "seen": 1794989318.4558349,
+    "ast_hash": "b40587b129fb3131bec9b33726b6bdbf",
+    "semantic_hash": ""
+  },
+  "tools/enemy_sprite_harden/work/bandit_sheet_ref.jpg": {
+    "mtime": 1794989179.4643292,
+    "seen": 1794989318.4558349,
+    "ast_hash": "1e7a3185df0053021d1b7cb321104b3b",
+    "semantic_hash": ""
+  },
+  "tools/enemy_sprite_harden/work/orc_sheet.png": {
+    "mtime": 1794989269.4583268,
+    "seen": 1794989318.4558358,
+    "ast_hash": "cfac083fa306f642c3e3545036f8e81c",
+    "semantic_hash": ""
+  },
+  "tools/enemy_sprite_harden/work/orc_sheet_ref.jpg": {
+    "mtime": 1794989179.4658287,
+    "seen": 1794989318.455837,
+    "ast_hash": "df0d62ea0089aa2bfb4dc40d1ecff4a8",
+    "semantic_hash": ""
+  },
+  "tools/enemy_sprite_harden/work/qa/bandit_full.png": {
+    "mtime": 1794989178.0085254,
+    "seen": 1794989318.455837,
+    "ast_hash": "9852db5e64f3db4a5ca2bd7f00c4ddfe",
+    "semantic_hash": ""
+  },
+  "tools/enemy_sprite_harden/work/qa/compare_f0_2x.png": {
+    "mtime": 1794989271.814129,
+    "seen": 1794989318.455838,
+    "ast_hash": "3d0a87efc967b148f8acffaa99431478",
+    "semantic_hash": ""
+  },
+  "tools/enemy_sprite_harden/work/qa/compare_f20_2x.png": {
+    "mtime": 1794989272.371647,
+    "seen": 1794989318.455839,
+    "ast_hash": "ae94a8edddd1820d0d8c29687f345e9d",
+    "semantic_hash": ""
+  },
+  "tools/enemy_sprite_harden/work/qa/compare_f8_2x.png": {
+    "mtime": 1794989272.0897126,
+    "seen": 1794989318.45584,
+    "ast_hash": "023acedc1c65fd4a004ad46d47439696",
+    "semantic_hash": ""
+  },
+  "tools/enemy_sprite_harden/work/qa/orc_full.png": {
+    "mtime": 1794989177.589825,
+    "seen": 1794989318.45584,
+    "ast_hash": "7c79db15c015b1461b098edefea1625d",
+    "semantic_hash": ""
+  },
+  "tools/enemy_sprite_harden/work/qa/skeleton_full.png": {
+    "mtime": 1794989178.4340296,
+    "seen": 1794989318.455841,
+    "ast_hash": "b0fdb40535daf2930b1e27c6fd03471e",
+    "semantic_hash": ""
+  },
+  "tools/enemy_sprite_harden/work/skeleton_sheet.png": {
+    "mtime": 1794989271.432746,
+    "seen": 1794989318.455842,
+    "ast_hash": "0a18b607d53ff4e8902b06534f8dc243",
+    "semantic_hash": ""
+  },
+  "tools/enemy_sprite_harden/work/skeleton_sheet_ref.jpg": {
+    "mtime": 1794989179.4670966,
+    "seen": 1794989318.455842,
+    "ast_hash": "4804502b6d623bc23ddc7228cd12046b",
     "semantic_hash": ""
   }
 }

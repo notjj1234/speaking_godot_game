@@ -110,6 +110,9 @@ size = Vector2(180, 36)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_touch"]
 size = Vector2(180, 36)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_difficulty"]
+size = Vector2(180, 36)
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_reset"]
 size = Vector2(180, 36)
 
@@ -163,11 +166,13 @@ grow_vertical = 2
 mouse_filter = 2
 
 [node name="Panel" type="PanelContainer" parent="Control/CenterContainer"]
-custom_minimum_size = Vector2(520, 400)
+unique_name_in_owner = true
+custom_minimum_size = Vector2(520, 440)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_window")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="Control/CenterContainer/Panel"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -364,6 +369,38 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
 text = "Auto"
 
+[node name="DifficultyRow" type="HBoxContainer" parent="Control/CenterContainer/Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DifficultyLabel" type="Label" parent="Control/CenterContainer/Panel/VBoxContainer/DifficultyRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.96, 0.97, 0.9, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.06, 0.03, 1)
+theme_override_constants/outline_size = 4
+theme_override_fonts/font = ExtResource("3_light")
+theme_override_font_sizes/font_size = 16
+text = "Speech Difficulty"
+
+[node name="DifficultyButton" type="Button" parent="Control/CenterContainer/Panel/VBoxContainer/DifficultyRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 36)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 0.95, 1)
+theme_override_colors/font_pressed_color = Color(0.95, 0.9, 0.7, 1)
+theme_override_colors/font_disabled_color = Color(0.55, 0.58, 0.5, 1)
+theme_override_fonts/font = ExtResource("2_bold")
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+text = "Normal"
+
 [node name="ResetRow" type="HBoxContainer" parent="Control/CenterContainer/Panel/VBoxContainer"]
 layout_mode = 2
 theme_override_constants/separation = 8
@@ -456,6 +493,12 @@ shape_visible = false
 unique_name_in_owner = true
 position = Vector2(400, 260)
 shape = SubResource("RectangleShape2D_touch")
+shape_visible = false
+
+[node name="TouchDifficulty" type="TouchScreenButton" parent="Control"]
+unique_name_in_owner = true
+position = Vector2(400, 300)
+shape = SubResource("RectangleShape2D_difficulty")
 shape_visible = false
 
 [node name="TouchReset" type="TouchScreenButton" parent="Control"]

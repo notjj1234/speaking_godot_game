@@ -65,7 +65,9 @@ func end_capture_and_score(target_phonemes: String, on_done: Callable) -> void:
 		return
 	_capture_state = "scoring"
 	_pending_on_done = on_done
-	var js_expr := "(function(){ var t = " + JSON.stringify(target_phonemes) + "; return window.LQPron.endCaptureAndScore(t, function(r){ window.LQPronScoreCb(r); }); })()"
+	# The facade calls window.LQPronScoreCb with the result itself; fire and
+	# forget — the reply arrives asynchronously via the registered callback.
+	var js_expr := "(function(){ var t = " + JSON.stringify(target_phonemes) + "; window.LQPron.endCaptureAndScore(t); return true; })()"
 	JavaScriptBridge.eval(js_expr, true)
 
 

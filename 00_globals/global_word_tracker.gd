@@ -355,7 +355,15 @@ func get_paginated_word_list(page: int, words_per_page: int) -> Array:
 	return result
 
 func get_device_id() -> String:
-	return OS.get_unique_id()
+	# Random per-install ID persisted locally. Never send OS.get_unique_id() —
+	# it is a stable hardware identifier we don't need for word analytics.
+	var cfg := ConfigFile.new()
+	if cfg.load("user://telemetry.cfg") == OK and cfg.has_section_key("telemetry", "install_id"):
+		return str(cfg.get_value("telemetry", "install_id"))
+	var id := "lq-%d-%d" % [int(Time.get_unix_time_from_system()), randi()]
+	cfg.set_value("telemetry", "install_id", id)
+	cfg.save("user://telemetry.cfg")
+	return id
 
 # ✅ Get the device name in a flexible way (fixed OS.execute parameters)
 func get_device_name() -> String:
