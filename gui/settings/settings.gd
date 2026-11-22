@@ -22,7 +22,7 @@ var _confirming_reset: bool = false
 @onready var reset_button: Button = %ResetButton
 @onready var close_button: Button = %CloseButton
 
-const LANGUAGES: Array[String] := ["en", "es", "fr", "de", "it", "pt", "ja", "ko", "zh"]
+const LANGUAGES := ["en", "es", "fr", "de", "it", "pt", "ja", "ko", "zh"]
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -177,7 +177,7 @@ func _on_language_pressed() -> void:
 	if not settings:
 		return
 	_language_index = (_language_index + 1) % LANGUAGES.size()
-	var new_lang := LANGUAGES[_language_index]
+	var new_lang: String = str(LANGUAGES[_language_index])
 	settings.set_stt_language(new_lang)
 	language_button.text = _language_name(new_lang)
 
