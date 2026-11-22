@@ -22,7 +22,7 @@ var _confirming_reset: bool = false
 @onready var reset_button: Button = %ResetButton
 @onready var close_button: Button = %CloseButton
 
-const LANGUAGES := ["en", "es", "fr", "de", "it", "pt", "ja", "ko", "zh"]
+const LANGUAGES: Array[String] := ["en", "es", "fr", "de", "it", "pt", "ja", "ko", "zh"]
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
