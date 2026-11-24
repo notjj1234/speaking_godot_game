@@ -44,6 +44,10 @@ func update_line(next_location: Vector2) -> void:
 
 
 func _update_wait_time_label() -> void:
-	if Engine.is_editor_hint():
-		$Sprite2D/Label2.text = "wait: " + str(snappedf(wait_time, 0.1)) + "s"
-	pass
+	if not Engine.is_editor_hint():
+		return
+	# The wait_time setter also runs while the scene is still loading, before
+	# Sprite2D/Label2 exists; _ready() calls this again once it does.
+	var label := get_node_or_null("Sprite2D/Label2") as Label
+	if label:
+		label.text = "wait: " + str(snappedf(wait_time, 0.1)) + "s"
