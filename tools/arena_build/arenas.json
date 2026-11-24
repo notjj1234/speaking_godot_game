@@ -1,0 +1,86 @@
+[
+  {
+    "name": "Meadow",
+    "motif": "winding dirt track crossing an open meadow, oaks and a boulder as cover",
+    "open_ratio": 0.7033,
+    "reachable": 1.0,
+    "open_cells": 211,
+    "blocked_cells": 89,
+    "obstacle_cells": 5,
+    "obstacles": 5,
+    "props": 14,
+    "solid_props": 5,
+    "tint": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "spawn": [
+      320.0,
+      240.0
+    ]
+  },
+  {
+    "name": "Stone Ruins",
+    "motif": "broken colonnade framing a paved plaza, a fallen pillar to the north",
+    "open_ratio": 0.6933,
+    "reachable": 1.0,
+    "open_cells": 208,
+    "blocked_cells": 92,
+    "obstacle_cells": 8,
+    "obstacles": 7,
+    "props": 25,
+    "solid_props": 7,
+    "tint": [
+      1.02,
+      0.88,
+      0.72
+    ],
+    "spawn": [
+      320.0,
+      240.0
+    ]
+  },
+  {
+    "name": "Ashen Camp",
+    "motif": "four tents around a trampled camp ground with a fire pit, supplies to the north",
+    "open_ratio": 0.6867,
+    "reachable": 1.0,
+    "open_cells": 206,
+    "blocked_cells": 94,
+    "obstacle_cells": 10,
+    "obstacles": 5,
+    "props": 15,
+    "solid_props": 6,
+    "tint": [
+      0.98,
+      0.66,
+      0.52
+    ],
+    "spawn": [
+      320.0,
+      240.0
+    ]
+  },
+  {
+    "name": "Frozen Hollow",
+    "motif": "wide snowfield with ice crystals and frosted pines in a staggered diagonal",
+    "open_ratio": 0.7,
+    "reachable": 1.0,
+    "open_cells": 210,
+    "blocked_cells": 90,
+    "obstacle_cells": 6,
+    "obstacles": 6,
+    "props": 20,
+    "solid_props": 6,
+    "tint": [
+      1.0,
+      1.12,
+      1.55
+    ],
+    "spawn": [
+      320.0,
+      240.0
+    ]
+  }
+]

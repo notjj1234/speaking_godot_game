@@ -95,6 +95,22 @@ static func idle_dps_per_sec() -> float:
 	return 0.0
 
 
+## Arenas: a new map every ARENA_STAGE_SPAN stages, cycling through ARENA_COUNT.
+## 1-20 -> 0, 21-40 -> 1, 41-60 -> 2, 61-80 -> 3, 81+ cycles. Practice (stage 0) -> 0.
+## Layout only: arenas never change the difficulty numbers above.
+const ARENA_STAGE_SPAN := 20
+const ARENA_COUNT := 4
+const ARENA_NAMES := ["Meadow", "Stone Ruins", "Ashen Camp", "Frozen Hollow"]
+
+
+static func arena_index_for(stage: int) -> int:
+	return int((maxi(stage, 1) - 1) / ARENA_STAGE_SPAN) % ARENA_COUNT
+
+
+static func arena_name_for(index: int) -> String:
+	return str(ARENA_NAMES[posmod(index, ARENA_COUNT)])
+
+
 static func band_for_stage(stage: int) -> int:
 	if stage <= 2:
 		return 0

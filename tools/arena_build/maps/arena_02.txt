@@ -1,0 +1,27 @@
+# Arena 2 — stages 21-40
+name: Stone Ruins
+motif: broken colonnade framing a paved plaza, a fallen pillar to the north
+tint: 1.02 0.88 0.72
+spawn: 320 240
+legend:
+C = column
+K = column_stump
+P = fallen_pillar
+r = rubble
+q = flagstones
+map:
+####################
+#..................#
+#..r..........r....#
+#...C....PP....C...#
+#..................#
+#......q.qq.q......#
+#......q::::q......#
+#...C...::::...C...#
+#......q::::q......#
+#......q.qq.q..r...#
+#...C..........K...#
+#..r.....r.....r...#
+#..................#
+####################
+####################

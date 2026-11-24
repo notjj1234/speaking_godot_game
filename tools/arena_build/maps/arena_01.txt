@@ -1,0 +1,30 @@
+# Arena 1 — stages 1-20 (and practice)
+name: Meadow
+motif: winding dirt track crossing an open meadow, oaks and a boulder as cover
+tint: 1.00 1.00 1.00
+spawn: 320 240
+# legend: char = prop [on_dirt]      ('#' wall, '.' grass, ':' dirt are built in)
+legend:
+O = oak
+S = stump
+B = mossy_boulder
+f = flowers
+g = tall_grass
+m = mushrooms
+u = bush
+map:
+####################
+#..................#
+#..f.........f.....#
+#...g.O.........u..#
+#...O..........B...#
+#............:::::.#
+#.......::::::::::.#
+#.......:::::......#
+#::::::::::....f...#
+#:::::::.......g...#
+#...S..........O...#
+#..m.........f..u..#
+#..................#
+####################
+####################

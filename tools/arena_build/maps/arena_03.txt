@@ -1,0 +1,28 @@
+# Arena 3 — stages 41-60
+name: Ashen Camp
+motif: four tents around a trampled camp ground with a fire pit, supplies to the north
+tint: 0.98 0.66 0.52
+spawn: 320 240
+legend:
+T = tent
+R = barrel
+X = crates
+F = campfire on_dirt
+z = scorch
+n = banner
+map:
+####################
+#..................#
+#..z...........z...#
+#.....n..RX..n.....#
+#..TT..........TT..#
+#......::F:::......#
+#.z....::::::......#
+#......::::::......#
+#......::::::...z..#
+#..TT..::::::..TT..#
+#..................#
+#..z..........n....#
+#..................#
+####################
+####################

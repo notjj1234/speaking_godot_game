@@ -1,0 +1,241 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://levels/endless_horde/arena.gd" id="1_arena"]
+[ext_resource type="PackedScene" uid="uid://diwmvkgtca114" path="res://tile_maps/grass-01.tscn" id="2_ground"]
+[ext_resource type="Texture2D" uid="uid://bpa5gsclvkekd" path="res://props/Sprites/Props.png" id="3_props"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_w1"]
+size = Vector2(28, 24)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_w2"]
+size = Vector2(60, 24)
+
+[node name="Arena" type="Node2D"]
+script = ExtResource("1_arena")
+display_name = "Stone Ruins"
+ground_tint = Color(1.02, 0.88, 0.72, 1)
+metadata/generated_from = "tools/arena_build/maps/arena_02.txt (build_arenas.py) - edit the map, not this file"
+
+[node name="Ground" parent="." instance=ExtResource("2_ground")]
+modulate = Color(1.02, 0.88, 0.72, 1)
+tile_map_data = PackedByteArray("AAAAAAAAAAAKAAQAAAABAAAAAAAMAAQAAAACAAAAAAANAAQAAAADAAAAAAALAAQAAAAEAAAAAAAMAAQAAAAFAAAAAAANAAQAAAAGAAAAAAALAAQAAAAHAAAAAAAMAAQAAAAIAAAAAAANAAQAAAAJAAAAAAALAAQAAAAKAAAAAAAMAAQAAAALAAAAAAANAAQAAAAMAAAAAAALAAQAAAANAAAAAAAMAAQAAAAOAAAAAAANAAQAAAAPAAAAAAALAAQAAAAQAAAAAAAMAAQAAAARAAAAAAANAAQAAAASAAAAAAALAAQAAAATAAAAAAAOAAQAAAAAAAEAAAAKAAUAAAABAAEAAAAAAAIAAAACAAEAAAACAAEAAAADAAEAAAAAAAAAAAAEAAEAAAAAAAEAAAAFAAEAAAACAAIAAAAGAAEAAAADAAIAAAAHAAEAAAADAAMAAAAIAAEAAAACAAEAAAAJAAEAAAABAAIAAAAKAAEAAAABAAMAAAALAAEAAAACAAEAAAAMAAEAAAAAAAMAAAANAAEAAAAAAAAAAAAOAAEAAAAAAAEAAAAPAAEAAAACAAIAAAAQAAEAAAACAAMAAAARAAEAAAACAAEAAAASAAEAAAADAAAAAAATAAEAAAAOAAUAAAAAAAIAAAAKAAUAAAABAAIAAAAAAAMAAAACAAIAAAAAAAIAAAADAAIAAAACAAIAAAAEAAIAAAACAAAAAAAFAAIAAAAAAAEAAAAGAAIAAAABAAIAAAAHAAIAAAADAAIAAAAIAAIAAAADAAAAAAAJAAIAAAADAAEAAAAKAAIAAAABAAAAAAALAAIAAAACAAMAAAAMAAIAAAAAAAIAAAANAAIAAAACAAAAAAAOAAIAAAAAAAEAAAAPAAIAAAACAAMAAAAQAAIAAAAAAAAAAAARAAIAAAADAAAAAAASAAIAAAADAAEAAAATAAIAAAAOAAUAAAAAAAMAAAAKAAUAAAABAAMAAAACAAMAAAACAAMAAAACAAIAAAADAAMAAAACAAAAAAAEAAMAAAAAAAAAAAAFAAMAAAAAAAEAAAAGAAMAAAABAAIAAAAHAAMAAAACAAEAAAAIAAMAAAACAAEAAAAJAAMAAAADAAAAAAAKAAMAAAADAAMAAAALAAMAAAACAAIAAAAMAAMAAAACAAIAAAANAAMAAAAAAAEAAAAOAAMAAAACAAMAAAAPAAMAAAAAAAMAAAAQAAMAAAAAAAAAAAARAAMAAAADAAAAAAASAAMAAAABAAIAAAATAAMAAAAOAAUAAAAAAAQAAAAKAAUAAAABAAQAAAACAAIAAAACAAQAAAAAAAMAAAADAAQAAAACAAIAAAAEAAQAAAAAAAMAAAAFAAQAAAACAAMAAAAGAAQAAAADAAEAAAAHAAQAAAABAAIAAAAIAAQAAAACAAEAAAAJAAQAAAABAAIAAAAKAAQAAAADAAIAAAALAAQAAAACAAIAAAAMAAQAAAACAAMAAAANAAQAAAAAAAAAAAAOAAQAAAACAAMAAAAPAAQAAAAAAAAAAAAQAAQAAAACAAAAAAARAAQAAAADAAIAAAASAAQAAAABAAMAAAATAAQAAAAOAAUAAAAAAAUAAAAKAAUAAAABAAUAAAAAAAIAAAACAAUAAAACAAMAAAADAAUAAAAAAAEAAAAEAAUAAAACAAIAAAAFAAUAAAAAAAAAAAAGAAUAAAADAAAAAAAHAAUAAAACAAEAAAAIAAUAAAADAAMAAAAJAAUAAAADAAEAAAAKAAUAAAABAAMAAAALAAUAAAAAAAIAAAAMAAUAAAAAAAMAAAANAAUAAAACAAAAAAAOAAUAAAACAAIAAAAPAAUAAAACAAMAAAAQAAUAAAAAAAEAAAARAAUAAAABAAIAAAASAAUAAAADAAMAAAATAAUAAAAOAAUAAAAAAAYAAAAKAAUAAAABAAYAAAAAAAAAAAACAAYAAAACAAIAAAADAAYAAAACAAMAAAAEAAYAAAAAAAIAAAAFAAYAAAAAAAIAAAAGAAYAAAADAAEAAAAHAAYAAAADAAEAAAAIAAYAAAAMAAAAAAAJAAYAAAAOAAAAAAAKAAYAAAAOAAAAAAALAAYAAAAPAAAAAAAMAAYAAAACAAEAAAANAAYAAAAAAAEAAAAOAAYAAAACAAIAAAAPAAYAAAACAAEAAAAQAAYAAAACAAAAAAARAAYAAAABAAAAAAASAAYAAAACAAEAAAATAAYAAAAOAAUAAAAAAAcAAAAKAAUAAAABAAcAAAAAAAAAAAACAAcAAAAAAAMAAAADAAcAAAAAAAAAAAAEAAcAAAAAAAMAAAAFAAcAAAAAAAEAAAAGAAcAAAABAAIAAAAHAAcAAAABAAAAAAAIAAcAAAAMAAEAAAAJAAcAAAANAAIAAAAKAAcAAAANAAIAAAALAAcAAAAPAAIAAAAMAAcAAAAAAAMAAAANAAcAAAAAAAIAAAAOAAcAAAAAAAMAAAAPAAcAAAAAAAIAAAAQAAcAAAACAAEAAAARAAcAAAADAAAAAAASAAcAAAABAAMAAAATAAcAAAAOAAUAAAAAAAgAAAAKAAUAAAABAAgAAAACAAEAAAACAAgAAAACAAMAAAADAAgAAAAAAAAAAAAEAAgAAAAAAAAAAAAFAAgAAAACAAAAAAAGAAgAAAABAAAAAAAHAAgAAAADAAAAAAAIAAgAAAAMAAMAAAAJAAgAAAANAAMAAAAKAAgAAAANAAMAAAALAAgAAAAPAAMAAAAMAAgAAAAAAAEAAAANAAgAAAACAAAAAAAOAAgAAAAAAAEAAAAPAAgAAAAAAAEAAAAQAAgAAAAAAAIAAAARAAgAAAACAAEAAAASAAgAAAABAAIAAAATAAgAAAAOAAUAAAAAAAkAAAAKAAUAAAABAAkAAAACAAMAAAACAAkAAAAAAAAAAAADAAkAAAAAAAMAAAAEAAkAAAACAAMAAAAFAAkAAAACAAEAAAAGAAkAAAADAAMAAAAHAAkAAAADAAEAAAAIAAkAAAABAAIAAAAJAAkAAAADAAAAAAAKAAkAAAADAAEAAAALAAkAAAACAAAAAAAMAAkAAAACAAAAAAANAAkAAAAAAAEAAAAOAAkAAAAAAAAAAAAPAAkAAAACAAAAAAAQAAkAAAACAAIAAAARAAkAAAADAAAAAAASAAkAAAADAAIAAAATAAkAAAAOAAUAAAAAAAoAAAAKAAUAAAABAAoAAAACAAEAAAACAAoAAAAAAAMAAAADAAoAAAAAAAMAAAAEAAoAAAACAAAAAAAFAAoAAAAAAAIAAAAGAAoAAAADAAEAAAAHAAoAAAADAAIAAAAIAAoAAAABAAAAAAAJAAoAAAACAAEAAAAKAAoAAAADAAIAAAALAAoAAAACAAEAAAAMAAoAAAACAAMAAAANAAoAAAAAAAIAAAAOAAoAAAAAAAIAAAAPAAoAAAACAAEAAAAQAAoAAAACAAEAAAARAAoAAAABAAAAAAASAAoAAAADAAEAAAATAAoAAAAOAAUAAAAAAAsAAAAKAAUAAAABAAsAAAAAAAEAAAACAAsAAAACAAMAAAADAAsAAAAAAAEAAAAEAAsAAAAAAAAAAAAFAAsAAAAAAAIAAAAGAAsAAAADAAEAAAAHAAsAAAABAAMAAAAIAAsAAAABAAIAAAAJAAsAAAACAAEAAAAKAAsAAAABAAIAAAALAAsAAAAAAAEAAAAMAAsAAAAAAAAAAAANAAsAAAACAAIAAAAOAAsAAAAAAAAAAAAPAAsAAAAAAAMAAAAQAAsAAAACAAAAAAARAAsAAAABAAAAAAASAAsAAAABAAIAAAATAAsAAAAOAAUAAAAAAAwAAAAKAAUAAAABAAwAAAAAAAAAAAACAAwAAAAAAAAAAAADAAwAAAAAAAEAAAAEAAwAAAAAAAEAAAAFAAwAAAACAAIAAAAGAAwAAAADAAIAAAAHAAwAAAADAAMAAAAIAAwAAAADAAMAAAAJAAwAAAADAAAAAAAKAAwAAAADAAAAAAALAAwAAAAAAAEAAAAMAAwAAAAAAAEAAAANAAwAAAAAAAEAAAAOAAwAAAACAAIAAAAPAAwAAAACAAIAAAAQAAwAAAACAAMAAAARAAwAAAADAAMAAAASAAwAAAADAAAAAAATAAwAAAAOAAUAAAAAAA0AAAAKAAYAAAABAA0AAAAMAAYAAAACAA0AAAANAAYAAAADAA0AAAALAAYAAAAEAA0AAAAMAAYAAAAFAA0AAAANAAYAAAAGAA0AAAALAAYAAAAHAA0AAAAMAAYAAAAIAA0AAAANAAYAAAAJAA0AAAALAAYAAAAKAA0AAAAMAAYAAAALAA0AAAANAAYAAAAMAA0AAAALAAYAAAANAA0AAAAMAAYAAAAOAA0AAAANAAYAAAAPAA0AAAALAAYAAAAQAA0AAAAMAAYAAAARAA0AAAANAAYAAAASAA0AAAALAAYAAAATAA0AAAAOAAYAAAAAAA4AAAAKAAcAAAABAA4AAAAMAAcAAAACAA4AAAANAAcAAAADAA4AAAALAAcAAAAEAA4AAAAMAAcAAAAFAA4AAAANAAcAAAAGAA4AAAALAAcAAAAHAA4AAAAMAAcAAAAIAA4AAAANAAcAAAAJAA4AAAALAAcAAAAKAA4AAAAMAAcAAAALAA4AAAANAAcAAAAMAA4AAAALAAcAAAANAA4AAAAMAAcAAAAOAA4AAAANAAcAAAAPAA4AAAALAAcAAAAQAA4AAAAMAAcAAAARAA4AAAANAAcAAAASAA4AAAALAAcAAAATAA4AAAAOAAcAAAA=")
+
+[node name="Blockers" type="StaticBody2D" parent="."]
+collision_layer = 16
+collision_mask = 0
+
+[node name="column_04_03" type="CollisionShape2D" parent="Blockers"]
+position = Vector2(144, 114)
+shape = SubResource("RectangleShape2D_w1")
+
+[node name="fallen_pillar_09_03" type="CollisionShape2D" parent="Blockers"]
+position = Vector2(320, 114)
+shape = SubResource("RectangleShape2D_w2")
+
+[node name="column_15_03" type="CollisionShape2D" parent="Blockers"]
+position = Vector2(496, 114)
+shape = SubResource("RectangleShape2D_w1")
+
+[node name="column_04_07" type="CollisionShape2D" parent="Blockers"]
+position = Vector2(144, 242)
+shape = SubResource("RectangleShape2D_w1")
+
+[node name="column_15_07" type="CollisionShape2D" parent="Blockers"]
+position = Vector2(496, 242)
+shape = SubResource("RectangleShape2D_w1")
+
+[node name="column_04_10" type="CollisionShape2D" parent="Blockers"]
+position = Vector2(144, 338)
+shape = SubResource("RectangleShape2D_w1")
+
+[node name="column_stump_15_10" type="CollisionShape2D" parent="Blockers"]
+position = Vector2(496, 338)
+shape = SubResource("RectangleShape2D_w1")
+
+[node name="SpawnPoint" type="Marker2D" parent="."]
+position = Vector2(320, 240)
+
+[node name="Decor" type="Node2D" parent="."]
+
+[node name="rubble_03_02" type="Sprite2D" parent="Decor"]
+position = Vector2(112, 64)
+texture = ExtResource("3_props")
+hframes = 16
+vframes = 3
+frame = 19
+
+[node name="rubble_14_02" type="Sprite2D" parent="Decor"]
+position = Vector2(464, 64)
+texture = ExtResource("3_props")
+hframes = 16
+vframes = 3
+frame = 19
+
+[node name="column_04_03" type="Sprite2D" parent="Decor"]
+position = Vector2(144, 112)
+texture = ExtResource("3_props")
+offset = Vector2(0, -16)
+hframes = 16
+vframes = 3
+frame = 16
+
+[node name="fallen_pillar_09_03" type="Sprite2D" parent="Decor"]
+position = Vector2(320, 112)
+texture = ExtResource("3_props")
+offset = Vector2(0, -16)
+hframes = 16
+vframes = 3
+frame = 18
+
+[node name="column_15_03" type="Sprite2D" parent="Decor"]
+position = Vector2(496, 112)
+texture = ExtResource("3_props")
+offset = Vector2(0, -16)
+hframes = 16
+vframes = 3
+frame = 16
+
+[node name="flagstones_07_05" type="Sprite2D" parent="Decor"]
+position = Vector2(240, 160)
+texture = ExtResource("3_props")
+hframes = 16
+vframes = 3
+frame = 20
+
+[node name="flagstones_09_05" type="Sprite2D" parent="Decor"]
+position = Vector2(304, 160)
+texture = ExtResource("3_props")
+hframes = 16
+vframes = 3
+frame = 20
+
+[node name="flagstones_10_05" type="Sprite2D" parent="Decor"]
+position = Vector2(336, 160)
+texture = ExtResource("3_props")
+hframes = 16
+vframes = 3
+frame = 20
+
+[node name="flagstones_12_05" type="Sprite2D" parent="Decor"]
+position = Vector2(400, 160)
+texture = ExtResource("3_props")
+hframes = 16
+vframes = 3
+frame = 20
+
+[node name="flagstones_07_06" type="Sprite2D" parent="Decor"]
+position = Vector2(240, 192)
+texture = ExtResource("3_props")
+hframes = 16
+vframes = 3
+frame = 20
+
+[node name="flagstones_12_06" type="Sprite2D" parent="Decor"]
+position = Vector2(400, 192)
+texture = ExtResource("3_props")
+hframes = 16
+vframes = 3
+frame = 20
+
+[node name="column_04_07" type="Sprite2D" parent="Decor"]
+position = Vector2(144, 240)
+texture = ExtResource("3_props")
+offset = Vector2(0, -16)
+hframes = 16
+vframes = 3
+frame = 16
+
+[node name="column_15_07" type="Sprite2D" parent="Decor"]
+position = Vector2(496, 240)
+texture = ExtResource("3_props")
+offset = Vector2(0, -16)
+hframes = 16
+vframes = 3
+frame = 16
+
+[node name="flagstones_07_08" type="Sprite2D" parent="Decor"]
+position = Vector2(240, 256)
+texture = ExtResource("3_props")
+hframes = 16
+vframes = 3
+frame = 20
+
+[node name="flagstones_12_08" type="Sprite2D" parent="Decor"]
+position = Vector2(400, 256)
+texture = ExtResource("3_props")
+hframes = 16
+vframes = 3
+frame = 20
+
+[node name="flagstones_07_09" type="Sprite2D" parent="Decor"]
+position = Vector2(240, 288)
+texture = ExtResource("3_props")
+hframes = 16
+vframes = 3
+frame = 20
+
+[node name="flagstones_09_09" type="Sprite2D" parent="Decor"]
+position = Vector2(304, 288)
+texture = ExtResource("3_props")
+hframes = 16
+vframes = 3
+frame = 20
+
+[node name="flagstones_10_09" type="Sprite2D" parent="Decor"]
+position = Vector2(336, 288)
+texture = ExtResource("3_props")
+hframes = 16
+vframes = 3
+frame = 20
+
+[node name="flagstones_12_09" type="Sprite2D" parent="Decor"]
+position = Vector2(400, 288)
+texture = ExtResource("3_props")
+hframes = 16
+vframes = 3
+frame = 20
+
+[node name="rubble_15_09" type="Sprite2D" parent="Decor"]
+position = Vector2(496, 288)
+texture = ExtResource("3_props")
+hframes = 16
+vframes = 3
+frame = 19
+
+[node name="column_04_10" type="Sprite2D" parent="Decor"]
+position = Vector2(144, 336)
+texture = ExtResource("3_props")
+offset = Vector2(0, -16)
+hframes = 16
+vframes = 3
+frame = 16
+
+[node name="column_stump_15_10" type="Sprite2D" parent="Decor"]
+position = Vector2(496, 336)
+texture = ExtResource("3_props")
+offset = Vector2(0, -16)
+hframes = 16
+vframes = 3
+frame = 17
+
+[node name="rubble_03_11" type="Sprite2D" parent="Decor"]
+position = Vector2(112, 352)
+texture = ExtResource("3_props")
+hframes = 16
+vframes = 3
+frame = 19
+
+[node name="rubble_09_11" type="Sprite2D" parent="Decor"]
+position = Vector2(304, 352)
+texture = ExtResource("3_props")
+hframes = 16
+vframes = 3
+frame = 19
+
+[node name="rubble_15_11" type="Sprite2D" parent="Decor"]
+position = Vector2(496, 352)
+texture = ExtResource("3_props")
+hframes = 16
+vframes = 3
+frame = 19
+

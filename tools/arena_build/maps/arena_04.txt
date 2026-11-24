@@ -1,0 +1,27 @@
+# Arena 4 — stages 61-80 (81+ cycles back to arena 1)
+name: Frozen Hollow
+motif: wide snowfield with ice crystals and frosted pines in a staggered diagonal
+tint: 1.00 1.12 1.55
+spawn: 320 240
+legend:
+I = ice_crystal
+P = frost_pine
+K = frozen_rock
+d = snow_drift
+w = snow_patch
+map:
+####################
+#..................#
+#...w.......d......#
+#....I........P....#
+#.........w........#
+#..d...........w...#
+#......w.......d...#
+#..K............I..#
+#....d.......d.....#
+#..d.......w.......#
+#....P........I....#
+#..w.....d......d..#
+#..................#
+####################
+####################
