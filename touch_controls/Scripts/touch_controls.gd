@@ -116,6 +116,10 @@ func _apply_safe_layout() -> void:
 	var placed: Dictionary = MobileSafeLayout.layout_touch_controls(get_viewport())
 	_place_cluster(left_cluster, MobileSafeLayout.LEFT_CLUSTER_SIZE, placed["left"] as Rect2, vis.position)
 	_place_cluster(right_cluster, MobileSafeLayout.RIGHT_CLUSTER_SIZE, placed["right"] as Rect2, vis.position)
+	# Over the game (landscape) the buttons are see-through; below it (portrait) solid.
+	var alpha := MobileSafeLayout.OVERLAY_ALPHA if bool(placed.get("overlay", true)) else 1.0
+	left_cluster.modulate.a = alpha
+	right_cluster.modulate.a = alpha
 
 
 func _place_cluster(cluster: Control, base: Vector2, visual: Rect2, origin: Vector2) -> void:

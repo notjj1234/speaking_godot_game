@@ -3,6 +3,19 @@ extends RefCounted
 
 const DESIGN_SIZE := Vector2(640, 480)
 const MARGIN := 4.0
+## Portrait touch layout: the map sits this far below the top (room for hearts,
+## banners and the stage label); the on-screen controls get the space below it.
+## PlayerCamera uses the same number so the two always agree.
+const PORTRAIT_ARENA_TOP := 92.0
+## On-screen control size, as CSS pixels of thumb space (CSS px are roughly the
+## same physical size on every phone/tablet browser). A cluster takes ~40% of the
+## short screen side, never smaller than MIN nor larger than MAX: big on phones,
+## proportionally smaller on tablets.
+const TOUCH_CLUSTER_CSS_SHARE := 0.40
+const TOUCH_CLUSTER_CSS_MIN := 140.0
+const TOUCH_CLUSTER_CSS_MAX := 230.0
+## Overlay controls are see-through so the arena stays readable under them.
+const OVERLAY_ALPHA := 0.78
 
 static var _wants_touch_ui_cached: bool = false
 static var _wants_touch_ui_resolved: bool = false
@@ -45,11 +58,15 @@ static func _detect_wants_touch_ui() -> bool:
 	if OS.has_feature("web"):
 		# DisplayServer.is_touchscreen_available() is a false positive on web:
 		# emulate_touch_from_mouse is enabled, and browsers expose touch APIs on desktop.
+		# Phones/tablets: mobile user agent, iPadOS (reports "Macintosh" but has a
+		# multi-touch screen), or a coarse *primary* pointer. A touchscreen laptop
+		# keeps a fine primary pointer, so it stays on the desktop layout.
 		var js_result: Variant = JavaScriptBridge.eval(
 			"""
 			(function(){
 				var ua = navigator.userAgent || '';
 				if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(ua)) return true;
+				if (/Macintosh/i.test(ua) && (navigator.maxTouchPoints || 0) > 1) return true;
 				try {
 					if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return true;
 				} catch (e) {}
@@ -59,7 +76,36 @@ static func _detect_wants_touch_ui() -> bool:
 			true
 		)
 		return bool(js_result)
-	return DisplayServer.is_touchscreen_available()
+	# Native exports: the Android/iOS builds get touch controls; the Windows,
+	# macOS and Linux builds never do (a touchscreen laptop still has a keyboard).
+	# Settings > Touch controls can still force them on anywhere.
+	return OS.has_feature("mobile")
+
+
+## Screen size in CSS-like pixels (about 1/160 inch on phones): the unit used to
+## size thumb controls so they feel the same on a phone and on a tablet.
+static func css_screen_size() -> Vector2:
+	if OS.has_feature("web"):
+		var js: Variant = JavaScriptBridge.eval("[window.innerWidth || 0, window.innerHeight || 0].join(',')", true)
+		var parts := str(js).split(",")
+		if parts.size() == 2 and float(parts[0]) > 0.0 and float(parts[1]) > 0.0:
+			return Vector2(float(parts[0]), float(parts[1]))
+	var win := window_size()
+	var dpi := float(DisplayServer.screen_get_dpi())
+	if OS.has_feature("mobile") and dpi > 0.0:
+		return win * (160.0 / dpi)
+	return win
+
+
+## Scale for the touch clusters (base sizes below), in design units.
+static func touch_cluster_scale(viewport: Viewport) -> float:
+	var vis := visible_rect_design_from_viewport(viewport)
+	var css := css_screen_size()
+	if vis.size.y <= 0.0 or css.y <= 0.0:
+		return 1.0
+	var target_css := clampf(minf(css.x, css.y) * TOUCH_CLUSTER_CSS_SHARE, TOUCH_CLUSTER_CSS_MIN, TOUCH_CLUSTER_CSS_MAX)
+	var design_per_css := vis.size.y / css.y
+	return clampf(target_css * design_per_css / LEFT_CLUSTER_SIZE.y, 0.35, 2.0)
 
 
 static func visible_rect_design() -> Rect2:
@@ -134,66 +180,61 @@ const PAUSE_BUTTON_SIZE := Vector2(130, 58)
 
 
 static func layout_touch_controls(viewport: Viewport) -> Dictionary:
-	# Visual rects in viewport coordinates. Each rect sits in an unused band
-	# and does not intersect the centered 4:3 arena.
+	# Visual rects in viewport coordinates, sized by touch_cluster_scale().
+	# Landscape (desktop-style wide screens, tablets, phones on their side): the
+	# camera fills the screen with the map, so the clusters sit over the bottom
+	# corners of the game, see-through ("overlay": true).
+	# Portrait: the map sits under the HUD band and the clusters go in the free
+	# space below it, at full opacity.
 	var vis := visible_rect_design_from_viewport(viewport)
 	var content := _safe_content_rect(viewport, vis)
-	var arena := _arena_rect(vis)
+	var k := touch_cluster_scale(viewport)
 	var placed := {
 		"left": Rect2(),
 		"right": Rect2(),
 		"pause": Rect2(),
-		"arena": arena,
+		"arena": _arena_rect(vis),
+		"overlay": true,
 	}
-	if vis.size.y > arena.size.y + 0.5:
-		var top := Rect2(
-			content.position.x,
-			content.position.y,
-			content.size.x,
-			maxf(0.0, arena.position.y - content.position.y)
-		)
-		var bottom := Rect2(
-			content.position.x,
-			arena.end.y,
-			content.size.x,
-			maxf(0.0, content.end.y - arena.end.y)
-		)
-		var bottom_inner := _inset_rect(bottom, MARGIN)
-		var half := maxf(0.0, (bottom_inner.size.x - MARGIN) * 0.5)
-		var left_slot := Rect2(bottom_inner.position, Vector2(half, bottom_inner.size.y))
-		var right_slot := Rect2(
-			Vector2(bottom_inner.position.x + half + MARGIN, bottom_inner.position.y),
-			Vector2(maxf(0.0, bottom_inner.size.x - half - MARGIN), bottom_inner.size.y)
-		)
-		placed["left"] = _fit_in_slot(left_slot, LEFT_CLUSTER_SIZE, "bottom")
-		placed["right"] = _fit_in_slot(right_slot, RIGHT_CLUSTER_SIZE, "bottom")
-		placed["pause"] = _fit_top_right_avoiding(_inset_rect(top, MARGIN), PAUSE_BUTTON_SIZE, _hud_rects(vis))
-	elif vis.size.x > arena.size.x + 0.5:
-		var left_band := Rect2(
-			content.position.x,
-			content.position.y,
-			maxf(0.0, arena.position.x - content.position.x),
-			content.size.y
-		)
-		var right_band := Rect2(
-			Vector2(arena.end.x, content.position.y),
-			Vector2(maxf(0.0, content.end.x - arena.end.x), content.size.y)
-		)
-		placed["left"] = _fit_in_slot(_inset_rect(left_band, MARGIN), LEFT_CLUSTER_SIZE, "bottom")
-		var right_inner := _inset_rect(right_band, MARGIN)
-		var pause_rect: Rect2 = _fit_top_right_avoiding(right_inner, PAUSE_BUTTON_SIZE, _hud_rects(vis))
-		placed["pause"] = pause_rect
-		var below_y := right_inner.position.y
-		if pause_rect.size.y > 0.0:
-			below_y = pause_rect.end.y + MARGIN
-		var below := Rect2(
-			right_inner.position.x,
-			below_y,
-			right_inner.size.x,
-			maxf(0.0, right_inner.end.y - below_y)
-		)
-		placed["right"] = _fit_in_slot(below, RIGHT_CLUSTER_SIZE, "bottom")
+	var inner := _inset_rect(content, MARGIN * 2.0)
+	var pause_k := clampf(k, 0.5, 1.2)
+	if vis.size.y > vis.size.x:
+		var arena_h := DESIGN_SIZE.y * (vis.size.x / DESIGN_SIZE.x)
+		var arena := Rect2(vis.position.x, vis.position.y + PORTRAIT_ARENA_TOP, vis.size.x, arena_h)
+		placed["arena"] = arena
+		var band := Rect2(inner.position.x, arena.end.y + MARGIN, inner.size.x, maxf(0.0, inner.end.y - arena.end.y - MARGIN))
+		if band.size.y >= 48.0:
+			placed["overlay"] = false
+			var half := maxf(0.0, (band.size.x - MARGIN) * 0.5)
+			var left_slot := Rect2(band.position, Vector2(half, band.size.y))
+			var right_slot := Rect2(Vector2(band.position.x + half + MARGIN, band.position.y), Vector2(band.size.x - half - MARGIN, band.size.y))
+			placed["left"] = _corner_rect(left_slot, LEFT_CLUSTER_SIZE * k, "bottom_left")
+			placed["right"] = _corner_rect(right_slot, RIGHT_CLUSTER_SIZE * k, "bottom_right")
+		else:
+			placed["left"] = _corner_rect(inner, LEFT_CLUSTER_SIZE * k, "bottom_left")
+			placed["right"] = _corner_rect(inner, RIGHT_CLUSTER_SIZE * k, "bottom_right")
+		var top_band := Rect2(inner.position.x, inner.position.y, inner.size.x, maxf(0.0, PORTRAIT_ARENA_TOP - (inner.position.y - vis.position.y)))
+		placed["pause"] = _fit_top_right_avoiding(top_band, PAUSE_BUTTON_SIZE * pause_k, _hud_rects(vis))
+	else:
+		# Keep the two clusters from meeting on narrow landscape screens.
+		var max_w := maxf(0.0, (inner.size.x - MARGIN) * 0.5)
+		var kl := minf(k, minf(max_w / LEFT_CLUSTER_SIZE.x, inner.size.y * 0.6 / LEFT_CLUSTER_SIZE.y))
+		var kr := minf(k, minf(max_w / RIGHT_CLUSTER_SIZE.x, inner.size.y * 0.6 / RIGHT_CLUSTER_SIZE.y))
+		placed["left"] = _corner_rect(inner, LEFT_CLUSTER_SIZE * kl, "bottom_left")
+		placed["right"] = _corner_rect(inner, RIGHT_CLUSTER_SIZE * kr, "bottom_right")
+		placed["pause"] = _fit_top_right_avoiding(inner, PAUSE_BUTTON_SIZE * pause_k, _hud_rects(vis))
 	return placed
+
+
+static func _corner_rect(slot: Rect2, visual: Vector2, corner: String) -> Rect2:
+	if slot.size.x < 1.0 or slot.size.y < 1.0 or visual.x <= 0.0 or visual.y <= 0.0:
+		return Rect2(slot.position, Vector2.ZERO)
+	var fit := minf(1.0, minf(slot.size.x / visual.x, slot.size.y / visual.y))
+	var size := visual * fit
+	var y := slot.end.y - size.y
+	if corner == "bottom_right":
+		return Rect2(Vector2(slot.end.x - size.x, y), size)
+	return Rect2(Vector2(slot.position.x, y), size)
 
 
 static func _arena_rect(vis: Rect2) -> Rect2:
