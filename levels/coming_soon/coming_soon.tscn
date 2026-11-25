@@ -4,9 +4,6 @@
 [ext_resource type="FontFile" uid="uid://0ow6by7f8lfy" path="res://gui/fonts/Abaddon Bold.ttf" id="2_bold"]
 [ext_resource type="FontFile" uid="uid://d1uabga2q8lmv" path="res://gui/fonts/Abaddon Light.ttf" id="3_light"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_back"]
-size = Vector2(120, 24)
-
 [node name="ComingSoon" type="CanvasLayer"]
 layer = 10
 follow_viewport_enabled = false
@@ -23,7 +20,7 @@ offset_right = 0.0
 offset_bottom = 0.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 0
+mouse_filter = 2
 
 [node name="Dim" type="ColorRect" parent="Control"]
 layout_mode = 1
@@ -77,8 +74,3 @@ layout_mode = 2
 theme_override_fonts/font = ExtResource("3_light")
 theme_override_font_sizes/font_size = 16
 text = "Back"
-
-[node name="TouchBack" type="TouchScreenButton" parent="Control"]
-visible = true
-shape = SubResource("RectangleShape2D_back")
-shape_visible = false

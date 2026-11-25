@@ -12,11 +12,9 @@ signal hidden
 @onready var button_load: Button = %Button_Load
 @onready var button_main_menu: Button = %Button_MainMenu
 @onready var color_rect: ColorRect = $Control/ColorRect
-@onready var touch_save: TouchScreenButton = %Touch_Save
-@onready var touch_load: TouchScreenButton = %Touch_Load
-@onready var touch_main_menu: TouchScreenButton = %Touch_MainMenu
 @onready var journal_button: Button = %JournalButton
-@onready var touch_journal: TouchScreenButton = %Touch_Journal
+@onready var close_icon: TouchScreenButton = $Control/CloseIcon
+@onready var item_grid: GridContainer = $Control/MenuRoot/Center/MenuCard/Card/Columns/LeftColumn/PanelContainer/GridContainer
 @onready var button_settings: Button = %Button_Settings
 
 const INK := Color(0.12, 0.08, 0.04, 1)
@@ -26,7 +24,12 @@ const SETTINGS_SCENE := "res://gui/settings/settings.tscn"
 
 var _leaving_to_title: bool = false
 var _settings_node: SettingsNode = null
-var _load_confirm: ConfirmationDialog = null
+## UiInputRouter layer while the menu is open, 0 while closed.
+var input_layer: int = 0
+var load_confirm: Control = null
+var load_confirm_button: Button = null
+var load_cancel_button: Button = null
+var _load_confirm_layer: int = 0
 
 @onready var item_description: Label = %ItemDescription
 @onready var saved_note: Label = %SavedNote
@@ -53,59 +56,41 @@ func _ready() -> void:
 	if button_settings:
 		button_settings.pressed.connect(_on_settings_pressed)
 
-	# Connect touchscreen buttons for Save & Load (if they exist)
-	if touch_save:
-		touch_save.pressed.connect(_on_save_pressed)
-	if touch_load:
-		touch_load.pressed.connect(_on_load_pressed)
-	if touch_main_menu:
-		touch_main_menu.pressed.connect(_on_main_menu_pressed)
-	if journal_button:
-		journal_button.pressed.connect(_on_journal_pressed)
-	if touch_journal:
-		touch_journal.pressed.connect(_on_journal_pressed)
-		touch_journal.visible = true
-		if touch_journal.shape == null:
-			var shape := RectangleShape2D.new()
-			shape.size = Vector2(120, 32)
-			touch_journal.shape = shape
-
 	# Debugging: Log when save/load buttons are pressed
 	button_save.pressed.connect(func(): print("[DEBUG] Save button pressed."))
 	button_load.pressed.connect(func(): print("[DEBUG] Load button pressed."))
 
-	# Enable touchscreen support directly on the buttons
-	prev_page_button.pressed.connect(_prev_page)
-	prev_page_button.gui_input.connect(_on_touch_gui_input.bind(prev_page_button))
-	prev_page_button.mouse_filter = Control.MOUSE_FILTER_STOP
-
-	next_page_button.pressed.connect(_next_page)
-	next_page_button.gui_input.connect(_on_touch_gui_input.bind(next_page_button))
-	next_page_button.mouse_filter = Control.MOUSE_FILTER_STOP
-
 	music_slider.value_changed.connect(_on_music_slider_changed)
-	# Mouse clicks are also delivered as screen touches, and Button.pressed
-	# fires again on release. One touch-down handler keeps Mute from flipping twice.
-	music_mute_button.gui_input.connect(_on_music_gui_input.bind(_on_music_mute_pressed))
-	music_quieter_button.gui_input.connect(_on_music_gui_input.bind(_on_music_quieter_pressed))
-	music_louder_button.gui_input.connect(_on_music_gui_input.bind(_on_music_louder_pressed))
-	music_mute_button.custom_minimum_size = Vector2(120, 36)
+	music_mute_button.custom_minimum_size = Vector2(120, 44)
 	music_mute_button.clip_text = true
 	_sync_music_controls()
 
-	print("[DEBUG] Prev Page Button & Next Page Button Ready for touch input.")
 
-# Handles touchscreen input manually on buttons
-func _on_touch_gui_input(event: InputEvent, button: Button) -> void:
-	if event is InputEventScreenTouch and event.pressed:
-		if button == prev_page_button:
-			print("[DEBUG] PrevPageButton tapped!")
-			_prev_page()
-		elif button == next_page_button:
-			print("[DEBUG] NextPageButton tapped!")
-			_next_page()
+## Pointer presses (and keyboard `pressed`) for everything on this layer.
+func _route_pointer() -> void:
+	UiInputRouter.bind_button(journal_button, _on_journal_pressed, input_layer)
+	UiInputRouter.bind_button(prev_page_button, _prev_page, input_layer)
+	UiInputRouter.bind_button(next_page_button, _next_page, input_layer)
+	UiInputRouter.bind_button(music_quieter_button, _on_music_quieter_pressed, input_layer)
+	UiInputRouter.bind_button(music_mute_button, _on_music_mute_pressed, input_layer)
+	UiInputRouter.bind_button(music_louder_button, _on_music_louder_pressed, input_layer)
+	UiInputRouter.bind(close_icon, hide_pause_menu, input_layer)
+	# Save, Load, Main Menu and Settings are already connected to `pressed`.
+	UiInputRouter.bind(button_save, _on_save_pressed, input_layer)
+	UiInputRouter.bind(button_load, _on_load_pressed, input_layer)
+	UiInputRouter.bind(button_main_menu, _on_main_menu_pressed, input_layer)
+	UiInputRouter.bind(button_settings, _on_settings_pressed, input_layer)
+	for slot in item_grid.get_children():
+		if slot is InventorySlotUI and not slot.is_queued_for_deletion():
+			slot.route(input_layer)
+
 
 func _unhandled_input(event: InputEvent) -> void:
+	if load_confirm != null and load_confirm.visible \
+			and (event.is_action_pressed("pause") or event.is_action_pressed("ui_cancel")):
+		_on_load_cancelled()
+		get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("pause"):
 		if _is_menu_scene() or _game_over_open():
 			return
@@ -141,30 +126,27 @@ func show_pause_menu() -> void:
 	get_tree().paused = true
 	visible = true
 	is_paused = true
+	if input_layer == 0:
+		input_layer = UiInputRouter.push_layer(&"pause", self)
 	shown.emit()
+	_route_pointer()
 	current_page = 0
 	_sync_music_controls()
 	update_word_list_display()
-	_align_menu_touch_twins()
-	_set_mobile_overlays_suppressed(true)
 
 func hide_pause_menu() -> void:
+	_close_load_confirm()
+	if _settings_node:
+		_settings_node.hide_settings()
+	UiInputRouter.pop_layer(input_layer)
+	input_layer = 0
 	get_tree().paused = false
 	visible = false
 	is_paused = false
 	if saved_note:
 		saved_note.visible = false
 	hidden.emit()
-	_set_mobile_overlays_suppressed(false)
 
-
-func _set_mobile_overlays_suppressed(suppressed: bool) -> void:
-	for n in get_tree().get_nodes_in_group("touch_controls"):
-		if n.has_method("set_suppressed_by_pause"):
-			n.set_suppressed_by_pause(suppressed)
-	for n in get_tree().get_nodes_in_group("pause_button"):
-		if n.has_method("set_suppressed_by_pause"):
-			n.set_suppressed_by_pause(suppressed)
 
 func update_word_list_display() -> void:
 	if word_rows == null:
@@ -263,31 +245,6 @@ func _on_journal_pressed() -> void:
 		tracker.show_journal()
 
 
-func _process(_delta: float) -> void:
-	if not visible or not is_paused:
-		return
-	_align_menu_touch_twins()
-
-
-func _align_menu_touch_twins() -> void:
-	if not MobileSafeLayout.uses_touch_button_twins():
-		return
-	_align_touch_twin(button_save, touch_save)
-	_align_touch_twin(button_load, touch_load)
-	_align_touch_twin(button_main_menu, touch_main_menu)
-	_align_touch_twin(journal_button, touch_journal)
-
-
-func _align_touch_twin(button: Control, touch: TouchScreenButton) -> void:
-	if button == null or touch == null or not button.visible:
-		return
-	var rect := button.get_global_rect()
-	touch.scale = Vector2.ONE
-	touch.global_position = rect.position + rect.size * 0.5
-	if touch.shape is RectangleShape2D:
-		(touch.shape as RectangleShape2D).size = rect.size
-
-
 func _on_save_pressed() -> void:
 	if not is_paused:
 		return
@@ -307,15 +264,105 @@ func _on_load_pressed() -> void:
 		return
 	# Confirm first: unlike the title screen (which asks before loading), a
 	# mis-tap here would silently discard the current run.
-	if _load_confirm == null:
-		_load_confirm = ConfirmationDialog.new()
-		_load_confirm.title = "Load saved game?"
-		_load_confirm.dialog_text = "Progress since your last save will be lost."
-		_load_confirm.ok_button_text = "Load"
-		_load_confirm.process_mode = Node.PROCESS_MODE_ALWAYS
-		_load_confirm.confirmed.connect(_do_load_game)
-		add_child(_load_confirm)
-	_load_confirm.popup_centered()
+	_open_load_confirm()
+
+
+func _open_load_confirm() -> void:
+	if load_confirm == null:
+		_build_load_confirm()
+	if load_confirm.visible:
+		return
+	load_confirm.visible = true
+	_load_confirm_layer = UiInputRouter.push_layer(&"pause_load_confirm", self)
+	UiInputRouter.bind_button(load_confirm_button, _on_load_confirmed, _load_confirm_layer)
+	UiInputRouter.bind_button(load_cancel_button, _on_load_cancelled, _load_confirm_layer)
+	load_cancel_button.grab_focus()
+
+
+func _close_load_confirm() -> void:
+	if load_confirm == null or not load_confirm.visible:
+		return
+	load_confirm.visible = false
+	UiInputRouter.pop_layer(_load_confirm_layer)
+	_load_confirm_layer = 0
+
+
+func _on_load_confirmed() -> void:
+	_close_load_confirm()
+	_do_load_game()
+
+
+func _on_load_cancelled() -> void:
+	_close_load_confirm()
+	button_load.grab_focus()
+
+
+func _build_load_confirm() -> void:
+	load_confirm = Control.new()
+	load_confirm.name = "LoadConfirm"
+	load_confirm.visible = false
+	load_confirm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	load_confirm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(load_confirm)
+
+	var dim := ColorRect.new()
+	dim.color = Color(0.02, 0.05, 0.03, 0.72)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	load_confirm.add_child(dim)
+
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	load_confirm.add_child(center)
+
+	var panel := PanelContainer.new()
+	var card: PanelContainer = $Control/MenuRoot/Center/MenuCard
+	var card_style := card.get_theme_stylebox("panel").duplicate() as StyleBoxFlat
+	if card_style:
+		card_style.bg_color.a = 1.0
+		panel.add_theme_stylebox_override("panel", card_style)
+	center.add_child(panel)
+
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 12)
+	panel.add_child(column)
+	for text in ["Load saved game?", "Progress since your last save will be lost."]:
+		var label := Label.new()
+		label.text = text
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.add_theme_font_override("font", BODY_FONT)
+		label.add_theme_font_size_override("font_size", 16)
+		column.add_child(label)
+
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 24)
+	column.add_child(row)
+	load_confirm_button = _make_confirm_button("Load")
+	load_cancel_button = _make_confirm_button("Cancel")
+	row.add_child(load_confirm_button)
+	row.add_child(load_cancel_button)
+	var load_path := load_confirm_button.get_path_to(load_cancel_button)
+	var cancel_path := load_cancel_button.get_path_to(load_confirm_button)
+	for property in ["focus_neighbor_left", "focus_neighbor_right", "focus_neighbor_top",
+			"focus_neighbor_bottom", "focus_next", "focus_previous"]:
+		load_confirm_button.set(property, load_path)
+		load_cancel_button.set(property, cancel_path)
+
+
+func _make_confirm_button(text: String) -> Button:
+	var button := Button.new()
+	button.text = text
+	button.custom_minimum_size = Vector2(110, 44)
+	button.add_theme_font_override("font", BODY_FONT)
+	button.add_theme_font_size_override("font_size", 16)
+	button.add_theme_color_override("font_color", INK)
+	button.add_theme_color_override("font_hover_color", INK)
+	button.add_theme_color_override("font_focus_color", INK)
+	for style in ["normal", "hover", "pressed", "focus"]:
+		button.add_theme_stylebox_override(style, button_save.get_theme_stylebox(style))
+	return button
 
 
 func _do_load_game() -> void:
@@ -361,6 +408,9 @@ func _on_main_menu_pressed() -> void:
 		music.stop_for_menu()
 	PlayerManager.player_spawned = false
 	hide_pause_menu()
+	# A dialog left open would keep its input layer over the title menu.
+	if DialogSystem.is_open:
+		DialogSystem.close()
 	await LevelManager.load_new_level(TITLE_SCENE, "", Vector2.ZERO)
 	_leaving_to_title = false
 
@@ -392,13 +442,6 @@ func _on_music_slider_changed(value: float) -> void:
 	if settings.music_muted and value > 0.0:
 		settings.set_music_muted(false)
 	_sync_music_controls()
-
-
-func _on_music_gui_input(event: InputEvent, action: Callable) -> void:
-	if not (event is InputEventScreenTouch and event.pressed):
-		return
-	get_viewport().set_input_as_handled()
-	action.call()
 
 
 func _on_music_mute_pressed() -> void:

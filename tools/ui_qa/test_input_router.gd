@@ -74,6 +74,14 @@ func _ready() -> void:
 	await frames()
 	check("bind() makes the control mouse_filter IGNORE", a.mouse_filter, Control.MOUSE_FILTER_IGNORE)
 
+	var dimmer := ColorRect.new()
+	ui.add_child(dimmer)
+	router.bind(dimmer, _hit_c)
+	check("bind() leaves a bound dimmer STOP so it still blocks GUI below",
+			dimmer.mouse_filter, Control.MOUSE_FILTER_STOP)
+	dimmer.free()
+	await frames()
+
 	await _reset()
 	await click(A)
 	check("desktop click activates exactly once", hits, {"a": 1})

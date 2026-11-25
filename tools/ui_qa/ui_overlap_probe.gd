@@ -70,11 +70,15 @@ func dump() -> int:
 			var hit: Rect2 = (rows[i]["rect"] as Rect2).intersection(rows[j]["rect"])
 			if hit.size.x < 0.5 or hit.size.y < 0.5:
 				continue
-			var allowed := _is_dpad(rows[i]) and _is_dpad(rows[j])
-			if not allowed:
+			var verdict := "** CHECK **"
+			if _is_dpad(rows[i]) and _is_dpad(rows[j]):
+				verdict = "(allowed D-pad)"
+			elif _is_backdrop_pair(rows[i]["node"], rows[j]["node"]):
+				verdict = "(backdrop)"
+			else:
 				bad += 1
 			print("[ui-probe] OVERLAP %s %dx%d  %s  <>  %s" % [
-				"(allowed D-pad)" if allowed else "** CHECK **",
+				verdict,
 				hit.size.x, hit.size.y, rows[i]["path"], rows[j]["path"]])
 	print("[ui-probe] ===== %d nodes, %d unexpected overlap(s)\n" % [rows.size(), bad])
 	return bad
@@ -110,16 +114,29 @@ func _describe(node: Node, bound: Dictionary) -> Dictionary:
 			"node": node}
 
 
-## True when a router layer is open and `item` is drawn below it.
+## True when a visible full-screen STOP dimmer is drawn above `item`.
 func _covered_by_modal(item: CanvasItem) -> bool:
-	var top := UiInputRouter.active_layer()
-	if top == 0:
-		return false
-	var lowest := 1 << 20
-	for region in UiInputRouter.debug_regions():
-		if region["layer"] == top and region["item"] != null:
-			lowest = mini(lowest, UiInputRouter._canvas_layer_of(region["item"]))
-	return UiInputRouter._canvas_layer_of(item) < lowest
+	var view := get_viewport().get_visible_rect()
+	for node in get_tree().root.find_children("*", "ColorRect", true, false):
+		var dim := node as ColorRect
+		if dim.mouse_filter == Control.MOUSE_FILTER_STOP and dim.is_visible_in_tree() \
+				and dim.get_global_rect().encloses(view) \
+				and not dim.is_ancestor_of(item) and _drawn_above(dim, item):
+			return true
+	return false
+
+
+func _drawn_above(a: Node, b: Node) -> bool:
+	var layer_a: int = UiInputRouter._canvas_layer_of(a)
+	var layer_b: int = UiInputRouter._canvas_layer_of(b)
+	return layer_a > layer_b if layer_a != layer_b else a.is_greater_than(b)
+
+
+## A bound plain Control (dimmer, panel, banner) under something drawn above it
+## is by design: the router picks the upper one. The reverse is a real bug.
+func _is_backdrop_pair(a: Node, b: Node) -> bool:
+	var lower := b if _drawn_above(a, b) else a
+	return lower is Control and not (lower is BaseButton or lower is Range or lower is LineEdit)
 
 
 func _is_dpad(row: Dictionary) -> bool:

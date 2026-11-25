@@ -30,4 +30,3 @@ mouse_filter = 2
 
 [node name="Pause" type="TouchScreenButton" parent="Root/TopRight"]
 texture_normal = ExtResource("1_u0j31")
-action = "pause"

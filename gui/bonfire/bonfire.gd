@@ -16,6 +16,7 @@ var _busy := false
 var _navigating := false
 var _master_was_muted := false
 var _listening_stat := ""
+var _input_layer := 0
 
 @onready var vitality_label: Label = %VitalityLabel
 @onready var might_label: Label = %MightLabel
@@ -33,28 +34,11 @@ var _listening_stat := ""
 @onready var journal_button: Button = %JournalButton
 @onready var title_button: Button = %TitleButton
 @onready var avatar_weapon: Sprite2D = %AvatarWeapon
-@onready var touch_vitality: TouchScreenButton = %TouchVitality
-@onready var touch_might: TouchScreenButton = %TouchMight
-@onready var touch_haste: TouchScreenButton = %TouchHaste
-@onready var touch_crit: TouchScreenButton = %TouchCrit
-@onready var touch_equip: TouchScreenButton = %TouchEquip
-@onready var touch_continue: TouchScreenButton = %TouchContinue
-@onready var touch_journal: TouchScreenButton = %TouchJournal
-@onready var touch_title: TouchScreenButton = %TouchTitle
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
-	set_process(false)
-	_bind(vitality_button, touch_vitality, _on_vitality)
-	_bind(might_button, touch_might, _on_might)
-	_bind(haste_button, touch_haste, _on_haste)
-	_bind(crit_button, touch_crit, _on_crit)
-	_bind(equip_button, touch_equip, _on_equip)
-	_bind(continue_button, touch_continue, _on_continue)
-	_bind(journal_button, touch_journal, _on_journal)
-	_bind(title_button, touch_title, _on_title)
 
 
 func show_rest() -> void:
@@ -65,12 +49,12 @@ func show_rest() -> void:
 	_navigating = false
 	_silence_all()
 	var pause := get_node_or_null("/root/PauseMenu")
-	if pause and pause.visible:
-		pause.visible = false
-		pause.is_paused = false
+	if pause and pause.is_paused:
+		# A real close, so the pause input layer cannot be left behind.
+		pause.hide_pause_menu()
 	visible = true
 	get_tree().paused = true
-	set_process(true)
+	_open_layer()
 	PlayerManager.convert_gems_to_points()
 	PlayerManager.set_health(PlayerManager.horde_max_hp(), PlayerManager.horde_max_hp())
 	_refresh()
@@ -79,33 +63,22 @@ func show_rest() -> void:
 	continue_button.grab_focus()
 
 
-func _process(_delta: float) -> void:
-	if not MobileSafeLayout.uses_touch_button_twins():
-		return
-	_align(vitality_button, touch_vitality)
-	_align(might_button, touch_might)
-	_align(haste_button, touch_haste)
-	_align(crit_button, touch_crit)
-	_align(equip_button, touch_equip)
-	_align(continue_button, touch_continue)
-	_align(journal_button, touch_journal)
-	_align(title_button, touch_title)
+## Pointer presses and keyboard `pressed` for every button on this layer.
+func _open_layer() -> void:
+	_input_layer = UiInputRouter.push_layer(&"bonfire", self)
+	UiInputRouter.bind_button(vitality_button, _on_vitality, _input_layer)
+	UiInputRouter.bind_button(might_button, _on_might, _input_layer)
+	UiInputRouter.bind_button(haste_button, _on_haste, _input_layer)
+	UiInputRouter.bind_button(crit_button, _on_crit, _input_layer)
+	UiInputRouter.bind_button(equip_button, _on_equip, _input_layer)
+	UiInputRouter.bind_button(continue_button, _on_continue, _input_layer)
+	UiInputRouter.bind_button(journal_button, _on_journal, _input_layer)
+	UiInputRouter.bind_button(title_button, _on_title, _input_layer)
 
 
-func _bind(button: Button, touch: TouchScreenButton, handler: Callable) -> void:
-	button.mouse_filter = Control.MOUSE_FILTER_STOP
-	button.pressed.connect(handler)
-	touch.pressed.connect(handler)
-	touch.visible = true
-
-
-func _align(button: Button, touch: TouchScreenButton) -> void:
-	if button == null or touch == null:
-		return
-	var rect := button.get_global_rect()
-	touch.global_position = rect.position + rect.size / 2.0
-	if touch.shape is RectangleShape2D:
-		(touch.shape as RectangleShape2D).size = rect.size
+func _close_layer() -> void:
+	UiInputRouter.pop_layer(_input_layer)
+	_input_layer = 0
 
 
 func _refresh() -> void:
@@ -160,16 +133,16 @@ func _on_crit() -> void:
 	_request_upgrade("crit")
 
 
-func _stat_controls(stat: String) -> Array:
+func _stat_button(stat: String) -> Button:
 	match stat:
 		"vitality":
-			return [vitality_button, touch_vitality]
+			return vitality_button
 		"might":
-			return [might_button, touch_might]
+			return might_button
 		"haste":
-			return [haste_button, touch_haste]
+			return haste_button
 		_:
-			return [crit_button, touch_crit]
+			return crit_button
 
 
 func _say_word(stat: String) -> String:
@@ -192,14 +165,11 @@ func _request_upgrade(stat: String) -> void:
 			feedback.text = "Upgraded. (voice unavailable)"
 		return
 	_listening_stat = stat
-	var controls := _stat_controls(stat)
-	(controls[0] as Button).text = "Listening... say \"%s\"" % _say_word(stat)
+	_stat_button(stat).text = "Listening... say \"%s\"" % _say_word(stat)
 	for other in SKILLS.keys():
 		if other == stat:
 			continue
-		# No disabled state on TouchScreenButton twins — the handler guard in
-		# _request_upgrade already ignores presses on other rows while listening.
-		(_stat_controls(other)[0] as Button).disabled = true
+		_stat_button(other).disabled = true
 	var tts = get_node_or_null("/root/TTSManager")
 	if tts and tts.has_method("is_available") and tts.is_available():
 		tts.speak("Say \"%s\"" % _say_word(stat))
@@ -386,7 +356,7 @@ func _leave(level_path: String) -> void:
 	_busy = true
 	_restore_audio()
 	visible = false
-	set_process(false)
+	_close_layer()
 	PlayerManager.player_spawned = false
 	LevelManager.load_new_level(level_path, "", Vector2.ZERO)
 

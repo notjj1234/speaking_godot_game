@@ -37,8 +37,8 @@ var _tab_phrases: Button
 var _tab_bestiary: Button
 var _body: VBoxContainer
 var _back: Button
-var _touch_back: TouchScreenButton
 var _root: Control
+var _input_layer := 0
 
 
 func _ready() -> void:
@@ -53,10 +53,16 @@ func open() -> void:
 	_phrases_today_only = false
 	_phrase_page = 0
 	visible = true
+	if _input_layer == 0:
+		_input_layer = UiInputRouter.push_layer(&"journal", self)
+	# Tap outside closes. The panel sits above the dimmer and swallows the rest.
+	UiInputRouter.bind(_dim, _on_dim_tapped, _input_layer)
+	UiInputRouter.bind(_panel, _swallow_tap, _input_layer)
+	_route(_tab_today, _set_tab.bind(Tab.TODAY))
+	_route(_tab_phrases, _set_tab.bind(Tab.PHRASES))
+	_route(_tab_bestiary, _set_tab.bind(Tab.BESTIARY))
+	_route(_back, close)
 	_refresh()
-	# Layout may not be final this frame; align Back twin now and next frames.
-	_align_touch(_back, _touch_back)
-	call_deferred("_align_touch", _back, _touch_back)
 	if _back:
 		_back.grab_focus()
 
@@ -65,22 +71,26 @@ func close() -> void:
 	if not visible:
 		return
 	visible = false
+	UiInputRouter.pop_layer(_input_layer)
+	_input_layer = 0
 	var vp := get_viewport()
 	if vp:
 		vp.gui_release_focus()
-	# Defer flush so a save error cannot interrupt teardown / twin restore.
+	# Defer flush so a save error cannot interrupt teardown.
 	call_deferred("_deferred_flush")
 
 
-func panel_global_rect() -> Rect2:
-	if _panel == null:
-		return Rect2()
-	return _panel.get_global_rect()
+## Pointer presses and keyboard `pressed` for one button on this layer.
+func _route(button: Button, handler: Callable) -> void:
+	UiInputRouter.bind_button(button, handler, _input_layer)
 
 
-func try_tap(pos: Vector2) -> bool:
-	# True if a journal button handled the tap.
-	return _try_press_button_at(pos)
+func _on_dim_tapped() -> void:
+	close()
+
+
+func _swallow_tap() -> void:
+	pass
 
 
 func _deferred_flush() -> void:
@@ -95,38 +105,18 @@ func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause") or event.is_action_pressed("ui_cancel"):
 		close()
 		get_viewport().set_input_as_handled()
-		return
-	# Backup when gui_input does not fire (same Load-confirm pattern).
-	var tap_pos := _pointer_press_pos(event)
-	if tap_pos == Vector2.INF:
-		return
-	if _panel != null and not _panel.get_global_rect().has_point(tap_pos):
-		close()
-		get_viewport().set_input_as_handled()
-		return
-	if _try_press_button_at(tap_pos):
-		get_viewport().set_input_as_handled()
-
-
-func _process(_delta: float) -> void:
-	if not visible:
-		return
-	if not MobileSafeLayout.uses_touch_button_twins():
-		return
-	_align_touch(_back, _touch_back)
 
 
 func _build() -> void:
 	_root = Control.new()
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_root.mouse_filter = Control.MOUSE_FILTER_STOP
+	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_root)
 
 	_dim = ColorRect.new()
 	_dim.color = DIM
 	_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	_dim.gui_input.connect(_on_dim_gui_input)
 	_root.add_child(_dim)
 
 	var center := CenterContainer.new()
@@ -168,36 +158,34 @@ func _build() -> void:
 	_tab_today = _make_pager_button("Today")
 	_tab_phrases = _make_pager_button("Phrases")
 	_tab_bestiary = _make_pager_button("Bestiary")
-	_tab_today.pressed.connect(func(): _set_tab(Tab.TODAY))
-	_tab_phrases.pressed.connect(func(): _set_tab(Tab.PHRASES))
-	_tab_bestiary.pressed.connect(func(): _set_tab(Tab.BESTIARY))
 	tabs.add_child(_tab_today)
 	tabs.add_child(_tab_phrases)
 	tabs.add_child(_tab_bestiary)
+	# Back shares the tab row: a 44 px row of its own would not fit 480 px.
+	_back = _make_pager_button("Back")
+	tabs.add_child(_back)
 
 	_body = VBoxContainer.new()
 	_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_body.add_theme_constant_override("separation", 6)
 	outer.add_child(_body)
 
-	_back = _make_pager_button("Back")
-	_back.custom_minimum_size = Vector2(120, 36)
-	_back.pressed.connect(close)
-	outer.add_child(_back)
-
-	_touch_back = TouchScreenButton.new()
-	_touch_back.visible = true
-	var shape := RectangleShape2D.new()
-	shape.size = Vector2(120, 36)
-	_touch_back.shape = shape
-	_touch_back.shape_visible = false
-	_touch_back.pressed.connect(close)
-	_root.add_child(_touch_back)
 
 
 func _set_tab(tab: Tab) -> void:
 	_tab = tab
 	_phrase_page = 0
+	_refresh()
+
+
+func _set_scope(today_only: bool) -> void:
+	_phrases_today_only = today_only
+	_phrase_page = 0
+	_refresh()
+
+
+func _turn_page(step: int) -> void:
+	_phrase_page = maxi(_phrase_page + step, 0)
 	_refresh()
 
 
@@ -219,10 +207,10 @@ func _tracker() -> Node:
 
 func _fill_today() -> void:
 	var tracker := _tracker()
-	var today_key := tracker.today_key() if tracker else ""
+	var today_key: String = tracker.today_key() if tracker else ""
 	var day: Dictionary = tracker.day_stats(today_key) if tracker else {}
 	var life: Dictionary = tracker.lifetime() if tracker else {}
-	var streak_n := tracker.streak() if tracker else 0
+	var streak_n: int = tracker.streak() if tracker else 0
 
 	_body.add_child(_line("Today", today_key))
 	_body.add_child(_line("Stages cleared", str(int(day.get("stages_cleared", 0)))))
@@ -255,16 +243,8 @@ func _fill_phrases() -> void:
 	var all_btn := _make_pager_button("All")
 	today_btn.disabled = _phrases_today_only
 	all_btn.disabled = not _phrases_today_only
-	today_btn.pressed.connect(func():
-		_phrases_today_only = true
-		_phrase_page = 0
-		_refresh()
-	)
-	all_btn.pressed.connect(func():
-		_phrases_today_only = false
-		_phrase_page = 0
-		_refresh()
-	)
+	_route(today_btn, _set_scope.bind(true))
+	_route(all_btn, _set_scope.bind(false))
 	scope.add_child(today_btn)
 	scope.add_child(all_btn)
 	_body.add_child(scope)
@@ -298,7 +278,7 @@ func _fill_phrases() -> void:
 		rows.add_child(empty)
 	else:
 		var start := _phrase_page * ROWS_PER_PAGE
-		var end := min(start + ROWS_PER_PAGE, keys.size())
+		var end := mini(start + ROWS_PER_PAGE, keys.size())
 		for i in range(start, end):
 			var phrase := str(keys[i])
 			var count := 0
@@ -326,14 +306,8 @@ func _fill_phrases() -> void:
 		page_label.add_theme_color_override("font_color", TEXT_LIGHT)
 		prev.disabled = _phrase_page <= 0 or keys.is_empty()
 		next.disabled = keys.is_empty() or (_phrase_page + 1) * ROWS_PER_PAGE >= keys.size()
-		prev.pressed.connect(func():
-			_phrase_page = maxi(_phrase_page - 1, 0)
-			_refresh()
-		)
-		next.pressed.connect(func():
-			_phrase_page += 1
-			_refresh()
-		)
+		_route(prev, _turn_page.bind(-1))
+		_route(next, _turn_page.bind(1))
 		pager.add_child(prev)
 		pager.add_child(page_label)
 		pager.add_child(next)
@@ -347,7 +321,7 @@ func _fill_bestiary() -> void:
 	var life_kills: Dictionary = life.get("kills", {}) if life.get("kills") is Dictionary else {}
 	var day_kills: Dictionary = day.get("kills", {}) if day.get("kills") is Dictionary else {}
 	for kind in ["slime", "goblin", "beetle", "orc", "skeleton", "bandit"]:
-		var title := kind.capitalize()
+		var title: String = kind.capitalize()
 		_body.add_child(_line("%s lifetime" % title, str(int(life_kills.get(kind, 0)))))
 		_body.add_child(_line("%s today" % title, str(int(day_kills.get(kind, 0)))))
 
@@ -437,7 +411,7 @@ func _chart_row(title: String, days: Array, field: String) -> VBoxContainer:
 func _make_pager_button(text: String) -> Button:
 	var btn := Button.new()
 	btn.text = text
-	btn.custom_minimum_size = Vector2(88, 32)
+	btn.custom_minimum_size = Vector2(88, 44)
 	btn.add_theme_font_override("font", LIGHT)
 	btn.add_theme_font_size_override("font_size", 14)
 	btn.add_theme_color_override("font_color", INK)
@@ -459,66 +433,4 @@ func _make_pager_button(text: String) -> Button:
 	off.bg_color = Color(0.82, 0.78, 0.7, 0.6)
 	off.border_color = Color(0.35, 0.24, 0.12, 0.35)
 	btn.add_theme_stylebox_override("disabled", off)
-	# emulate_touch_from_mouse: Button.pressed does not fire; gui_input does.
-	btn.gui_input.connect(_on_button_gui_input.bind(btn))
 	return btn
-
-
-func _on_button_gui_input(event: InputEvent, button: Button) -> void:
-	if button == null or button.disabled:
-		return
-	if event is InputEventScreenTouch and event.pressed:
-		button.emit_signal("pressed")
-		button.accept_event()
-
-
-func _on_dim_gui_input(event: InputEvent) -> void:
-	if not visible:
-		return
-	var tap_pos := _pointer_press_pos(event)
-	if tap_pos == Vector2.INF:
-		return
-	if _panel != null and _panel.get_global_rect().has_point(tap_pos):
-		return
-	close()
-	_dim.accept_event()
-
-
-func _align_touch(button: Control, touch: TouchScreenButton) -> void:
-	if button == null or touch == null:
-		return
-	var rect := button.get_global_rect()
-	touch.global_position = rect.position + rect.size / 2.0
-	if touch.shape is RectangleShape2D:
-		(touch.shape as RectangleShape2D).size = rect.size
-
-
-func _pointer_press_pos(event: InputEvent) -> Vector2:
-	if event is InputEventScreenTouch and event.pressed:
-		return event.position
-	if event is InputEventMouseButton \
-			and event.pressed \
-			and event.button_index == MOUSE_BUTTON_LEFT:
-		return event.position
-	return Vector2.INF
-
-
-func _try_press_button_at(pos: Vector2) -> bool:
-	if _panel == null:
-		return false
-	var buttons: Array[Button] = []
-	_collect_buttons(_panel, buttons)
-	for btn in buttons:
-		if btn == null or not btn.visible or btn.disabled:
-			continue
-		if btn.get_global_rect().has_point(pos):
-			btn.emit_signal("pressed")
-			return true
-	return false
-
-
-func _collect_buttons(node: Node, out: Array[Button]) -> void:
-	if node is Button:
-		out.append(node as Button)
-	for child in node.get_children():
-		_collect_buttons(child, out)

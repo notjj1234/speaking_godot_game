@@ -8,6 +8,7 @@ var _is_open: bool = false
 var _navigating: bool = false
 var _language_index: int = 0
 var _confirming_reset: bool = false
+var _input_layer: int = 0
 
 @onready var panel: PanelContainer = %Panel
 @onready var vbox: VBoxContainer = %VBoxContainer
@@ -27,34 +28,11 @@ const LANGUAGES := ["en", "es", "fr", "de", "it", "pt", "ja", "ko", "zh"]
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
-	set_process(false)
-	
-	_bind(%MusicMuteButton, %TouchMusicMute, _on_music_mute_pressed)
-	_bind(%SFXMuteButton, %TouchSFXMute, _on_sfx_mute_pressed)
-	_bind(%FullscreenButton, %TouchFullscreen, _on_fullscreen_pressed)
-	_bind(%LanguageButton, %TouchLanguage, _on_language_pressed)
-	_bind(%TouchButton, %TouchTouch, _on_touch_pressed)
-	_bind(%DifficultyButton, %TouchDifficulty, _on_difficulty_pressed)
-	_bind(%ResetButton, %TouchReset, _on_reset_pressed)
-	_bind(%CloseButton, %TouchClose, _on_close_pressed)
 	
 	music_slider.value_changed.connect(_on_music_slider_changed)
 	sfx_slider.value_changed.connect(_on_sfx_slider_changed)
 	
 	_sync_controls()
-
-
-func _process(_delta: float) -> void:
-	if not MobileSafeLayout.uses_touch_button_twins():
-		return
-	_align(%MusicMuteButton, %TouchMusicMute)
-	_align(%SFXMuteButton, %TouchSFXMute)
-	_align(%FullscreenButton, %TouchFullscreen)
-	_align(%LanguageButton, %TouchLanguage)
-	_align(%TouchButton, %TouchTouch)
-	_align(%DifficultyButton, %TouchDifficulty)
-	_align(%ResetButton, %TouchReset)
-	_align(%CloseButton, %TouchClose)
 
 
 func _input(event: InputEvent) -> void:
@@ -65,20 +43,16 @@ func _input(event: InputEvent) -> void:
 		_on_close_pressed()
 
 
-func _bind(button: Button, touch: TouchScreenButton, handler: Callable) -> void:
-	button.mouse_filter = Control.MOUSE_FILTER_STOP
-	button.pressed.connect(handler)
-	touch.pressed.connect(handler)
-	touch.visible = true
-
-
-func _align(button: Button, touch: TouchScreenButton) -> void:
-	if button == null or touch == null:
-		return
-	var rect := button.get_global_rect()
-	touch.global_position = rect.position + rect.size / 2.0
-	if touch.shape is RectangleShape2D:
-		(touch.shape as RectangleShape2D).size = rect.size
+## Pointer presses and keyboard `pressed` for every button on this layer.
+func _route_pointer() -> void:
+	UiInputRouter.bind_button(music_mute_button, _on_music_mute_pressed, _input_layer)
+	UiInputRouter.bind_button(sfx_mute_button, _on_sfx_mute_pressed, _input_layer)
+	UiInputRouter.bind_button(fullscreen_button, _on_fullscreen_pressed, _input_layer)
+	UiInputRouter.bind_button(language_button, _on_language_pressed, _input_layer)
+	UiInputRouter.bind_button(touch_button, _on_touch_pressed, _input_layer)
+	UiInputRouter.bind_button(difficulty_button, _on_difficulty_pressed, _input_layer)
+	UiInputRouter.bind_button(reset_button, _on_reset_pressed, _input_layer)
+	UiInputRouter.bind_button(close_button, _on_close_pressed, _input_layer)
 
 
 func show_settings() -> void:
@@ -86,7 +60,8 @@ func show_settings() -> void:
 		return
 	_is_open = true
 	visible = true
-	set_process(true)
+	_input_layer = UiInputRouter.push_layer(&"settings", self)
+	_route_pointer()
 	_sync_controls()
 	close_button.grab_focus()
 
@@ -96,7 +71,8 @@ func hide_settings() -> void:
 		return
 	_is_open = false
 	visible = false
-	set_process(false)
+	UiInputRouter.pop_layer(_input_layer)
+	_input_layer = 0
 	closed.emit()
 
 

@@ -62,7 +62,9 @@ func _ready() -> void:
 
 ## Route pointer presses on `item` (a Control, or a TouchScreenButton used as a
 ## visual) to `handler`. Fires once, on release inside the item. Rebinding an
-## item replaces its previous binding.
+## item replaces its previous binding. A bound Button becomes mouse_filter IGNORE
+## so the GUI cannot dispatch it a second time. Other controls keep theirs: a
+## bound dimmer must stay STOP to block sliders and text boxes underneath.
 func bind(item: CanvasItem, handler: Callable, layer: int = 0) -> void:
 	_add_region(item, handler, &"", layer)
 
@@ -379,8 +381,8 @@ func _add_region(item: CanvasItem, handler: Callable, held_action: StringName, l
 	region.handler = handler
 	region.held_action = held_action
 	region.layer = layer
-	if item is Control:
-		(item as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if item is BaseButton:
+		(item as BaseButton).mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_store(region)
 
 

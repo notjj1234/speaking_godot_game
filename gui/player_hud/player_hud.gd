@@ -310,13 +310,13 @@ func _configure_web_challenge_controls() -> void:
 	# Desktop: keyboard-first (type + Enter). Speak stays for Chrome's user-gesture mic rule.
 	# Touch: keep larger tap targets from the scene defaults.
 	if MobileSafeLayout.wants_touch_ui():
-		challenge_speak_button.custom_minimum_size = Vector2(80, 40)
-		challenge_fallback_submit.custom_minimum_size = Vector2(80, 40)
-		challenge_fallback_input.custom_minimum_size = Vector2(0, 40)
+		challenge_speak_button.custom_minimum_size = Vector2(80, 44)
+		challenge_fallback_submit.custom_minimum_size = Vector2(80, 44)
+		challenge_fallback_input.custom_minimum_size = Vector2(88, 44)
 	else:
-		challenge_speak_button.custom_minimum_size = Vector2(72, 28)
-		challenge_fallback_submit.custom_minimum_size = Vector2(72, 28)
-		challenge_fallback_input.custom_minimum_size = Vector2(0, 28)
+		challenge_speak_button.custom_minimum_size = Vector2(72, 44)
+		challenge_fallback_submit.custom_minimum_size = Vector2(72, 44)
+		challenge_fallback_input.custom_minimum_size = Vector2(88, 44)
 		challenge_fallback_input.placeholder_text = "Type the phrase, then press Enter"
 	call_deferred("_focus_challenge_input")
 

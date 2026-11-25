@@ -1,4 +1,4 @@
-[gd_scene load_steps=24 format=3 uid="uid://cbonfirehorde01"]
+[gd_scene load_steps=17 format=3 uid="uid://cbonfirehorde01"]
 
 [ext_resource type="Script" path="res://gui/bonfire/bonfire.gd" id="1_script"]
 [ext_resource type="FontFile" uid="uid://0ow6by7f8lfy" path="res://gui/fonts/Abaddon Bold.ttf" id="2_bold"]
@@ -125,30 +125,6 @@ border_width_right = 2
 border_width_bottom = 2
 border_color = Color(0.86, 0.74, 0.32, 1)
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_vitality"]
-size = Vector2(120, 36)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_might"]
-size = Vector2(120, 36)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_haste"]
-size = Vector2(120, 36)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_crit"]
-size = Vector2(120, 36)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_equip"]
-size = Vector2(220, 36)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_continue"]
-size = Vector2(220, 40)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_title"]
-size = Vector2(220, 40)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_journal"]
-size = Vector2(220, 40)
-
 [node name="Bonfire" type="CanvasLayer"]
 process_mode = 3
 layer = 16
@@ -162,7 +138,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 0
+mouse_filter = 2
 
 [node name="Backdrop" type="TextureRect" parent="Control"]
 layout_mode = 1
@@ -205,7 +181,7 @@ layout_mode = 2
 theme_override_constants/separation = 18
 
 [node name="Left" type="Control" parent="Control/CenterContainer/Panel/HBox"]
-custom_minimum_size = Vector2(180, 260)
+custom_minimum_size = Vector2(164, 260)
 layout_mode = 2
 
 [node name="Portrait" type="Panel" parent="Control/CenterContainer/Panel/HBox/Left"]
@@ -219,7 +195,7 @@ mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_portrait")
 
 [node name="Avatar" type="Sprite2D" parent="Control/CenterContainer/Panel/HBox/Left"]
-position = Vector2(90, 140)
+position = Vector2(82, 140)
 scale = Vector2(3, 3)
 texture = ExtResource("5_player")
 hframes = 16
@@ -237,7 +213,7 @@ texture = ExtResource("6_sword")
 [node name="Right" type="VBoxContainer" parent="Control/CenterContainer/Panel/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 8
+theme_override_constants/separation = 2
 
 [node name="Title" type="Label" parent="Control/CenterContainer/Panel/HBox/Right"]
 layout_mode = 2
@@ -274,7 +250,7 @@ text = "HP  rank 0  next 2"
 
 [node name="VitalityButton" type="Button" parent="Control/CenterContainer/Panel/HBox/Right/VitalityRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(110, 34)
+custom_minimum_size = Vector2(110, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 0.95, 1)
@@ -305,7 +281,7 @@ text = "Attack  rank 0  next 2"
 
 [node name="MightButton" type="Button" parent="Control/CenterContainer/Panel/HBox/Right/MightRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(110, 34)
+custom_minimum_size = Vector2(110, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 0.95, 1)
@@ -336,7 +312,7 @@ text = "Speed  rank 0  next 2"
 
 [node name="HasteButton" type="Button" parent="Control/CenterContainer/Panel/HBox/Right/HasteRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(110, 34)
+custom_minimum_size = Vector2(110, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 0.95, 1)
@@ -367,7 +343,7 @@ text = "Crit  rank 0  next 2"
 
 [node name="CritButton" type="Button" parent="Control/CenterContainer/Panel/HBox/Right/CritRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(110, 34)
+custom_minimum_size = Vector2(110, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 0.95, 1)
@@ -394,7 +370,7 @@ text = ""
 
 [node name="EquipButton" type="Button" parent="Control/CenterContainer/Panel/HBox/Right"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(220, 34)
+custom_minimum_size = Vector2(220, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 0.95, 1)
@@ -421,7 +397,7 @@ text = ""
 
 [node name="ContinueButton" type="Button" parent="Control/CenterContainer/Panel/HBox/Right"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(220, 38)
+custom_minimum_size = Vector2(220, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.97, 0.82, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 0.92, 1)
@@ -434,9 +410,13 @@ theme_override_styles/pressed = SubResource("StyleBoxFlat_go_pressed")
 theme_override_styles/focus = SubResource("StyleBoxFlat_go_hover")
 text = "Continue"
 
-[node name="JournalButton" type="Button" parent="Control/CenterContainer/Panel/HBox/Right"]
+[node name="BottomRow" type="HBoxContainer" parent="Control/CenterContainer/Panel/HBox/Right"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="JournalButton" type="Button" parent="Control/CenterContainer/Panel/HBox/Right/BottomRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(220, 36)
+custom_minimum_size = Vector2(150, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 0.95, 1)
@@ -449,10 +429,11 @@ theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
 text = "Journal"
+size_flags_horizontal = 3
 
-[node name="TitleButton" type="Button" parent="Control/CenterContainer/Panel/HBox/Right"]
+[node name="TitleButton" type="Button" parent="Control/CenterContainer/Panel/HBox/Right/BottomRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(220, 36)
+custom_minimum_size = Vector2(150, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 0.95, 1)
@@ -465,51 +446,4 @@ theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
 text = "Back to Title"
-
-[node name="TouchVitality" type="TouchScreenButton" parent="Control"]
-unique_name_in_owner = true
-position = Vector2(400, 160)
-shape = SubResource("RectangleShape2D_vitality")
-shape_visible = false
-
-[node name="TouchMight" type="TouchScreenButton" parent="Control"]
-unique_name_in_owner = true
-position = Vector2(400, 200)
-shape = SubResource("RectangleShape2D_might")
-shape_visible = false
-
-[node name="TouchHaste" type="TouchScreenButton" parent="Control"]
-unique_name_in_owner = true
-position = Vector2(400, 240)
-shape = SubResource("RectangleShape2D_haste")
-shape_visible = false
-
-[node name="TouchCrit" type="TouchScreenButton" parent="Control"]
-unique_name_in_owner = true
-position = Vector2(400, 280)
-shape = SubResource("RectangleShape2D_crit")
-shape_visible = false
-
-[node name="TouchEquip" type="TouchScreenButton" parent="Control"]
-unique_name_in_owner = true
-position = Vector2(400, 280)
-shape = SubResource("RectangleShape2D_equip")
-shape_visible = false
-
-[node name="TouchContinue" type="TouchScreenButton" parent="Control"]
-unique_name_in_owner = true
-position = Vector2(400, 320)
-shape = SubResource("RectangleShape2D_continue")
-shape_visible = false
-
-[node name="TouchJournal" type="TouchScreenButton" parent="Control"]
-unique_name_in_owner = true
-position = Vector2(400, 340)
-shape = SubResource("RectangleShape2D_journal")
-shape_visible = false
-
-[node name="TouchTitle" type="TouchScreenButton" parent="Control"]
-unique_name_in_owner = true
-position = Vector2(400, 360)
-shape = SubResource("RectangleShape2D_title")
-shape_visible = false
+size_flags_horizontal = 3

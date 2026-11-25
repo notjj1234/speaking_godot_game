@@ -215,17 +215,17 @@ alignment = 1
 
 [node name="ChallengeSpeakButton" type="Button" parent="Control/ChallengeCenter/ChallengePanel/MarginContainer/ChallengeVBox/ChallengeFallbackRow"]
 visible = false
-custom_minimum_size = Vector2(80, 40)
+custom_minimum_size = Vector2(80, 44)
 layout_mode = 2
 text = "Speak"
 
 [node name="ChallengeFallbackInput" type="LineEdit" parent="Control/ChallengeCenter/ChallengePanel/MarginContainer/ChallengeVBox/ChallengeFallbackRow"]
-custom_minimum_size = Vector2(0, 40)
+custom_minimum_size = Vector2(88, 44)
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "Type the phrase instead"
 
 [node name="ChallengeFallbackSubmit" type="Button" parent="Control/ChallengeCenter/ChallengePanel/MarginContainer/ChallengeVBox/ChallengeFallbackRow"]
-custom_minimum_size = Vector2(80, 40)
+custom_minimum_size = Vector2(80, 44)
 layout_mode = 2
 text = "Submit"

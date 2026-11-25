@@ -2,7 +2,9 @@
 
 class_name TutorialDialog extends Control
 
-const BANNER_WIDTH := 520.0
+## Narrow enough to end left of the top-right pause button (x 518 at 640 wide):
+## two tappable things must not share a spot.
+const BANNER_WIDTH := 384.0
 const BANNER_HEIGHT := 84.0
 const TOP_MARGIN := 96.0
 const INK := Color(0.12, 0.08, 0.04, 1)
@@ -45,7 +47,7 @@ func _ready():
 	print("Current level name: ", current_level)
 	_apply_banner_style()
 	_apply_banner_layout()
-	mouse_filter = Control.MOUSE_FILTER_STOP
+	UiInputRouter.bind(self, next_message)
 	call_deferred("_apply_banner_layout")
 	_hide_duplicate_hud_chrome()
 
@@ -194,15 +196,6 @@ func _input(event):
 			hide_message()
 		else:
 			next_message()
-		return
-	var tap_pos := Vector2.INF
-	if event is InputEventScreenTouch and event.pressed:
-		tap_pos = (event as InputEventScreenTouch).position
-	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		tap_pos = (event as InputEventMouseButton).position
-	if tap_pos != Vector2.INF and get_global_rect().has_point(tap_pos):
-		next_message()
-		get_viewport().set_input_as_handled()
 
 
 func show_custom_message(text: String, persist := false):

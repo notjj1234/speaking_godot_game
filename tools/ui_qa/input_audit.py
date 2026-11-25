@@ -35,6 +35,7 @@ DPAD = {"Left", "Right", "Up", "Down"}
 UNUSED_SCENES = {
     "speech_to_text/SpeechToText.tscn",
     "levels/tutorial_items/tutorial_popup.tscn",
+    "touch_controls/Scene/pause_exit_button.tscn",
 }
 
 # (scene, node) full-screen STOP ColorRects that are modal dimmers. Each one's
@@ -277,7 +278,12 @@ def strip_comment(line: str) -> str:
 
 
 def handler_name(expr: str) -> str:
-    return re.sub(r"\.bind\(.*$", "", expr.strip().rstrip(")")).strip()
+    """The handler's identity. Bound arguments are part of it: _set_tab.bind(A)
+    and _set_tab.bind(B) are two different actions."""
+    expr = expr.strip()
+    while expr.count(")") > expr.count("("):
+        expr = expr[:-1].rstrip()
+    return expr
 
 
 def audit_scripts(root: Path) -> list[Finding]:

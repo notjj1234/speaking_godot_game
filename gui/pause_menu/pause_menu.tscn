@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3 uid="uid://xnhp7ttbcmmm"]
+[gd_scene load_steps=16 format=3 uid="uid://xnhp7ttbcmmm"]
 
 [ext_resource type="Script" uid="uid://b8mligen8pcbk" path="res://gui/pause_menu/pause_menu.gd" id="1_5ko8b"]
 [ext_resource type="Texture2D" uid="uid://dge3trwiyp5gh" path="res://touch_controls/UsedIcons/Exit.png" id="2_2go4f"]
@@ -24,15 +24,6 @@ texture_margin_left = 14.0
 texture_margin_top = 14.0
 texture_margin_right = 14.0
 texture_margin_bottom = 14.0
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_fdasw"]
-size = Vector2(75, 44)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_nva4f"]
-size = Vector2(75, 44)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_main"]
-size = Vector2(110, 44)
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_word"]
 content_margin_left = 14.0
@@ -104,6 +95,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 
 [node name="ColorRect" type="ColorRect" parent="Control"]
 layout_mode = 1
@@ -225,7 +217,7 @@ text = "Music"
 
 [node name="MusicSlider" type="HSlider" parent="Control/MenuRoot/Center/MenuCard/Card/Columns/LeftColumn/MusicPanel"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 24)
+custom_minimum_size = Vector2(88, 44)
 layout_mode = 2
 max_value = 100.0
 step = 1.0
@@ -237,7 +229,7 @@ theme_override_constants/separation = 8
 
 [node name="MusicQuieter" type="Button" parent="Control/MenuRoot/Center/MenuCard/Card/Columns/LeftColumn/MusicPanel/MusicButtons"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(64, 36)
+custom_minimum_size = Vector2(64, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.12, 0.08, 0.04, 1)
 theme_override_fonts/font = ExtResource("6_light")
@@ -250,7 +242,7 @@ text = "-"
 
 [node name="MusicMute" type="Button" parent="Control/MenuRoot/Center/MenuCard/Card/Columns/LeftColumn/MusicPanel/MusicButtons"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(120, 36)
+custom_minimum_size = Vector2(120, 44)
 clip_text = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -265,7 +257,7 @@ text = "Mute"
 
 [node name="MusicLouder" type="Button" parent="Control/MenuRoot/Center/MenuCard/Card/Columns/LeftColumn/MusicPanel/MusicButtons"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(64, 36)
+custom_minimum_size = Vector2(64, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.12, 0.08, 0.04, 1)
 theme_override_fonts/font = ExtResource("6_light")
@@ -300,7 +292,7 @@ horizontal_alignment = 1
 
 [node name="JournalButton" type="Button" parent="Control/MenuRoot/Center/MenuCard/Card/Columns/RightColumn/WordPanel/WordColumn"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(120, 32)
+custom_minimum_size = Vector2(120, 44)
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_colors/font_color = Color(0.12, 0.08, 0.04, 1)
@@ -311,10 +303,6 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_pager")
 theme_override_styles/normal = SubResource("StyleBoxFlat_pager")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_pager")
 text = "Journal"
-
-[node name="Touch_Journal" type="TouchScreenButton" parent="Control/MenuRoot/Center/MenuCard/Card/Columns/RightColumn/WordPanel/WordColumn"]
-unique_name_in_owner = true
-shape_visible = false
 
 [node name="WordRows" type="VBoxContainer" parent="Control/MenuRoot/Center/MenuCard/Card/Columns/RightColumn/WordPanel/WordColumn"]
 unique_name_in_owner = true
@@ -329,7 +317,7 @@ alignment = 1
 
 [node name="PrevPageButton" type="Button" parent="Control/MenuRoot/Center/MenuCard/Card/Columns/RightColumn/WordPanel/WordColumn/Pager"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(64, 36)
+custom_minimum_size = Vector2(64, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.12, 0.08, 0.04, 1)
 theme_override_colors/font_disabled_color = Color(0.12, 0.08, 0.04, 0.35)
@@ -358,7 +346,7 @@ vertical_alignment = 1
 
 [node name="NextPageButton" type="Button" parent="Control/MenuRoot/Center/MenuCard/Card/Columns/RightColumn/WordPanel/WordColumn/Pager"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(64, 36)
+custom_minimum_size = Vector2(64, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.12, 0.08, 0.04, 1)
 theme_override_colors/font_disabled_color = Color(0.12, 0.08, 0.04, 0.35)
@@ -442,29 +430,10 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_pager")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_pager_off")
 text = "Settings"
 
-[node name="Touch_Save" type="TouchScreenButton" parent="Control"]
-unique_name_in_owner = true
-position = Vector2(-4000, -4000)
-shape = SubResource("RectangleShape2D_fdasw")
-shape_visible = false
-
-[node name="Touch_Load" type="TouchScreenButton" parent="Control"]
-unique_name_in_owner = true
-position = Vector2(-4000, -4000)
-shape = SubResource("RectangleShape2D_nva4f")
-shape_visible = false
-
-[node name="Touch_MainMenu" type="TouchScreenButton" parent="Control"]
-unique_name_in_owner = true
-position = Vector2(-4000, -4000)
-shape = SubResource("RectangleShape2D_main")
-shape_visible = false
-
-[node name="TouchScreenButton" type="TouchScreenButton" parent="Control"]
+[node name="CloseIcon" type="TouchScreenButton" parent="Control"]
 position = Vector2(20, 12)
 scale = Vector2(0.7, 0.7)
 texture_normal = ExtResource("2_2go4f")
-action = "pause"
 
 [node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="Control"]
 unique_name_in_owner = true

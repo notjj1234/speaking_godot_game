@@ -8,6 +8,7 @@ var _layout_hooked: bool = false
 
 func _ready() -> void:
 	add_to_group("pause_button")
+	UiInputRouter.bind_held($Root/TopRight/Pause, &"pause")
 	_touch_ui_enabled = MobileSafeLayout.wants_touch_ui()
 	if not _touch_ui_enabled:
 		print("🖥️ Desktop detected — hiding on-screen pause button (use Esc).")
@@ -19,6 +20,7 @@ func _ready() -> void:
 	_layout_hooked = true
 	_apply_safe_layout()
 	call_deferred("_apply_safe_layout")
+	set_gameplay_suppressed(UiInputRouter.is_gameplay_suppressed())
 
 
 func _notification(what: int) -> void:
@@ -39,11 +41,11 @@ func apply_touch_ui_enabled() -> void:
 			viewport.size_changed.connect(_apply_safe_layout)
 		_layout_hooked = true
 	_apply_safe_layout()
-	var menu := get_node_or_null("/root/PauseMenu")
-	visible = not (menu != null and bool(menu.get("is_paused")))
+	visible = not UiInputRouter.is_gameplay_suppressed()
 
 
-func set_suppressed_by_pause(suppressed: bool) -> void:
+## Called by UiInputRouter whenever an overlay layer opens or closes.
+func set_gameplay_suppressed(suppressed: bool) -> void:
 	if not _touch_ui_enabled:
 		return
 	visible = not suppressed

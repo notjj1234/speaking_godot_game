@@ -14,9 +14,12 @@ func _ready() -> void:
 	connect("focus_entered", Callable(self, "_on_item_focused"))
 	connect("focus_exited", Callable(self, "_on_item_unfocused"))
 	connect("pressed", Callable(self, "_on_item_pressed"))
+	# A slot created while the pause menu is open joins its input layer.
+	if PauseMenu.input_layer != 0:
+		route(PauseMenu.input_layer)
 
-	# Ensure GUI input is handled for touch interactions
-	connect("gui_input", Callable(self, "_on_gui_input"))
+func route(layer: int) -> void:
+	UiInputRouter.bind(self, _on_item_tapped, layer)
 
 func set_slot_data(value: SlotData) -> void:
 	slot_data = value
@@ -52,12 +55,6 @@ func _on_item_pressed() -> void:
 			slot_data.quantity -= 1
 			label.text = str(slot_data.quantity)
 
-func _on_gui_input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch and event.pressed:
-		grab_focus()
-		_on_item_focused()
-		_on_item_pressed()
-	elif event is InputEventMouseButton and event.pressed:
-		grab_focus()
-		_on_item_focused()
-		_on_item_pressed()
+func _on_item_tapped() -> void:
+	grab_focus()
+	_on_item_pressed()

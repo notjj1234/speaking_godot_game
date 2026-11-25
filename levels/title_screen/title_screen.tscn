@@ -1,27 +1,9 @@
-[gd_scene load_steps=14 format=3 uid="uid://8624fq7trlgq"]
+[gd_scene load_steps=9 format=3 uid="uid://8624fq7trlgq"]
 
 [ext_resource type="Script" uid="uid://drmxsqc880k0c" path="res://levels/title_screen/title_screen.gd" id="1_satpf"]
 [ext_resource type="Texture2D" uid="uid://cbv28avj8c058" path="res://tile_maps/sprites/Grass-01.png" id="2_grass"]
 [ext_resource type="FontFile" uid="uid://0ow6by7f8lfy" path="res://gui/fonts/Abaddon Bold.ttf" id="3_bold"]
 [ext_resource type="FontFile" uid="uid://d1uabga2q8lmv" path="res://gui/fonts/Abaddon Light.ttf" id="4_light"]
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_tutorial"]
-size = Vector2(120, 24)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_game"]
-size = Vector2(120, 24)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_load"]
-size = Vector2(120, 24)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_journal"]
-size = Vector2(120, 24)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_load_yes"]
-size = Vector2(100, 36)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_load_no"]
-size = Vector2(100, 36)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_load_window"]
 content_margin_left = 20.0
@@ -93,7 +75,7 @@ offset_right = 0.0
 offset_bottom = 0.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 0
+mouse_filter = 2
 
 [node name="Background" type="ColorRect" parent="Control"]
 layout_mode = 1
@@ -236,6 +218,18 @@ theme_override_styles/pressed = SubResource("StyleBoxFlat_primary_focus")
 theme_override_styles/focus = SubResource("StyleBoxFlat_primary_focus")
 text = "Settings"
 
+[node name="ExitGame" type="Button" parent="Control/CenterContainer/VBoxContainer"]
+custom_minimum_size = Vector2(240, 48)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.88, 0.78, 1)
+theme_override_fonts/font = ExtResource("4_light")
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_secondary")
+theme_override_styles/hover = SubResource("StyleBoxFlat_secondary")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_primary_focus")
+theme_override_styles/focus = SubResource("StyleBoxFlat_primary_focus")
+text = "Exit Game"
+
 [node name="LoadConfirm" type="Control" parent="Control"]
 unique_name_in_owner = true
 visible = false
@@ -245,7 +239,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 0
+mouse_filter = 2
 
 [node name="ConfirmDim" type="ColorRect" parent="Control/LoadConfirm"]
 layout_mode = 1
@@ -324,7 +318,7 @@ theme_override_constants/separation = 24
 
 [node name="YesButton" type="Button" parent="Control/LoadConfirm/ConfirmCenter/Panel/ConfirmVBox/ConfirmButtons"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(100, 40)
+custom_minimum_size = Vector2(100, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
 theme_override_fonts/font = ExtResource("3_bold")
@@ -337,7 +331,7 @@ text = "Yes"
 
 [node name="NoButton" type="Button" parent="Control/LoadConfirm/ConfirmCenter/Panel/ConfirmVBox/ConfirmButtons"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(100, 40)
+custom_minimum_size = Vector2(100, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
 theme_override_fonts/font = ExtResource("3_bold")
@@ -348,34 +342,92 @@ theme_override_styles/pressed = SubResource("StyleBoxFlat_primary_focus")
 theme_override_styles/focus = SubResource("StyleBoxFlat_primary_focus")
 text = "No"
 
-[node name="TouchStartTutorial" type="TouchScreenButton" parent="Control"]
-visible = true
-shape = SubResource("RectangleShape2D_tutorial")
-shape_visible = false
-
-[node name="TouchStartGame" type="TouchScreenButton" parent="Control"]
-visible = true
-shape = SubResource("RectangleShape2D_game")
-shape_visible = false
-
-[node name="TouchLoad" type="TouchScreenButton" parent="Control"]
-visible = true
-shape = SubResource("RectangleShape2D_load")
-shape_visible = false
-
-[node name="TouchJournal" type="TouchScreenButton" parent="Control"]
-visible = true
-shape = SubResource("RectangleShape2D_journal")
-shape_visible = false
-
-[node name="TouchLoadYes" type="TouchScreenButton" parent="Control"]
+[node name="ExitConfirm" type="Control" parent="Control"]
 unique_name_in_owner = true
-visible = true
-shape = SubResource("RectangleShape2D_load_yes")
-shape_visible = false
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
-[node name="TouchLoadNo" type="TouchScreenButton" parent="Control"]
+[node name="ConfirmDim" type="ColorRect" parent="Control/ExitConfirm"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.02, 0.05, 0.03, 0.72)
+
+[node name="ConfirmCenter" type="CenterContainer" parent="Control/ExitConfirm"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Panel" type="PanelContainer" parent="Control/ExitConfirm/ConfirmCenter"]
+custom_minimum_size = Vector2(320, 160)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_load_window")
+
+[node name="ConfirmVBox" type="VBoxContainer" parent="Control/ExitConfirm/ConfirmCenter/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ConfirmTitle" type="Label" parent="Control/ExitConfirm/ConfirmCenter/Panel/ConfirmVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.92, 0.62, 1)
+theme_override_colors/font_outline_color = Color(0.05, 0.08, 0.02, 1)
+theme_override_constants/outline_size = 4
+theme_override_fonts/font = ExtResource("3_bold")
+theme_override_font_sizes/font_size = 22
+text = "Exit game?"
+horizontal_alignment = 1
+
+[node name="PromptLabel" type="Label" parent="Control/ExitConfirm/ConfirmCenter/Panel/ConfirmVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.97, 0.9, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.06, 0.03, 1)
+theme_override_constants/outline_size = 3
+theme_override_fonts/font = ExtResource("4_light")
+theme_override_font_sizes/font_size = 15
+text = "This will close Loqui Quest."
+horizontal_alignment = 1
+
+[node name="ConfirmButtons" type="HBoxContainer" parent="Control/ExitConfirm/ConfirmCenter/Panel/ConfirmVBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 24
+
+[node name="ExitYesButton" type="Button" parent="Control/ExitConfirm/ConfirmCenter/Panel/ConfirmVBox/ConfirmButtons"]
 unique_name_in_owner = true
-visible = true
-shape = SubResource("RectangleShape2D_load_no")
-shape_visible = false
+custom_minimum_size = Vector2(100, 44)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
+theme_override_fonts/font = ExtResource("3_bold")
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_load_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_load_btn")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_primary_focus")
+theme_override_styles/focus = SubResource("StyleBoxFlat_primary_focus")
+text = "Yes"
+
+[node name="ExitNoButton" type="Button" parent="Control/ExitConfirm/ConfirmCenter/Panel/ConfirmVBox/ConfirmButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 44)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
+theme_override_fonts/font = ExtResource("3_bold")
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_load_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_load_btn")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_primary_focus")
+theme_override_styles/focus = SubResource("StyleBoxFlat_primary_focus")
+text = "No"

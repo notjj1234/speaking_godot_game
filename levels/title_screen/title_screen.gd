@@ -11,25 +11,22 @@ const SAVE_FILE_PATH := "user://save.sav"
 @onready var load_button: Button = $Control/CenterContainer/VBoxContainer/Load
 @onready var journal_button: Button = $Control/CenterContainer/VBoxContainer/Journal
 @onready var settings_button: Button = $Control/CenterContainer/VBoxContainer/Settings
+@onready var exit_button: Button = $Control/CenterContainer/VBoxContainer/ExitGame
 @onready var _settings_node: SettingsNode = null
-@onready var touch_tutorial_button: TouchScreenButton = $Control/TouchStartTutorial
-@onready var touch_game_button: TouchScreenButton = $Control/TouchStartGame
-@onready var touch_load_button: TouchScreenButton = $Control/TouchLoad
-@onready var touch_journal_button: TouchScreenButton = $Control/TouchJournal
 @onready var load_confirm: Control = %LoadConfirm
+@onready var exit_confirm: Control = %ExitConfirm
 @onready var location_label: Label = %LocationLabel
 @onready var hp_label: Label = %HpLabel
 @onready var yes_button: Button = %YesButton
 @onready var no_button: Button = %NoButton
-@onready var touch_load_yes: TouchScreenButton = %TouchLoadYes
-@onready var touch_load_no: TouchScreenButton = %TouchLoadNo
+@onready var exit_yes_button: Button = %ExitYesButton
+@onready var exit_no_button: Button = %ExitNoButton
 
 var _navigating: bool = false
-## No sits on top of the centered Load button. The same click that dismisses
-## Continue? must not reopen it, so menu twins stay hidden until pointer-up.
-var _suppress_load_open: bool = false
-var _hold_menu_until_release: bool = false
 var _journal_was_open: bool = false
+var _show_exit: bool = false
+## UiInputRouter layer of whichever confirm card is open, else 0.
+var _confirm_layer: int = 0
 
 
 func _ready() -> void:
@@ -38,54 +35,32 @@ func _ready() -> void:
 		music.stop_for_menu()
 	await SceneTransition.fade_in()
 
-	tutorial_button.mouse_filter = Control.MOUSE_FILTER_STOP
-	game_button.mouse_filter = Control.MOUSE_FILTER_STOP
-	load_button.mouse_filter = Control.MOUSE_FILTER_STOP
-	journal_button.mouse_filter = Control.MOUSE_FILTER_STOP
-	yes_button.mouse_filter = Control.MOUSE_FILTER_STOP
-	no_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	# Web has no app process to quit; hide Exit on browser builds.
+	_show_exit = not OS.has_feature("web")
+	if exit_button:
+		exit_button.visible = _show_exit
+	if exit_confirm:
+		exit_confirm.visible = false
 
-	tutorial_button.pressed.connect(_on_tutorial_pressed)
-	game_button.pressed.connect(_on_game_pressed)
-	load_button.pressed.connect(_on_load_pressed)
-	journal_button.pressed.connect(_on_journal_pressed)
+	# Base-layer buttons. UiInputRouter dispatches the pointer; `pressed` is keyboard.
+	UiInputRouter.bind_button(tutorial_button, _on_tutorial_pressed)
+	UiInputRouter.bind_button(game_button, _on_game_pressed)
+	UiInputRouter.bind_button(load_button, _on_load_pressed)
+	UiInputRouter.bind_button(journal_button, _on_journal_pressed)
 	if settings_button:
-		settings_button.pressed.connect(_on_settings_pressed)
-	yes_button.pressed.connect(_on_load_yes_pressed)
-	no_button.pressed.connect(_on_load_no_pressed)
-	touch_tutorial_button.pressed.connect(_on_tutorial_pressed)
-	touch_game_button.pressed.connect(_on_game_pressed)
-	touch_load_button.pressed.connect(_on_load_pressed)
-	touch_journal_button.pressed.connect(_on_journal_pressed)
-	# Confirm Yes/No: do not rely on TouchScreenButton twins. With
-	# emulate_touch_from_mouse, misaligned twins make No a dead click.
-	# _input hit-tests the real button rects instead (see below).
-	touch_load_yes.visible = false
-	touch_load_no.visible = false
+		UiInputRouter.bind_button(settings_button, _on_settings_pressed)
+	if _show_exit and exit_button:
+		UiInputRouter.bind_button(exit_button, _on_exit_pressed)
 
-	# Twins stay visible (no texture) so desktop mouse clicks still land:
-	# emulate_touch_from_mouse is on and emulate_mouse_from_touch is off.
-	touch_tutorial_button.visible = true
-	touch_game_button.visible = true
-	touch_load_button.visible = true
-	touch_journal_button.visible = true
-
-	tutorial_button.focus_neighbor_bottom = tutorial_button.get_path_to(game_button)
-	tutorial_button.focus_next = tutorial_button.get_path_to(game_button)
-	tutorial_button.focus_neighbor_top = tutorial_button.get_path_to(journal_button)
-	tutorial_button.focus_previous = tutorial_button.get_path_to(journal_button)
-	game_button.focus_neighbor_top = game_button.get_path_to(tutorial_button)
-	game_button.focus_previous = game_button.get_path_to(tutorial_button)
-	game_button.focus_neighbor_bottom = game_button.get_path_to(load_button)
-	game_button.focus_next = game_button.get_path_to(load_button)
-	load_button.focus_neighbor_top = load_button.get_path_to(game_button)
-	load_button.focus_previous = load_button.get_path_to(game_button)
-	load_button.focus_neighbor_bottom = load_button.get_path_to(journal_button)
-	load_button.focus_next = load_button.get_path_to(journal_button)
-	journal_button.focus_neighbor_top = journal_button.get_path_to(load_button)
-	journal_button.focus_previous = journal_button.get_path_to(load_button)
-	journal_button.focus_neighbor_bottom = journal_button.get_path_to(tutorial_button)
-	journal_button.focus_next = journal_button.get_path_to(tutorial_button)
+	if exit_yes_button and exit_no_button:
+		exit_yes_button.focus_neighbor_right = exit_yes_button.get_path_to(exit_no_button)
+		exit_yes_button.focus_next = exit_yes_button.get_path_to(exit_no_button)
+		exit_yes_button.focus_neighbor_left = exit_yes_button.get_path_to(exit_no_button)
+		exit_yes_button.focus_previous = exit_yes_button.get_path_to(exit_no_button)
+		exit_no_button.focus_neighbor_left = exit_no_button.get_path_to(exit_yes_button)
+		exit_no_button.focus_previous = exit_no_button.get_path_to(exit_yes_button)
+		exit_no_button.focus_neighbor_right = exit_no_button.get_path_to(exit_yes_button)
+		exit_no_button.focus_next = exit_no_button.get_path_to(exit_yes_button)
 
 	yes_button.focus_neighbor_right = yes_button.get_path_to(no_button)
 	yes_button.focus_next = yes_button.get_path_to(no_button)
@@ -96,104 +71,79 @@ func _ready() -> void:
 	no_button.focus_neighbor_right = no_button.get_path_to(yes_button)
 	no_button.focus_next = no_button.get_path_to(yes_button)
 
+	# Disabled state must be known before building the arrow-key focus ring.
+	load_button.disabled = not SaveManager.has_save()
+	_setup_menu_focus_neighbors()
 	tutorial_button.grab_focus()
 
-	load_button.disabled = not SaveManager.has_save()
 	load_confirm.visible = false
-	touch_load_yes.visible = false
-	touch_load_no.visible = false
 
 	_hide_gameplay_ui()
-	var viewport := get_viewport()
-	if viewport:
-		viewport.size_changed.connect(_align_menu_touch_buttons)
-	_align_menu_touch_buttons()
-	call_deferred("_align_menu_touch_buttons")
 
 
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_SIZE_CHANGED:
-		_align_menu_touch_buttons()
+func _setup_menu_focus_neighbors() -> void:
+	# Explicit vertical ring so Settings (and Exit when native) are never skipped.
+	# Older code wired Journal → Tutorial and left Settings unreachable by arrows.
+	var chain: Array[Control] = []
+	for btn in [tutorial_button, game_button, load_button, journal_button, settings_button]:
+		if btn == null:
+			continue
+		# Disabled buttons cannot take focus — link around them.
+		if btn is BaseButton and (btn as BaseButton).disabled:
+			btn.focus_mode = Control.FOCUS_NONE
+			continue
+		chain.append(btn)
+	if _show_exit and exit_button != null and exit_button.visible:
+		chain.append(exit_button)
+	elif exit_button != null:
+		exit_button.focus_mode = Control.FOCUS_NONE
+		exit_button.focus_neighbor_top = NodePath()
+		exit_button.focus_neighbor_bottom = NodePath()
+		exit_button.focus_next = NodePath()
+		exit_button.focus_previous = NodePath()
+
+	var n := chain.size()
+	if n == 0:
+		return
+	var names: PackedStringArray = []
+	for i in n:
+		var cur := chain[i]
+		var prev := chain[(i - 1 + n) % n]
+		var next := chain[(i + 1) % n]
+		cur.focus_mode = Control.FOCUS_ALL
+		cur.focus_neighbor_top = cur.get_path_to(prev)
+		cur.focus_previous = cur.get_path_to(prev)
+		cur.focus_neighbor_bottom = cur.get_path_to(next)
+		cur.focus_next = cur.get_path_to(next)
+		# Pin left/right to self so spatial search does not jump off the column.
+		cur.focus_neighbor_left = cur.get_path_to(cur)
+		cur.focus_neighbor_right = cur.get_path_to(cur)
+		names.append(String(cur.name))
+	print("✅ TitleScreen focus chain: ", ", ".join(names))
 
 
 func _process(_delta: float) -> void:
 	_sync_journal_overlay()
-	_align_menu_touch_buttons()
 
 
-func _input(event: InputEvent) -> void:
-	if _pointer_released(event):
-		if _hold_menu_until_release:
-			_hold_menu_until_release = false
-			_suppress_load_open = false
-			if not _navigating and not load_confirm.visible:
-				_unlock_load()
-				_show_menu_twins()
-		return
-	# Journal overlay backup: Esc / outside tap / forward button taps.
-	if _is_journal_open():
-		if event.is_action_pressed("ui_cancel") or event.is_action_pressed("pause"):
-			_hide_journal()
-			get_viewport().set_input_as_handled()
-			return
-		var journal_tap := _pointer_press_pos(event)
-		if journal_tap != Vector2.INF:
-			var tracker := get_node_or_null("/root/ProgressTracker")
-			var panel := Rect2()
-			if tracker and tracker.has_method("journal_panel_rect"):
-				panel = tracker.journal_panel_rect()
-			if panel.size == Vector2.ZERO or not panel.has_point(journal_tap):
-				_hide_journal()
-			elif tracker and tracker.has_method("journal_try_tap"):
-				tracker.journal_try_tap(journal_tap)
-			get_viewport().set_input_as_handled()
-		return
-	if not load_confirm.visible or _navigating:
-		return
-	# emulate_touch_from_mouse turns clicks into ScreenTouch; GUI Buttons never
-	# see them. Hit-test Yes/No by their laid-out rects so both sides work.
-	var tap_pos := _pointer_press_pos(event)
-	if tap_pos == Vector2.INF:
-		return
-	if no_button.get_global_rect().has_point(tap_pos):
-		_on_load_no_pressed()
-		get_viewport().set_input_as_handled()
-	elif yes_button.get_global_rect().has_point(tap_pos):
-		_on_load_yes_pressed()
-		get_viewport().set_input_as_handled()
-
-
-func _pointer_press_pos(event: InputEvent) -> Vector2:
-	if event is InputEventScreenTouch and event.pressed:
-		return event.position
-	if event is InputEventMouseButton \
-			and event.pressed \
-			and event.button_index == MOUSE_BUTTON_LEFT:
-		return event.position
-	return Vector2.INF
-
-
-func _pointer_released(event: InputEvent) -> bool:
-	if event is InputEventScreenTouch and not event.pressed:
-		return true
-	if event is InputEventMouseButton \
-			and not event.pressed \
-			and event.button_index == MOUSE_BUTTON_LEFT:
-		return true
-	return false
-
-
+## Escape closes the open confirm card. The journal handles its own Escape.
 func _unhandled_input(event: InputEvent) -> void:
 	if _is_journal_open():
-		if event.is_action_pressed("ui_cancel") or event.is_action_pressed("pause"):
-			_hide_journal()
-			get_viewport().set_input_as_handled()
 		return
-	if not load_confirm.visible:
+	if not event.is_action_pressed("ui_cancel") and not event.is_action_pressed("pause"):
 		return
-	if event.is_action_pressed("ui_cancel") or event.is_action_pressed("pause"):
+	if exit_confirm != null and exit_confirm.visible:
+		_on_exit_no_pressed()
+		get_viewport().set_input_as_handled()
+		return
+	if load_confirm.visible:
 		_on_load_no_pressed()
 		get_viewport().set_input_as_handled()
+
+
+func _any_confirm_open() -> bool:
+	return (load_confirm != null and load_confirm.visible) \
+			or (exit_confirm != null and exit_confirm.visible)
 
 
 func _is_journal_open() -> bool:
@@ -201,63 +151,16 @@ func _is_journal_open() -> bool:
 	return tracker != null and tracker.has_method("is_journal_open") and bool(tracker.is_journal_open())
 
 
-func _hide_journal() -> void:
-	var tracker := get_node_or_null("/root/ProgressTracker")
-	if tracker and tracker.has_method("hide_journal"):
-		tracker.hide_journal()
-
-
 func _sync_journal_overlay() -> void:
 	var journal_open := _is_journal_open()
-	if journal_open and not _journal_was_open:
-		_park_menu_twins_for_journal()
-	elif not journal_open and _journal_was_open:
-		# Always restore twins after Journal closes so title never soft-locks.
-		if not _navigating and (load_confirm == null or not load_confirm.visible):
-			_hold_menu_until_release = false
-			_suppress_load_open = false
-			_unlock_load()
-			_show_menu_twins()
-			if tutorial_button:
-				tutorial_button.grab_focus()
+	if _journal_was_open and not journal_open:
+		if not _navigating and not _any_confirm_open() and tutorial_button:
+			tutorial_button.grab_focus()
 	_journal_was_open = journal_open
 
 
-func _park_menu_twins_for_journal() -> void:
-	touch_tutorial_button.visible = false
-	touch_game_button.visible = false
-	touch_load_button.visible = false
-	touch_journal_button.visible = false
-	touch_tutorial_button.position = Vector2(-4000, -4000)
-	touch_game_button.position = Vector2(-4000, -4000)
-	touch_load_button.position = Vector2(-4000, -4000)
-	touch_journal_button.position = Vector2(-4000, -4000)
-
-
-func _align_menu_touch_buttons() -> void:
-	if not MobileSafeLayout.uses_touch_button_twins():
-		return
-	# While Continue? is open, or until the dismissing click releases, do not
-	# move TouchLoad back onto Load — that same click would reopen the card.
-	if load_confirm.visible or _hold_menu_until_release or _is_journal_open():
-		return
-	_align_touch_button(tutorial_button, touch_tutorial_button)
-	_align_touch_button(game_button, touch_game_button)
-	_align_touch_button(load_button, touch_load_button)
-	_align_touch_button(journal_button, touch_journal_button)
-
-
-func _align_touch_button(button: Control, touch: TouchScreenButton) -> void:
-	if button == null or touch == null:
-		return
-	var rect := button.get_global_rect()
-	touch.global_position = rect.position + rect.size / 2.0
-	if touch.shape is RectangleShape2D:
-		(touch.shape as RectangleShape2D).size = rect.size
-
-
 func _on_tutorial_pressed() -> void:
-	if _navigating or load_confirm.visible or _is_journal_open():
+	if _navigating or _any_confirm_open() or _is_journal_open():
 		return
 	_navigating = true
 	print("Starting Tutorial...")
@@ -271,7 +174,7 @@ func _on_tutorial_pressed() -> void:
 
 
 func _on_game_pressed() -> void:
-	if _navigating or load_confirm.visible or _is_journal_open():
+	if _navigating or _any_confirm_open() or _is_journal_open():
 		return
 	_navigating = true
 	print("✅ Starting Endless Horde...")
@@ -282,7 +185,7 @@ func _on_game_pressed() -> void:
 
 
 func _on_load_pressed() -> void:
-	if load_button.disabled or _navigating or load_confirm.visible or _suppress_load_open or _hold_menu_until_release or _is_journal_open():
+	if load_button.disabled or _navigating or _any_confirm_open() or _is_journal_open():
 		return
 	if not SaveManager.has_save():
 		return
@@ -306,8 +209,7 @@ func _on_load_yes_pressed() -> void:
 		_close_load_confirm()
 		return
 	_navigating = true
-	_suppress_load_open = true
-	_set_load_confirm_visible(false)
+	_hide_confirm(load_confirm)
 	print("✅ Loading saved game...")
 	_prime_web_mic()
 	_restore_game_ui()
@@ -326,68 +228,30 @@ func _on_load_no_pressed() -> void:
 func _show_load_confirm(data: Dictionary) -> void:
 	location_label.text = _format_location_line(data)
 	hp_label.text = _format_hp_line(data)
-	_lock_load()
-	_set_load_confirm_visible(true)
+	_show_confirm(load_confirm, &"title_load_confirm", yes_button, _on_load_yes_pressed,
+			no_button, _on_load_no_pressed)
 	yes_button.grab_focus()
 
 
 func _close_load_confirm() -> void:
-	# Keep Load disabled and its touch target off-screen until this click ends.
-	_lock_load()
-	_suppress_load_open = true
-	_hold_menu_until_release = true
-	_set_load_confirm_visible(false)
-	# Pointer-up may never arrive on web. Keep Load dead through this click,
-	# then turn it back on.
-	_release_load_lock.call_deferred()
+	_hide_confirm(load_confirm)
+	load_button.grab_focus()
 	print("✅ Load confirm closed")
 
 
-func _lock_load() -> void:
-	load_button.disabled = true
-	load_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	touch_load_button.visible = false
-	touch_load_button.position = Vector2(-4000, -4000)
-	if touch_load_button.shape is RectangleShape2D:
-		(touch_load_button.shape as RectangleShape2D).size = Vector2.ZERO
+## A confirm card is a modal layer: the menu under it stops receiving presses.
+func _show_confirm(card: Control, layer_name: StringName, yes: Button, on_yes: Callable,
+		no: Button, on_no: Callable) -> void:
+	card.visible = true
+	_confirm_layer = UiInputRouter.push_layer(layer_name, self)
+	UiInputRouter.bind_button(yes, on_yes, _confirm_layer)
+	UiInputRouter.bind_button(no, on_no, _confirm_layer)
 
 
-func _set_load_confirm_visible(open: bool) -> void:
-	if load_confirm:
-		load_confirm.visible = open
-	# While the card is up (or until twins restore), menu twins must stay off.
-	touch_tutorial_button.visible = false
-	touch_game_button.visible = false
-	touch_load_button.visible = false
-	touch_journal_button.visible = false
-	touch_load_yes.visible = false
-	touch_load_no.visible = false
-
-
-func _release_load_lock() -> void:
-	# One frame is enough to finish the No click; 0.4s felt like Load was broken.
-	await get_tree().process_frame
-	if _navigating or (load_confirm != null and load_confirm.visible):
-		return
-	_hold_menu_until_release = false
-	_suppress_load_open = false
-	_unlock_load()
-	_show_menu_twins()
-
-
-func _unlock_load() -> void:
-	load_button.disabled = not SaveManager.has_save()
-	load_button.mouse_filter = Control.MOUSE_FILTER_STOP
-
-
-func _show_menu_twins() -> void:
-	touch_tutorial_button.visible = true
-	touch_game_button.visible = true
-	touch_load_button.visible = true
-	touch_journal_button.visible = true
-	touch_load_yes.visible = false
-	touch_load_no.visible = false
-	_align_menu_touch_buttons()
+func _hide_confirm(card: Control) -> void:
+	card.visible = false
+	UiInputRouter.pop_layer(_confirm_layer)
+	_confirm_layer = 0
 
 
 func _format_location_line(data: Dictionary) -> String:
@@ -457,20 +321,17 @@ func _read_save_dict() -> Dictionary:
 
 
 func _on_journal_pressed() -> void:
-	if _navigating or load_confirm.visible or _is_journal_open():
+	if _navigating or _any_confirm_open() or _is_journal_open():
 		return
 	var tracker := get_node_or_null("/root/ProgressTracker")
 	if tracker == null or not tracker.has_method("show_journal"):
 		return
 	tracker.show_journal()
-	# Park only after a real open — avoids dead twins if open failed.
-	if _is_journal_open():
-		_park_menu_twins_for_journal()
-		_journal_was_open = true
+	_journal_was_open = _is_journal_open()
 
 
 func _on_settings_pressed() -> void:
-	if _navigating or load_confirm.visible or _is_journal_open():
+	if _navigating or _any_confirm_open() or _is_journal_open():
 		return
 	if _settings_node == null:
 		var packed := load("res://gui/settings/settings.tscn") as PackedScene
@@ -483,6 +344,45 @@ func _on_settings_pressed() -> void:
 			return
 		add_child(_settings_node)
 	_settings_node.show_settings()
+
+
+func _on_exit_pressed() -> void:
+	if not _show_exit or _navigating or _any_confirm_open() or _is_journal_open():
+		return
+	_show_exit_confirm()
+
+
+func _show_exit_confirm() -> void:
+	if exit_confirm == null:
+		return
+	_show_confirm(exit_confirm, &"title_exit_confirm", exit_yes_button, _on_exit_yes_pressed,
+			exit_no_button, _on_exit_no_pressed)
+	exit_yes_button.grab_focus()
+	print("✅ Exit confirm opened")
+
+
+func _on_exit_yes_pressed() -> void:
+	if not _show_exit or _navigating:
+		return
+	if exit_confirm == null or not exit_confirm.visible:
+		return
+	print("✅ Exiting game...")
+	get_tree().quit()
+
+
+func _on_exit_no_pressed() -> void:
+	if _navigating or exit_confirm == null or not exit_confirm.visible:
+		return
+	_close_exit_confirm()
+
+
+func _close_exit_confirm() -> void:
+	_hide_confirm(exit_confirm)
+	if exit_button and _show_exit:
+		exit_button.grab_focus()
+	elif tutorial_button:
+		tutorial_button.grab_focus()
+	print("✅ Exit confirm closed")
 
 
 func _prime_web_mic() -> void:

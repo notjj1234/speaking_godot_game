@@ -1,4 +1,4 @@
-[gd_scene load_steps=25 format=3 uid="uid://csettings01"]
+[gd_scene load_steps=12 format=3 uid="uid://csettings01"]
 
 [ext_resource type="Script" path="res://gui/settings/settings.gd" id="1_script"]
 [ext_resource type="FontFile" uid="uid://0ow6by7f8lfy" path="res://gui/fonts/Abaddon Bold.ttf" id="2_bold"]
@@ -95,30 +95,6 @@ corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_music_mute"]
-size = Vector2(48, 32)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_sfx_mute"]
-size = Vector2(48, 32)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_fullscreen"]
-size = Vector2(180, 36)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_language"]
-size = Vector2(180, 36)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_touch"]
-size = Vector2(180, 36)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_difficulty"]
-size = Vector2(180, 36)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_reset"]
-size = Vector2(180, 36)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_close"]
-size = Vector2(180, 36)
-
 [node name="Settings" type="CanvasLayer"]
 process_mode = 3
 layer = 18
@@ -132,7 +108,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 0
+mouse_filter = 2
 
 [node name="Backdrop" type="TextureRect" parent="Control"]
 layout_mode = 1
@@ -176,7 +152,7 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 12
+theme_override_constants/separation = 4
 
 [node name="Title" type="Label" parent="Control/CenterContainer/Panel/VBoxContainer"]
 layout_mode = 2
@@ -206,7 +182,7 @@ text = "Music Volume"
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(200, 24)
+custom_minimum_size = Vector2(200, 44)
 max_value = 100.0
 step = 1.0
 theme_override_styles/slider = SubResource("StyleBoxFlat_slider")
@@ -215,7 +191,7 @@ theme_override_styles/grabber_highlight = SubResource("StyleBoxFlat_slider_grabb
 
 [node name="MusicMuteButton" type="Button" parent="Control/CenterContainer/Panel/VBoxContainer/MusicRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(56, 32)
+custom_minimum_size = Vector2(56, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 0.95, 1)
@@ -249,7 +225,7 @@ text = "SFX Volume"
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(200, 24)
+custom_minimum_size = Vector2(200, 44)
 max_value = 100.0
 step = 1.0
 theme_override_styles/slider = SubResource("StyleBoxFlat_slider")
@@ -258,7 +234,7 @@ theme_override_styles/grabber_highlight = SubResource("StyleBoxFlat_slider_grabb
 
 [node name="SFXMuteButton" type="Button" parent="Control/CenterContainer/Panel/VBoxContainer/SFXRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(56, 32)
+custom_minimum_size = Vector2(56, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 0.95, 1)
@@ -290,7 +266,7 @@ text = "Fullscreen"
 
 [node name="FullscreenButton" type="Button" parent="Control/CenterContainer/Panel/VBoxContainer/FullscreenRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(180, 36)
+custom_minimum_size = Vector2(180, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 0.95, 1)
@@ -322,7 +298,7 @@ text = "Speech Language"
 
 [node name="LanguageButton" type="Button" parent="Control/CenterContainer/Panel/VBoxContainer/LanguageRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(180, 36)
+custom_minimum_size = Vector2(180, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 0.95, 1)
@@ -354,7 +330,7 @@ text = "Touch Controls"
 
 [node name="TouchButton" type="Button" parent="Control/CenterContainer/Panel/VBoxContainer/TouchRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(180, 36)
+custom_minimum_size = Vector2(180, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 0.95, 1)
@@ -386,7 +362,7 @@ text = "Speech Difficulty"
 
 [node name="DifficultyButton" type="Button" parent="Control/CenterContainer/Panel/VBoxContainer/DifficultyRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(180, 36)
+custom_minimum_size = Vector2(180, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 0.95, 1)
@@ -418,7 +394,7 @@ text = "Reset Progress"
 
 [node name="ResetButton" type="Button" parent="Control/CenterContainer/Panel/VBoxContainer/ResetRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(180, 36)
+custom_minimum_size = Vector2(180, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.3, 0.3, 1)
 theme_override_colors/font_hover_color = Color(1, 0.5, 0.5, 1)
@@ -450,7 +426,7 @@ text = ""
 
 [node name="CloseButton" type="Button" parent="Control/CenterContainer/Panel/VBoxContainer/CloseRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(180, 36)
+custom_minimum_size = Vector2(180, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.98, 0.96, 0.88, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 0.95, 1)
@@ -464,51 +440,3 @@ theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
 text = "Close"
-
-[node name="TouchMusicMute" type="TouchScreenButton" parent="Control"]
-unique_name_in_owner = true
-position = Vector2(400, 100)
-shape = SubResource("RectangleShape2D_music_mute")
-shape_visible = false
-
-[node name="TouchSFXMute" type="TouchScreenButton" parent="Control"]
-unique_name_in_owner = true
-position = Vector2(400, 140)
-shape = SubResource("RectangleShape2D_sfx_mute")
-shape_visible = false
-
-[node name="TouchFullscreen" type="TouchScreenButton" parent="Control"]
-unique_name_in_owner = true
-position = Vector2(400, 180)
-shape = SubResource("RectangleShape2D_fullscreen")
-shape_visible = false
-
-[node name="TouchLanguage" type="TouchScreenButton" parent="Control"]
-unique_name_in_owner = true
-position = Vector2(400, 220)
-shape = SubResource("RectangleShape2D_language")
-shape_visible = false
-
-[node name="TouchTouch" type="TouchScreenButton" parent="Control"]
-unique_name_in_owner = true
-position = Vector2(400, 260)
-shape = SubResource("RectangleShape2D_touch")
-shape_visible = false
-
-[node name="TouchDifficulty" type="TouchScreenButton" parent="Control"]
-unique_name_in_owner = true
-position = Vector2(400, 300)
-shape = SubResource("RectangleShape2D_difficulty")
-shape_visible = false
-
-[node name="TouchReset" type="TouchScreenButton" parent="Control"]
-unique_name_in_owner = true
-position = Vector2(400, 300)
-shape = SubResource("RectangleShape2D_reset")
-shape_visible = false
-
-[node name="TouchClose" type="TouchScreenButton" parent="Control"]
-unique_name_in_owner = true
-position = Vector2(400, 340)
-shape = SubResource("RectangleShape2D_close")
-shape_visible = false

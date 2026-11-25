@@ -192,6 +192,7 @@ autowrap_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Exit Now"
+custom_minimum_size = Vector2(88, 44)
 
 [node name="NPC" parent="." unique_id=1103228009 instance=ExtResource("15_dgk06")]
 position = Vector2(147.57237, 264.57236)

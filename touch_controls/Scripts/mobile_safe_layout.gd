@@ -48,12 +48,6 @@ static func set_force_touch_ui(enabled: bool) -> void:
 	_force_touch_ui = enabled
 
 
-static func uses_touch_button_twins() -> bool:
-	# Mouse clicks become ScreenTouch while emulate_mouse_from_touch is off,
-	# so GUI Buttons never fire. Invisible TouchScreenButton twins are the hitboxes.
-	return bool(ProjectSettings.get_setting("input_devices/pointing/emulate_touch_from_mouse", false))
-
-
 static func _detect_wants_touch_ui() -> bool:
 	if OS.has_feature("web"):
 		# DisplayServer.is_touchscreen_available() is a false positive on web:
@@ -176,7 +170,8 @@ static func _clip_to_safe_area(rect: Rect2, viewport: Viewport) -> Rect2:
 
 const LEFT_CLUSTER_SIZE := Vector2(220, 220)
 const RIGHT_CLUSTER_SIZE := Vector2(220, 180)
-const PAUSE_BUTTON_SIZE := Vector2(130, 58)
+## The pause art's own size, so the hit area is exactly what is placed.
+const PAUSE_BUTTON_SIZE := Vector2(108, 48)
 
 
 static func layout_touch_controls(viewport: Viewport) -> Dictionary:
@@ -197,7 +192,8 @@ static func layout_touch_controls(viewport: Viewport) -> Dictionary:
 		"overlay": true,
 	}
 	var inner := _inset_rect(content, MARGIN * 2.0)
-	var pause_k := clampf(k, 0.5, 1.2)
+	# Never below a 44 px tall touch target.
+	var pause_k := clampf(k, 44.0 / PAUSE_BUTTON_SIZE.y, 1.2)
 	if vis.size.y > vis.size.x:
 		var arena_h := DESIGN_SIZE.y * (vis.size.x / DESIGN_SIZE.x)
 		var arena := Rect2(vis.position.x, vis.position.y + PORTRAIT_ARENA_TOP, vis.size.x, arena_h)

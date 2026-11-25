@@ -3,9 +3,8 @@
 extends CanvasLayer
 
 @onready var mic_button = $Root/SafeArea/RightCluster/Mic
-@onready var mic_touch_button = $Root/SafeArea/RightCluster/Touch_Mic
 @onready var interact_button = $Root/SafeArea/RightCluster/Interact
-@onready var interact_touch_button = $Root/SafeArea/RightCluster/Touch_Interact
+@onready var attack_button: TouchScreenButton = $Root/SafeArea/RightCluster/Attack
 @onready var safe_area: Control = $Root/SafeArea
 @onready var left_cluster: Control = $Root/SafeArea/LeftCluster
 @onready var right_cluster: Control = $Root/SafeArea/RightCluster
@@ -40,26 +39,13 @@ var _optional_mic_mode: bool = false
 var _struggle_count: int = 0
 var _movement_unlocked: bool = false
 var _voice_only_gesture_hooked: bool = false
-## Guards against Button+TouchScreenButton both seeing one click (felt like hold-to-talk).
-var _mic_ui_syncing: bool = false
 var _interact_hidden_by_level: bool = false
 var _talk_requests: int = 0
 var _mic_toggle_cooldown_until_msec: int = 0
 
 func _ready() -> void:
 	add_to_group("touch_controls")
-	# Click/tap toggle — not hold. Use Button.toggled only; the overlapping
-	# TouchScreenButton used to fire on press and the Button on release, which
-	# turned the mic off as soon as you let go.
-	if mic_button:
-		mic_button.toggle_mode = true
-		mic_button.action_mode = BaseButton.ACTION_MODE_BUTTON_RELEASE
-		if not mic_button.toggled.is_connected(_on_mic_button_toggled):
-			mic_button.toggled.connect(_on_mic_button_toggled)
-	if mic_touch_button:
-		# Keep node for layout helpers, but do not let it steal press/release.
-		mic_touch_button.visible = false
-		mic_touch_button.set_process_mode(Node.PROCESS_MODE_DISABLED)
+	_bind_pointer_regions()
 
 	_update_mic_ui()
 	print("Touch Controls Ready: Mic state initialized to: ", mic_enabled)
@@ -73,6 +59,7 @@ func _ready() -> void:
 		viewport.size_changed.connect(_apply_safe_layout)
 	_apply_safe_layout()
 	call_deferred("_apply_safe_layout")
+	set_gameplay_suppressed(UiInputRouter.is_gameplay_suppressed())
 
 	var stt = _stt_manager()
 	if stt != null and stt.is_speech_available():
@@ -93,6 +80,21 @@ func _ready() -> void:
 	mic_restart_timer.wait_time = 1.0
 	add_child(mic_restart_timer)
 	mic_restart_timer.timeout.connect(_force_mic_restart)
+
+
+## UiInputRouter owns every press here except the D-pad. Mic and Interact are
+## labels that mark their own hit area; Attack is a TouchScreenButton visual with
+## no native action. See docs/ui-input-rules.md.
+func _bind_pointer_regions() -> void:
+	# Click/tap toggle, not hold.
+	mic_button.toggle_mode = true
+	UiInputRouter.bind(mic_button, _on_mic_tapped)
+	UiInputRouter.bind_held(interact_button, &"interact")
+	UiInputRouter.bind_held(attack_button, &"attack")
+	# THE ONE EXCEPTION to one-press-one-action: the D-pad arrows keep their
+	# native TouchScreenButton `action`, and neighbours overlap so that one thumb
+	# on a corner holds two directions. Mirrored in tools/ui_qa/input_audit.py.
+	UiInputRouter.allow_multi_touch(left_cluster, &"dpad")
 
 
 func _notification(what: int) -> void:
@@ -152,12 +154,7 @@ func apply_touch_ui_enabled() -> void:
 		right_cluster.visible = true
 	_apply_level_touch_rules()
 	_apply_safe_layout()
-	visible = not _pause_menu_open()
-
-
-func _pause_menu_open() -> bool:
-	var menu := get_node_or_null("/root/PauseMenu")
-	return menu != null and bool(menu.get("is_paused"))
+	visible = not UiInputRouter.is_gameplay_suppressed()
 
 
 func _apply_level_touch_rules() -> void:
@@ -186,26 +183,11 @@ func _apply_legacy_level_rules(level_name: String) -> void:
 			_disable_interact_button()
 
 
-func set_suppressed_by_pause(suppressed: bool) -> void:
+## Called by UiInputRouter whenever an overlay layer opens or closes.
+func set_gameplay_suppressed(suppressed: bool) -> void:
 	if not _touch_ui_enabled:
 		return
 	visible = not suppressed
-
-
-func _process(_delta: float) -> void:
-	if not _touch_ui_enabled:
-		return
-	# Mic uses the Button only (no TouchScreenButton overlay — that caused hold).
-	_align_touch_button(interact_button, interact_touch_button)
-
-
-func _align_touch_button(button: Control, touch: TouchScreenButton) -> void:
-	if button == null or touch == null or not button.visible:
-		return
-	var rect := button.get_global_rect()
-	touch.global_position = rect.position + rect.size / 2.0
-	if touch.shape is RectangleShape2D:
-		(touch.shape as RectangleShape2D).size = rect.size
 
 
 func _hide_controls_on_desktop() -> void:
@@ -245,8 +227,7 @@ func _set_movement_arrows_visible(shown: bool) -> void:
 
 func _disable_mic_button() -> void:
 	if has_node("Root/SafeArea/RightCluster/Mic"): $Root/SafeArea/RightCluster/Mic.visible = false
-	if has_node("Root/SafeArea/RightCluster/Touch_Mic"): $Root/SafeArea/RightCluster/Touch_Mic.visible = false
-	
+
 func _disable_interact_button() -> void:
 	_interact_hidden_by_level = true
 	_apply_interact_visibility()
@@ -267,8 +248,6 @@ func _apply_interact_visibility() -> void:
 			interact_button.text = "Talk"
 		elif show:
 			interact_button.text = "Interact"
-	if interact_touch_button:
-		interact_touch_button.visible = show
 
 
 func _disable_attack_button() -> void:
@@ -286,11 +265,10 @@ func set_custom_voice_commands(commands: Array[String]) -> void:
 	print("✅ Custom voice commands set: ", commands)
 
 
-func _on_mic_button_toggled(is_on: bool) -> void:
-	if _mic_ui_syncing:
-		return
-	print("Mic button toggled → ", is_on)
-	_set_microphone_enabled(is_on)
+func _on_mic_tapped() -> void:
+	var want_on: bool = not mic_button.button_pressed
+	print("Mic button toggled → ", want_on)
+	_set_microphone_enabled(want_on)
 
 
 func _toggle_microphone() -> void:
@@ -346,9 +324,7 @@ func _set_microphone_enabled(want_on: bool) -> void:
 func _sync_mic_button_pressed(is_on: bool) -> void:
 	if mic_button == null or not mic_button.toggle_mode:
 		return
-	_mic_ui_syncing = true
 	mic_button.set_pressed_no_signal(is_on)
-	_mic_ui_syncing = false
 
 func _start_listening() -> void:
 	print("Starting microphone...")
@@ -463,9 +439,6 @@ func _fail_open_voice_only(message: String) -> void:
 func _ensure_mic_button_visible() -> void:
 	if mic_button:
 		mic_button.visible = true
-	# Touch_Mic stays disabled — the Button alone is the click/tap toggle.
-	if mic_touch_button:
-		mic_touch_button.visible = false
 	# Desktop web hides the whole layer; show at least the right cluster so the
 	# player can tap Mic On and satisfy the browser gesture requirement.
 	if not _touch_ui_enabled:

@@ -284,24 +284,6 @@ func is_journal_open() -> bool:
 	return _journal != null and _journal.visible
 
 
-func journal_panel_rect() -> Rect2:
-	if _journal == null:
-		return Rect2()
-	if _journal.has_method("panel_global_rect"):
-		return _journal.panel_global_rect()
-	return Rect2()
-
-
-func journal_try_tap(pos: Vector2) -> bool:
-	if _journal == null or not _journal.visible:
-		return false
-	if _journal.has_method("try_tap"):
-		return bool(_journal.try_tap(pos))
-	return false
-
-
-# --- internals ---
-
 func _empty_progress() -> Dictionary:
 	return {
 		"version": VERSION,

@@ -4,19 +4,14 @@ const TITLE_PATH := "res://levels/title_screen/title_screen.tscn"
 
 var _navigating := false
 var _master_was_muted := false
+var _input_layer := 0
 
 @onready var title_button: Button = $Control/CenterContainer/VBoxContainer/TitleButton
-@onready var touch_title: TouchScreenButton = $Control/TouchTitle
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
-	set_process(false)
-	title_button.mouse_filter = Control.MOUSE_FILTER_STOP
-	title_button.pressed.connect(_on_title_pressed)
-	touch_title.pressed.connect(_on_title_pressed)
-	touch_title.visible = true
 
 
 func show_defeat() -> void:
@@ -24,23 +19,27 @@ func show_defeat() -> void:
 	if bonfire and bonfire.has_method("show_rest"):
 		bonfire.show_rest()
 		return
+	_open()
+
+
+func _open() -> void:
 	if visible:
 		return
 	_navigating = false
 	_silence_all()
 	var pause := get_node_or_null("/root/PauseMenu")
-	if pause and pause.visible:
-		pause.visible = false
-		pause.is_paused = false
+	if pause and pause.is_paused:
+		pause.hide_pause_menu()
 	visible = true
 	get_tree().paused = true
-	set_process(true)
+	_input_layer = UiInputRouter.push_layer(&"game_over", self)
+	UiInputRouter.bind_button(title_button, _on_title_pressed, _input_layer)
 	title_button.grab_focus()
-	_align_title_button()
 
 
-func _process(_delta: float) -> void:
-	_align_title_button()
+func _close_layer() -> void:
+	UiInputRouter.pop_layer(_input_layer)
+	_input_layer = 0
 
 
 func _silence_all() -> void:
@@ -61,23 +60,12 @@ func _restore_audio() -> void:
 	AudioServer.set_bus_mute(index, _master_was_muted)
 
 
-func _align_title_button() -> void:
-	if not MobileSafeLayout.uses_touch_button_twins():
-		return
-	if title_button == null or touch_title == null:
-		return
-	var rect := title_button.get_global_rect()
-	touch_title.global_position = rect.position + rect.size / 2.0
-	if touch_title.shape is RectangleShape2D:
-		(touch_title.shape as RectangleShape2D).size = rect.size
-
-
 func _on_title_pressed() -> void:
 	if _navigating:
 		return
 	_navigating = true
 	_restore_audio()
 	visible = false
-	set_process(false)
+	_close_layer()
 	PlayerManager.player_spawned = false
 	LevelManager.load_new_level(TITLE_PATH, "", Vector2.ZERO)

@@ -143,3 +143,4 @@ autowrap_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Exit Now"
+custom_minimum_size = Vector2(88, 44)

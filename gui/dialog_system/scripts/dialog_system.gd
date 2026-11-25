@@ -13,6 +13,7 @@ var _portrait_hframes: int = 1
 var _talk_timer: Timer = null
 var _pending_portrait: Texture = null
 var _fit_token: int = 0
+var _input_layer: int = 0
 
 @onready var name_label: Label = $DialogUI/DialogBar/ContentColumn/NameLabel
 @onready var dialog_bar: Control = $DialogUI/DialogBar
@@ -53,6 +54,9 @@ func show_dialog(speaker: String, portrait: Texture, lines: PackedStringArray, o
 	# duration. Player movement is already gated by dialog_open.
 	_set_enemies_frozen(true)
 	visible = true
+	if _input_layer == 0:
+		_input_layer = UiInputRouter.push_layer(&"dialog", self)
+		UiInputRouter.bind(dialog_bar, _advance, _input_layer)
 	if name_label:
 		name_label.text = speaker
 	_pending_portrait = portrait
@@ -68,6 +72,8 @@ func close() -> void:
 	PlayerManager.dialog_open = false
 	_set_enemies_frozen(false)
 	visible = false
+	UiInputRouter.pop_layer(_input_layer)
+	_input_layer = 0
 	_stop_talk_anim()
 	_pending_portrait = null
 	if portrait_slot:
@@ -185,20 +191,10 @@ func _advance() -> void:
 		_fit_portrait_to_textbox()
 
 
+## Keyboard only. Taps on the dialog bar arrive through UiInputRouter.
 func _input(event: InputEvent) -> void:
 	if Engine.is_editor_hint() or not is_open or not visible:
 		return
 	if event.is_action_pressed("ui_accept") or event.is_action_pressed("interact"):
-		_advance()
-		get_viewport().set_input_as_handled()
-		return
-	var tap_pos := Vector2.INF
-	if event is InputEventScreenTouch and event.pressed:
-		tap_pos = event.position
-	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		tap_pos = event.position
-	if tap_pos == Vector2.INF or dialog_bar == null:
-		return
-	if dialog_bar.get_global_rect().has_point(tap_pos):
 		_advance()
 		get_viewport().set_input_as_handled()
