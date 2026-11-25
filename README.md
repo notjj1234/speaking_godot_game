@@ -54,7 +54,27 @@ Original sprites will come later once the core gameplay is finished! (Or when I 
 ---
 
 ## ⚙️ Getting Started
-Later
+
+### Play in your browser (desktop)
+Needs Godot **4.7** with its Web export templates installed (Editor → Manage Export Templates).
+
+```
+python3 tools/web/play_in_browser.py
+```
+
+This exports the **Web** preset to `build/web/`, serves it at **http://localhost:8060** and opens your browser.
+`localhost` counts as a secure context, so the microphone works without certificate warnings.
+Press Ctrl+C to stop. Other options:
+
+| command | does |
+|---|---|
+| `python3 tools/web/play_in_browser.py --no-export` | serve the last export without rebuilding |
+| `python3 tools/web/play_in_browser.py --export-only` | rebuild `build/web/` only |
+| `python3 tools/web/play_in_browser.py --phone` | rebuild, then serve over HTTPS on your Wi-Fi (`build/serve_https.py`) so a phone or tablet can open `https://<your-mac-ip>:8443/` (accept the self-signed certificate warning) |
+
+Godot is found via `$GODOT`, `~/Downloads/Godot.app`, `/Applications/Godot*.app` or `godot` on your PATH.
+Desktop browsers hide the on-screen controls; phones and tablets show them, sized to the screen.
+The Windows, macOS and Android exports are unchanged.
 <!-- CONTACT -->
 ## Contact
 

@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+"""play_in_browser.py — export the Web build and play it in your local browser.
+
+    python3 tools/web/play_in_browser.py              # export, then serve http://localhost:8060 and open it
+    python3 tools/web/play_in_browser.py --no-export  # just serve the last export (build/web/)
+    python3 tools/web/play_in_browser.py --export-only
+    python3 tools/web/play_in_browser.py --phone      # export, then serve over HTTPS on your Wi-Fi
+                                                      # (build/serve_https.py) to test on a phone/tablet
+
+Why localhost: browsers only allow the microphone (Web Speech API) in a
+"secure context". http://localhost counts as one, so desktop testing needs no
+certificate. A phone on your Wi-Fi reaches the Mac by IP, which is not
+localhost, so --phone hands over to the existing HTTPS server instead.
+
+Godot is found in this order: $GODOT, ~/Downloads/Godot.app, /Applications/Godot*.app,
+~/Applications/Godot*.app, `godot` / `godot4` on PATH. It must be 4.7.x (the
+project's version) with the 4.7 web export templates installed
+(Editor > Manage Export Templates). The "Web" preset in export_presets.cfg
+writes build/web/index.html; the build is single-threaded, so it needs no
+special server headers and runs on any static server.
+
+Press Ctrl+C to stop the server.
+"""
+from __future__ import annotations
+
+import glob
+import http.server
+import os
+import shutil
+import socketserver
+import subprocess
+import sys
+import threading
+import webbrowser
+
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+WEB_DIR = os.path.join(ROOT, "build", "web")
+PRESET = "Web"
+PORT = int(os.environ.get("PORT", "8060"))
+WANT_MAJOR_MINOR = "4.7"
+
+
+def find_godot() -> str | None:
+    cands = []
+    if os.environ.get("GODOT"):
+        cands.append(os.environ["GODOT"])
+    home = os.path.expanduser("~")
+    for app in [os.path.join(home, "Downloads", "Godot.app")] + sorted(glob.glob("/Applications/Godot*.app")) \
+            + sorted(glob.glob(os.path.join(home, "Applications", "Godot*.app"))):
+        cands.append(os.path.join(app, "Contents", "MacOS", "Godot"))
+    for name in ("godot", "godot4"):
+        p = shutil.which(name)
+        if p:
+            cands.append(p)
+    for c in cands:
+        if os.path.isfile(c) and os.access(c, os.X_OK):
+            return c
+    return None
+
+
+def godot_version(godot: str) -> str:
+    try:
+        out = subprocess.run([godot, "--version"], capture_output=True, text=True, timeout=60)
+        return (out.stdout.strip().splitlines() or [""])[-1]
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+
+
+def export(godot: str) -> bool:
+    ver = godot_version(godot)
+    print(f"Godot: {godot}\nVersion: {ver or 'unknown'}")
+    if not ver.startswith(WANT_MAJOR_MINOR):
+        print(f"❌ This project is Godot {WANT_MAJOR_MINOR}; exporting with another version can break it.\n"
+              f"   Point GODOT at a {WANT_MAJOR_MINOR}.x editor binary and run again.")
+        return False
+    os.makedirs(WEB_DIR, exist_ok=True)
+    print("⏳ Importing assets (first run can take a minute)…")
+    subprocess.run([godot, "--headless", "--path", ROOT, "--import"], timeout=1800)
+    print(f"⏳ Exporting the '{PRESET}' preset to build/web/ …")
+    res = subprocess.run([godot, "--headless", "--path", ROOT, "--export-release", PRESET,
+                          os.path.join(WEB_DIR, "index.html")], timeout=1800)
+    need = ["index.html", "index.js", "index.wasm", "index.pck"]
+    missing = [f for f in need if not os.path.isfile(os.path.join(WEB_DIR, f))]
+    if res.returncode != 0 or missing:
+        print(f"❌ Export failed (exit {res.returncode}{', missing ' + ', '.join(missing) if missing else ''}).\n"
+              "   Check that the 4.7 Web export templates are installed (Editor > Manage Export Templates).")
+        return False
+    print("✅ Web build ready in build/web/")
+    return True
+
+
+class _Handler(http.server.SimpleHTTPRequestHandler):
+    extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map,
+                      ".wasm": "application/wasm", ".js": "text/javascript", ".pck": "application/octet-stream"}
+
+    def __init__(self, *a, **kw):
+        super().__init__(*a, directory=WEB_DIR, **kw)
+
+    def end_headers(self):
+        # Always load the newest export after re-exporting.
+        self.send_header("Cache-Control", "no-store")
+        super().end_headers()
+
+    def log_message(self, fmt, *args):
+        pass
+
+
+def serve_local(open_browser: bool) -> int:
+    if not os.path.isfile(os.path.join(WEB_DIR, "index.html")):
+        print("❌ No web build in build/web/ yet — run without --no-export first.")
+        return 1
+    socketserver.TCPServer.allow_reuse_address = True
+    with socketserver.ThreadingTCPServer(("127.0.0.1", PORT), _Handler) as httpd:
+        url = f"http://localhost:{PORT}/"
+        print(f"\n🎮 Play at: {url}\n   (microphone works here: localhost is a secure context)\n   Ctrl+C to stop.")
+        if open_browser:
+            threading.Timer(0.8, lambda: webbrowser.open(url)).start()
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            print("\nStopped.")
+    return 0
+
+
+def main() -> int:
+    args = set(sys.argv[1:])
+    if "--no-export" not in args:
+        godot = find_godot()
+        if not godot:
+            print("❌ Godot 4.7 not found. Set GODOT=/path/to/Godot (the binary inside Godot.app/Contents/MacOS/).")
+            return 1
+        if not export(godot):
+            return 1
+    if "--export-only" in args:
+        return 0
+    if "--phone" in args:
+        return subprocess.call([sys.executable, os.path.join(ROOT, "build", "serve_https.py")])
+    return serve_local(open_browser="--no-open" not in args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
