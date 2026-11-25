@@ -19,8 +19,14 @@ class_name PlayerCamera extends Camera2D
 ## Highest zoom used to cover the screen (a 19.5:9 phone needs ~1.63 for 640x480).
 const MAX_COVER_ZOOM := 1.75
 
+## How far (px) the body may drift from its snapped pixel before the view follows.
+const SNAP_HYSTERESIS := 0.75
+
 var _bounds: Array[Vector2] = []
-var _fit_key := ""
+var _fit_view := Vector2.ZERO
+var _fit_touch := false
+var _snap := Vector2.ZERO
+var _snap_ready := false
 
 
 # Called when the node enters the scene tree for the first time.
@@ -30,16 +36,40 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	# Keep the view on whole pixels while the parent CharacterBody2D moves subpixel.
 	var parent_node := get_parent() as Node2D
 	if parent_node == null:
 		return
-	var parent_pos := parent_node.global_position
-	offset = parent_pos.round() - parent_pos
 	# Refit when the window turns or resizes, or touch controls are switched on/off.
-	var key := "%s|%s" % [get_viewport_rect().size, MobileSafeLayout.wants_touch_ui()]
-	if key != _fit_key:
+	var view := get_viewport_rect().size
+	var touch := MobileSafeLayout.wants_touch_ui()
+	if view != _fit_view or touch != _fit_touch:
 		_refit()
+	_snap_to_pixels(parent_node.global_position, view)
+
+
+## Keep the view on whole pixels while the CharacterBody2D moves subpixel, without
+## the two shakes the old one-liner caused:
+## * Camera2D adds `offset` AFTER clamping to its limits, so where the view is
+##   pinned against a limit (walking along the arena wall) a changing sub-pixel
+##   offset shook the whole screen. On a pinned axis the offset is now 0.
+## * Pressing into a wall makes move_and_slide nudge the body back and forth by
+##   a fraction of a pixel; plain rounding flipped between two pixels every
+##   frame. The snapped position now only moves once the body is 0.75 px away.
+func _snap_to_pixels(pos: Vector2, view: Vector2) -> void:
+	if not _snap_ready:
+		_snap = pos.round()
+		_snap_ready = true
+	if absf(pos.x - _snap.x) > SNAP_HYSTERESIS:
+		_snap.x = roundf(pos.x)
+	if absf(pos.y - _snap.y) > SNAP_HYSTERESIS:
+		_snap.y = roundf(pos.y)
+	var o := _snap - pos
+	var half := view * 0.5 / zoom
+	if pos.x - half.x <= float(limit_left) or pos.x + half.x >= float(limit_right):
+		o.x = 0.0
+	if pos.y - half.y <= float(limit_top) or pos.y + half.y >= float(limit_bottom):
+		o.y = 0.0
+	offset = o
 
 
 func update_limits(bounds: Array[Vector2]) -> void:
@@ -51,13 +81,14 @@ func update_limits(bounds: Array[Vector2]) -> void:
 
 func _refit() -> void:
 	var view := get_viewport_rect().size
-	_fit_key = "%s|%s" % [view, MobileSafeLayout.wants_touch_ui()]
+	_fit_view = view
+	_fit_touch = MobileSafeLayout.wants_touch_ui()
 	if _bounds.size() < 2 or view.x <= 0.0 or view.y <= 0.0:
 		return
 	var map := Rect2(_bounds[0], _bounds[1] - _bounds[0])
 	if map.size.x <= 0.0 or map.size.y <= 0.0:
 		return
-	var portrait_touch := MobileSafeLayout.wants_touch_ui() and view.y > view.x
+	var portrait_touch := _fit_touch and view.y > view.x
 	var z := 1.0
 	if map.size.x < view.x or map.size.y < view.y:
 		if portrait_touch:

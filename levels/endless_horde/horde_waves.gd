@@ -26,6 +26,12 @@ const ARENAS: Array[PackedScene] = [
 	preload("res://levels/endless_horde/arenas/arena_04.tscn"),
 ]
 const SPAWN_TRIES := 16
+## A new enemy never appears closer than this to the player (hugging a wall used
+## to squeeze ring positions back inside the arena, right on top of you).
+const SAFE_SPAWN_GAP := 72.0
+## WaveLabel rows: normal, and pushed below the HUD's mic banner when it shows.
+const LABEL_TOP := 56.0
+const LABEL_TOP_UNDER_BANNER := 84.0
 
 var _stage := 0
 var _spawn_quota := 0
@@ -51,6 +57,9 @@ var _grass: TileMapLayer
 func _ready() -> void:
 	super()
 	PlayerManager.revive_for_horde()
+	# Anything that lands inside a wall or solid prop (beetle split-offs, knock-ins)
+	# is moved to the nearest open spot.
+	_enemies.child_entered_tree.connect(_on_horde_child_added)
 	var resume := 0
 	var tracker := get_node_or_null("/root/ProgressTracker")
 	if tracker and tracker.has_method("horde_resume_stage"):
@@ -75,6 +84,7 @@ func _free_level() -> void:
 
 
 func _process(delta: float) -> void:
+	_place_wave_label()
 	if get_tree().paused:
 		return
 	if _speech_challenge_active():
@@ -384,13 +394,7 @@ func _spawn_one_enemy(index: int) -> void:
 	var count := _spawn_quota
 	var radius := _ring_radius(count)
 	var angle := TAU * float(index) / float(maxi(count, 1))
-	var pos := _ring_position(origin, angle, radius)
-	# Never inside a wall or a solid prop: walk round the ring, then search outward.
-	var tries := 0
-	while _arena and _arena.is_blocked(pos) and tries < SPAWN_TRIES:
-		tries += 1
-		pos = _ring_position(origin, angle + TAU * float(tries) / float(SPAWN_TRIES), radius)
-	pos = _open_position(pos)
+	var pos := _pick_spawn_position(origin, angle, radius)
 
 	_enemies.add_child(enemy)
 	enemy.global_position = pos
@@ -420,6 +424,50 @@ func _scene_for_kind(kind: String) -> PackedScene:
 			return BANDIT
 		_:
 			return SLIME
+
+
+## Walk round the ring from `angle`: first spot that is open and at least
+## SAFE_SPAWN_GAP from the player wins; otherwise the farthest open spot tried.
+func _pick_spawn_position(origin: Vector2, angle: float, radius: float) -> Vector2:
+	var best := Vector2.ZERO
+	var best_dist := -1.0
+	for i in SPAWN_TRIES + 1:
+		var candidate := _ring_position(origin, angle + TAU * float(i) / float(SPAWN_TRIES), radius)
+		if _arena and _arena.is_blocked(candidate):
+			continue
+		var dist := candidate.distance_to(origin)
+		if dist >= SAFE_SPAWN_GAP:
+			return candidate
+		if dist > best_dist:
+			best = candidate
+			best_dist = dist
+	if best_dist >= 0.0:
+		return best
+	return _open_position(_ring_position(origin, angle, radius))
+
+
+func _on_horde_child_added(node: Node) -> void:
+	if node is Enemy:
+		# Deferred: spawners set the position right after add_child.
+		call_deferred("_unstick_enemy", node)
+
+
+func _unstick_enemy(node: Node) -> void:
+	var enemy := node as Node2D
+	if enemy == null or not is_instance_valid(enemy) or enemy.is_queued_for_deletion():
+		return
+	if _arena and _arena.is_blocked(enemy.global_position):
+		enemy.global_position = _arena.nearest_open(enemy.global_position)
+
+
+func _place_wave_label() -> void:
+	var hud := get_node_or_null("/root/PlayerHud")
+	var banner = hud.get("voice_only_banner") if hud else null
+	var under := banner is CanvasItem and (banner as CanvasItem).visible
+	var top := LABEL_TOP_UNDER_BANNER if under else LABEL_TOP
+	if not is_equal_approx(_label.offset_top, top):
+		_label.offset_top = top
+		_label.offset_bottom = top + 28.0
 
 
 func _ring_position(origin: Vector2, angle: float, radius: float) -> Vector2:

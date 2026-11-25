@@ -213,8 +213,14 @@ static func layout_touch_controls(viewport: Viewport) -> Dictionary:
 		else:
 			placed["left"] = _corner_rect(inner, LEFT_CLUSTER_SIZE * k, "bottom_left")
 			placed["right"] = _corner_rect(inner, RIGHT_CLUSTER_SIZE * k, "bottom_right")
-		var top_band := Rect2(inner.position.x, inner.position.y, inner.size.x, maxf(0.0, PORTRAIT_ARENA_TOP - (inner.position.y - vis.position.y)))
-		placed["pause"] = _fit_top_right_avoiding(top_band, PAUSE_BUTTON_SIZE * pause_k, _hud_rects(vis))
+		# Portrait top band is busy on the right (mic indicator, version) and in the
+		# middle (hearts, banner): pause goes top-left, beside the hearts.
+		var hearts_left := vis.position.x + vis.size.x * 0.5 - 70.0 - MARGIN
+		var corner := Rect2(inner.position, Vector2(maxf(0.0, hearts_left - inner.position.x), 44.0))
+		var want := PAUSE_BUTTON_SIZE * pause_k
+		if corner.size.x >= 1.0 and want.x > 0.0:
+			var fit := minf(1.0, minf(corner.size.x / want.x, corner.size.y / want.y))
+			placed["pause"] = Rect2(corner.position, want * fit)
 	else:
 		# Keep the two clusters from meeting on narrow landscape screens.
 		var max_w := maxf(0.0, (inner.size.x - MARGIN) * 0.5)
@@ -267,13 +273,16 @@ static func _safe_content_rect(viewport: Viewport, vis: Rect2) -> Rect2:
 
 
 static func _hud_rects(vis: Rect2) -> Array[Rect2]:
-	# Hearts, wave label, and version badge. Anchored to the full viewport, not the arena.
+	# Hearts, mic banner + wave label, mic/speech indicator and version badge.
+	# Anchored to the full viewport, not the arena (see player_hud.gd,
+	# version_overlay.gd and the horde WaveLabel).
 	var mid_x := vis.position.x + vis.size.x * 0.5
 	var top := vis.position.y
 	return [
 		Rect2(mid_x - 70.0, top + 2.0, 140.0, 48.0),
-		Rect2(mid_x - 160.0, top + 56.0, 320.0, 28.0),
-		Rect2(vis.end.x - 72.0, top + 8.0, 64.0, 20.0),
+		Rect2(mid_x - 250.0, top + 52.0, 500.0, 60.0),
+		Rect2(vis.end.x - 176.0, top + 8.0, 168.0, 28.0),
+		Rect2(vis.end.x - 72.0, top + 40.0, 64.0, 20.0),
 	]
 
 
