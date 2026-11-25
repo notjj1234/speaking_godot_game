@@ -22,6 +22,7 @@ config/icon="res://icon.svg"
 
 [autoload]
 
+UiInputRouter="*res://00_globals/ui_input_router.gd"
 STTManager="*res://speech_to_text/STTManager.gd"
 TTSManager="*res://speech_tts/TTSManager.gd"
 LevelManager="*res://00_globals/global_level_manager.gd"
