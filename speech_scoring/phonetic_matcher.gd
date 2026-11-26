@@ -96,6 +96,7 @@ static func _levenshtein(a: String, b: String) -> int:
 		for j in range(1, n + 1):
 			var tmp: int = d[j]
 			var cost := 1 if a.substr(i - 1, 1) != b.substr(j - 1, 1) else 0
-			d[j] = mini(mini(prev + 1, d[j] + 1), d[j - 1] + cost)
+			# delete (above), insert (left), substitute (diagonal = prev)
+			d[j] = mini(mini(d[j] + 1, d[j - 1] + 1), prev + cost)
 			prev = tmp
 	return d[n]

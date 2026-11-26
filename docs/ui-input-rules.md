@@ -3,8 +3,8 @@
 ## The invariant
 
 **One physical press fires at most one interactive action, and it belongs to the
-topmost interactive element of the topmost active UI layer.** The only exception
-is the D-pad diagonals.
+topmost interactive element of the topmost active UI layer.** Movement on touch
+is a virtual joystick that owns its own touches outside the router (see below).
 
 ## Why this is easy to break here
 
@@ -33,16 +33,18 @@ as one press.
 | Gameplay action (Attack, Pause) | `TouchScreenButton` with `action = ""` | `UiInputRouter.bind_held` | the input map | a native `action` |
 | Gameplay label (Interact, Mic) | `Button` with `mouse_filter = IGNORE`, `focus_mode = NONE` | `bind_held` / `bind` | the input map | |
 | Tappable non-button (dialog bar, tutorial banner, journal dimmer) | any `Control` | `UiInputRouter.bind` | `_input`, actions only | reading pointer events |
-| **D-pad (the one exception)** | `TouchScreenButton` with native `action` | the engine | the input map | binding it to the router |
+| **Joystick (own `_input`)** | `VirtualJoystickAddon` under `LeftCluster/Joystick` | the addon (`Input.action_press` on `left`/`right`/`up`/`down`) | the input map | binding it to the router |
 
-### D-pad allowlist
+### Joystick / empty D-pad allowlist
 
-`touch_controls/Scene/touch_controls.tscn`: `Left`, `Right`, `Up`, `Down` under
-`LeftCluster`. Neighbouring arrows overlap (14x10 at the top, 14x18 at the
-bottom) so that one thumb on a corner holds two directions. It is declared in
-three places that must agree: `_bind_pointer_regions()` in `touch_controls.gd`,
-`DPAD` in `tools/ui_qa/input_audit.py`, and `DPAD` in
-`tools/ui_qa/ui_overlap_probe.gd`.
+`touch_controls/Scene/touch_controls.tscn`: one `Joystick` node under
+`LeftCluster` (instanced from `addons/virtual_joystick/virtual_joystick_scene.tscn`,
+mode FIXED). It is **not** bound to `UiInputRouter` and must not overlap Attack,
+Interact, or Mic (left vs right cluster layout). There are no D-pad
+`TouchScreenButton`s and no `allow_multi_touch` exception. The three places that
+must agree on the (now empty) D-pad TSB allowlist: a comment in
+`_bind_pointer_regions()` in `touch_controls.gd`, `DPAD` in
+`tools/ui_qa/input_audit.py`, and `DPAD` in `tools/ui_qa/ui_overlap_probe.gd`.
 
 ### Native GUI that stays outside the router
 

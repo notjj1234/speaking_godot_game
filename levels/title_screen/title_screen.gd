@@ -71,14 +71,20 @@ func _ready() -> void:
 	no_button.focus_neighbor_right = no_button.get_path_to(yes_button)
 	no_button.focus_next = no_button.get_path_to(yes_button)
 
-	# Disabled state must be known before building the arrow-key focus ring.
-	load_button.disabled = not SaveManager.has_save()
-	_setup_menu_focus_neighbors()
+	_refresh_load_button()
 	tutorial_button.grab_focus()
 
 	load_confirm.visible = false
 
 	_hide_gameplay_ui()
+
+
+## A save without a scene_path (what Reset progress writes) cannot be loaded,
+## so it must not enable Load. Disabled state must be known before building
+## the arrow-key focus ring.
+func _refresh_load_button() -> void:
+	load_button.disabled = _read_save_scene_path().is_empty()
+	_setup_menu_focus_neighbors()
 
 
 func _setup_menu_focus_neighbors() -> void:
@@ -343,6 +349,8 @@ func _on_settings_pressed() -> void:
 			print("❌ TitleScreen: settings scene root is not a SettingsNode")
 			return
 		add_child(_settings_node)
+		# Settings can reset progress, which changes whether Load is possible.
+		_settings_node.closed.connect(_refresh_load_button)
 	_settings_node.show_settings()
 
 

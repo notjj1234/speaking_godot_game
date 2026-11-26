@@ -188,6 +188,12 @@ func reset_progress() -> void:
 		player_mgr.haste_rank = 0
 		player_mgr.crit_rank = 0
 		player_mgr.sword_equipped = false
+		# Gems and the sword live in the inventory; left in place, the next
+		# auto-save would write them straight back into the "reset" save.
+		var inventory: InventoryData = player_mgr.INVENTORY_DATA
+		for i in inventory.slots.size():
+			inventory.slots[i] = null
+		inventory.emit_changed()
 		if player_mgr.has_method("apply_combat_modifiers"):
 			player_mgr.apply_combat_modifiers()
 	

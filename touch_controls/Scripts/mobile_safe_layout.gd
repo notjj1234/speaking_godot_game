@@ -2,7 +2,13 @@ class_name MobileSafeLayout
 extends RefCounted
 
 const DESIGN_SIZE := Vector2(640, 480)
+## Spacing between clusters / HUD obstacles (not the screen-edge thumb inset).
 const MARGIN := 4.0
+## Thumb clearance from the physical screen edge (design px). Larger than MARGIN
+## so the joystick and action buttons are not jammed against the bezel.
+const CLUSTER_EDGE_INSET := 18.0
+## Extra bottom clearance for the iOS home indicator and mobile browser chrome.
+const CLUSTER_BOTTOM_INSET := 28.0
 ## Portrait touch layout: the map sits this far below the top (room for hearts,
 ## banners and the stage label); the on-screen controls get the space below it.
 ## PlayerCamera uses the same number so the two always agree.
@@ -191,7 +197,7 @@ static func layout_touch_controls(viewport: Viewport) -> Dictionary:
 		"arena": _arena_rect(vis),
 		"overlay": true,
 	}
-	var inner := _inset_rect(content, MARGIN * 2.0)
+	var inner := _cluster_inset_rect(content)
 	# Never below a 44 px tall touch target.
 	var pause_k := clampf(k, 44.0 / PAUSE_BUTTON_SIZE.y, 1.2)
 	if vis.size.y > vis.size.x:
@@ -228,11 +234,26 @@ static func layout_touch_controls(viewport: Viewport) -> Dictionary:
 	return placed
 
 
+## Inset the content rect so both clusters clear the bezel; bottom uses the
+## larger CLUSTER_BOTTOM_INSET for home-indicator / browser chrome.
+static func _cluster_inset_rect(content: Rect2) -> Rect2:
+	var left := CLUSTER_EDGE_INSET
+	var top := CLUSTER_EDGE_INSET
+	var right := CLUSTER_EDGE_INSET
+	var bottom := CLUSTER_BOTTOM_INSET
+	var inset_size := content.size - Vector2(left + right, top + bottom)
+	if inset_size.x <= 0.0 or inset_size.y <= 0.0:
+		return Rect2(content.position, Vector2.ZERO)
+	return Rect2(content.position + Vector2(left, top), inset_size)
+
+
 static func _corner_rect(slot: Rect2, visual: Vector2, corner: String) -> Rect2:
 	if slot.size.x < 1.0 or slot.size.y < 1.0 or visual.x <= 0.0 or visual.y <= 0.0:
 		return Rect2(slot.position, Vector2.ZERO)
 	var fit := minf(1.0, minf(slot.size.x / visual.x, slot.size.y / visual.y))
 	var size := visual * fit
+	# Slot is already edge-inset; pin to the inner corner so the visual cluster
+	# (not only the slot AABB) clears the screen edge.
 	var y := slot.end.y - size.y
 	if corner == "bottom_right":
 		return Rect2(Vector2(slot.end.x - size.x, y), size)

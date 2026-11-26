@@ -21,6 +21,7 @@ var sentences: Array = []
 var mic_test_passed := false
 var mic_test_mode := false
 var mic_test_result_received := false
+var _notice_for_denied_permission := false
 
 
 func _ready():
@@ -52,7 +53,7 @@ func _ready():
 				await _test_microphone()
 		else:
 			print("[STTManager] Mic permission denied.")
-			show_restart_notice()
+			show_restart_notice(true)
 
 
 func is_speech_available() -> bool:
@@ -189,11 +190,12 @@ func _resolve_mic_panel() -> Control:
 	return get_node_or_null("/root/Playground/UILayer/UIRoot/MicPermissionPanel")
 
 
-func show_restart_notice():
+func show_restart_notice(permission_denied: bool = false):
 	if mic_test_passed:
 		print("[STTManager] Mic previously passed. Not showing panel again.")
 		return
 
+	_notice_for_denied_permission = permission_denied
 	mic_panel = _resolve_mic_panel()
 	if mic_panel and mic_panel.has_node("VBoxContainer/ConfirmButton"):
 		print("[STTManager] Showing MicPermissionPanel...")
@@ -220,7 +222,25 @@ func show_restart_notice():
 		await get_tree().process_frame
 		mic_panel.grab_focus()
 	else:
-		print("[STTManager] MicPermissionPanel or ConfirmButton not found!")
+		# The check runs at boot on the title screen, but only the Playground
+		# has the panel: show it once a level that has it loads.
+		print("⚠️ [STTManager] MicPermissionPanel not in this scene — will show it when a level that has it loads.")
+		var level_manager := get_node_or_null("/root/LevelManager")
+		if level_manager and not level_manager.level_loaded.is_connected(_retry_restart_notice):
+			level_manager.level_loaded.connect(_retry_restart_notice)
+
+
+func _retry_restart_notice() -> void:
+	var level_manager := get_node_or_null("/root/LevelManager")
+	# The boot check gives the prompt 2 s; a slower "Allow" read as a denial.
+	if _notice_for_denied_permission and "RECORD_AUDIO" in OS.get_granted_permissions():
+		print("✅ [STTManager] Mic permission granted after all. No notice needed.")
+		level_manager.level_loaded.disconnect(_retry_restart_notice)
+		return
+	if _resolve_mic_panel() == null:
+		return
+	level_manager.level_loaded.disconnect(_retry_restart_notice)
+	show_restart_notice(_notice_for_denied_permission)
 
 
 func _on_restart_confirmed():

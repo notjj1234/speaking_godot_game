@@ -23,12 +23,16 @@ func listen() -> void:
 		error.emit(-1)
 		return
 	_plugin.listen()
+	# The plugin only signals results and errors, so the provider reports the
+	# listening state itself (the challenge card and mic indicator use it).
+	listening_started.emit()
 
 
 func stop() -> void:
 	_ensure_plugin()
 	if _plugin != null and _plugin.has_method("stop"):
 		_plugin.stop()
+	listening_stopped.emit()
 
 
 func set_language(lang: String) -> void:
@@ -42,9 +46,13 @@ func _ensure_plugin() -> void:
 		_plugin = Engine.get_singleton("SpeechToText")
 
 
+## One-shot recognition: a result or an error ends the listen. Report stopped
+## first, so a listen() restarted by the handlers below reads as listening.
 func _on_plugin_listening_completed(result) -> void:
+	listening_stopped.emit()
 	listening_completed.emit(String(result) if result != null else "")
 
 
 func _on_plugin_error(error_code) -> void:
+	listening_stopped.emit()
 	error.emit(error_code)

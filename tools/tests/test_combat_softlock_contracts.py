@@ -101,6 +101,23 @@ def main() -> int:
         "STUN_MAX_SEC" in stun and "_stun_elapsed" in stun,
     )
 
+    # Out-of-tries must release STT/HUD links like a pass does, or the old
+    # enemy judges (and tears down) the next enemy's challenge.
+    fail_fn = re.search(
+        r"func _host_challenge_fail\(.*?\n(?:.*\n)*?(?=\nfunc |\Z)",
+        enemy,
+    )
+    pass_fn = re.search(
+        r"func _on_speech_result\(.*?\n(?:.*\n)*?(?=\nfunc |\Z)",
+        enemy,
+    )
+    check(
+        "challenge fail and pass both release challenge I/O",
+        bool(fail_fn) and "_end_challenge_io()" in fail_fn.group(0)
+        and bool(pass_fn) and "_end_challenge_io()" in pass_fn.group(0),
+        "expected _end_challenge_io() in _host_challenge_fail and _on_speech_result",
+    )
+
     if failures:
         print(f"\n{failures} contract(s) failed")
         return 1

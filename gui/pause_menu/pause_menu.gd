@@ -43,6 +43,9 @@ var _load_confirm_layer: int = 0
 @onready var music_louder_button: Button = %MusicLouder
 
 var is_paused: bool = false
+## Bumped by anything that should cancel the delayed close after Save
+## (opening Journal/Settings/Load, or closing/reopening the menu).
+var _save_close_token: int = 0
 var current_page: int = 0
 var words_per_page: int = 5
 
@@ -94,6 +97,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause"):
 		if _is_menu_scene() or _game_over_open():
 			return
+		# Mid-load the level manager unpauses when the fade ends, which would
+		# leave this menu up over a running game; a dialog bar would cover it.
+		if LevelManager.is_loading or DialogSystem.is_open:
+			get_viewport().set_input_as_handled()
+			return
 		# Block pause during speech challenge
 		if has_node("/root/WordTracker"):
 			var word_tracker = get_node("/root/WordTracker")
@@ -134,13 +142,17 @@ func show_pause_menu() -> void:
 	_sync_music_controls()
 	update_word_list_display()
 
-func hide_pause_menu() -> void:
+## unpause=false is for closing the menu while a level load owns the pause:
+## LevelManager unpauses once the new level has faded in.
+func hide_pause_menu(unpause: bool = true) -> void:
+	_save_close_token += 1
 	_close_load_confirm()
 	if _settings_node:
 		_settings_node.hide_settings()
 	UiInputRouter.pop_layer(input_layer)
 	input_layer = 0
-	get_tree().paused = false
+	if unpause:
+		get_tree().paused = false
 	visible = false
 	is_paused = false
 	if saved_note:
@@ -240,6 +252,7 @@ func _next_page() -> void:
 func _on_journal_pressed() -> void:
 	if not is_paused:
 		return
+	_save_close_token += 1
 	var tracker := get_node_or_null("/root/ProgressTracker")
 	if tracker and tracker.has_method("show_journal"):
 		tracker.show_journal()
@@ -252,8 +265,10 @@ func _on_save_pressed() -> void:
 	SaveManager.save_game()
 	if saved_note:
 		saved_note.visible = true
+	_save_close_token += 1
+	var token := _save_close_token
 	await get_tree().create_timer(0.8, true).timeout
-	if is_paused:
+	if is_paused and token == _save_close_token:
 		hide_pause_menu()
 
 func _on_load_pressed() -> void:
@@ -262,6 +277,7 @@ func _on_load_pressed() -> void:
 	if not SaveManager.has_save():
 		print("[DEBUG] Load pressed but no save exists.")
 		return
+	_save_close_token += 1
 	# Confirm first: unlike the title screen (which asks before loading), a
 	# mis-tap here would silently discard the current run.
 	_open_load_confirm()
@@ -369,12 +385,13 @@ func _do_load_game() -> void:
 	print("[DEBUG] Load game triggered.")
 	SaveManager.load_game()
 	await LevelManager.level_load_started
-	hide_pause_menu()
+	hide_pause_menu(false)
 
 
 func _on_settings_pressed() -> void:
 	if not is_paused:
 		return
+	_save_close_token += 1
 	var settings := _ensure_settings()
 	if settings:
 		settings.show_settings()

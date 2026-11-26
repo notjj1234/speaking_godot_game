@@ -84,9 +84,16 @@ Access these via `/root/NAME` (e.g. `/root/WordTracker`). `STTManager`/`WordTrac
 - Export preset **"Web"** → `build/web/` (see `export_presets.cfg`), custom shell `export/web_shell.html`.
 - Browser Web Speech API requires a Secure Context, so the build is served locally over **self-signed HTTPS**:
   ```
-  python3 build/serve_https.py       # serves build/web/ on https://127.0.0.1:8443 (PORT/HOST env overridable)
+  python3 tools/web/play_in_browser.py --phone   # export, then serve for phone testing (preferred)
+  python3 build/serve_https.py                   # serve the last export (PORT/HOST env overridable)
   ```
-  Certs expected at `build/web-certs/cert.pem` + `key.pem` (self-signed; browser warns, continue anyway).
+  `tools/web/play_in_browser.py` (no flag) is the desktop path: plain `http://localhost:8060`, no certificate.
+- `build/serve_https.py` generates its own certificate in **`build/phone-certs/`** (gitignored) with SANs for
+  `localhost`, `127.0.0.1`, `<mac-name>.local` and every current LAN IPv4, regenerating only when the LAN
+  changes or it expires. It serves that cert at `/cert.crt` for installing on a phone, self-tests the LAN URL,
+  and prints iOS/Android trust steps plus a firewall hint.
+- `build/web-certs/cert.pem` + `key.pem` are the old **committed** cert (`CN=localhost`, no SAN). Only used as a
+  fallback when `openssl` is unavailable — a phone will reject it.
 - `build/web/` is a generated export target (`index.html`, `index.js`, `index.wasm`, `index.pck`).
 
 ## Mic-only voice command mode

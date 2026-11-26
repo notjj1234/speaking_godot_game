@@ -7,8 +7,13 @@ const VERSION := "0.2.4"
 const TOP := 40.0
 
 
+## Above the HUD (2) and dialog bar (8), below the pause menu (10) and every
+## other modal card: at 640 wide the badge sits on their top-right corner.
+const BADGE_LAYER := 9
+
+
 func _ready() -> void:
-	layer = 128
+	layer = BADGE_LAYER
 	follow_viewport_enabled = false
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)

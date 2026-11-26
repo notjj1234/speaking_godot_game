@@ -1,10 +1,9 @@
-[gd_scene load_steps=16 format=4 uid="uid://d3u3f26n1doh6"]
+[gd_scene load_steps=15 format=4 uid="uid://d3u3f26n1doh6"]
 
 [ext_resource type="Script" uid="uid://dk1x51omf5uux" path="res://levels/scripts/level_03_logic.gd" id="1_0g5yh"]
 [ext_resource type="Script" uid="uid://qtlc03dgcseo" path="res://levels/scripts/level.gd" id="1_pwgtw"]
 [ext_resource type="PackedScene" uid="uid://diwmvkgtca114" path="res://tile_maps/grass-01.tscn" id="2_crhyv"]
 [ext_resource type="PackedScene" uid="uid://b3oaeqoffq7dl" path="res://levels/player_spawn.tscn" id="3_0g5yh"]
-[ext_resource type="PackedScene" uid="uid://cssawlcgy87g8" path="res://gui/player_hud/player_hud.tscn" id="4_ww55q"]
 [ext_resource type="Script" uid="uid://dp7xt1c8ct3s4" path="res://levels/tutorial_items/tutorial_dialog.gd" id="5_tdgo7"]
 [ext_resource type="PackedScene" uid="uid://ctqin6e0wq3vi" path="res://touch_controls/Scene/touch_controls.tscn" id="6_5cxg7"]
 [ext_resource type="PackedScene" uid="uid://cgf1781jg33w2" path="res://touch_controls/Scene/pause_button.tscn" id="7_fqhwe"]
@@ -50,7 +49,8 @@ tile_map_data = PackedByteArray("AAAAAAAAAAADAAMAAAAAAAEAAAABAAMAAAAAAAIAAAABAAM
 [node name="PlayerSpawn" parent="." instance=ExtResource("3_0g5yh")]
 position = Vector2(423, 360)
 
-[node name="PlayerHud" parent="." instance=ExtResource("4_ww55q")]
+[node name="PlayerHud" type="CanvasLayer" parent="."]
+layer = 1
 
 [node name="TutorialDialog" type="Control" parent="PlayerHud"]
 visible = false

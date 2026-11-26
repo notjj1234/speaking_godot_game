@@ -156,6 +156,8 @@ func show_voice_commands_list() -> void:
 func hide_voice_commands_list() -> void:
 	if _voice_commands_panel:
 		_voice_commands_panel.visible = false
+	# A stale "Heard: …" must not greet the player when the panel next opens.
+	_set_move_heard("")
 
 
 func _create_voice_commands_panel() -> void:
@@ -185,14 +187,16 @@ func _create_voice_commands_panel() -> void:
 	_voice_commands_panel.anchor_right = 0.0
 	_voice_commands_panel.anchor_bottom = 0.0
 	_voice_commands_panel.offset_left = 8.0
-	_voice_commands_panel.offset_top = 88.0
+	# Just under the voice banner (y 52-80), content height only (grows down):
+	# the old fixed box reached y 330, over the D-pad's Up arrow (top y 280).
+	_voice_commands_panel.offset_top = 84.0
 	_voice_commands_panel.offset_right = 228.0
-	_voice_commands_panel.offset_bottom = 330.0
+	_voice_commands_panel.offset_bottom = 84.0
 	_voice_commands_panel.grow_horizontal = Control.GROW_DIRECTION_END
 	_voice_commands_panel.grow_vertical = Control.GROW_DIRECTION_END
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 4)
+	vbox.add_theme_constant_override("separation", 2)
 	_voice_commands_panel.add_child(vbox)
 
 	var title := Label.new()
@@ -258,7 +262,9 @@ func set_voice_only_listening(listening: bool) -> void:
 
 func update_hp(_hp: int, _max_hp: int) -> void:
 	update_max_hp(_max_hp)
-	for i in _max_hp:
+	# One heart per 2 HP. Looping over every HP point indexed past the 20 heart
+	# nodes as soon as Vitality took max HP above 20 (horde starts at 20).
+	for i in mini(hearts.size(), ceili(_max_hp / 2.0)):
 		update_heart(i, _hp)
 	pass
 
@@ -417,10 +423,10 @@ func _set_move_heard(heard: String) -> void:
 		_move_heard_label.text = ""
 		_move_heard_label.visible = false
 		return
+	# Shown only inside the panel, which voice-only / mic-on modes open; any
+	# stray transcript must not pop the panel open over the game.
 	_move_heard_label.text = "Heard: " + heard
 	_move_heard_label.visible = true
-	if _voice_commands_panel:
-		_voice_commands_panel.visible = true
 
 
 func _mark_heard_line() -> void:
@@ -469,11 +475,14 @@ func _show_success_toast(score: int = 100) -> void:
 	plate.visible = true
 	plate.modulate = Color(1, 1, 1, 1)
 
-	var tween := create_tween()
-	tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-	tween.tween_interval(0.35)
-	tween.tween_property(plate, "modulate:a", 0.0, 0.45)
-	tween.finished.connect(_on_success_plate_finished.bind(plate))
+	# Back-to-back kills: the previous fade would hide this toast early.
+	if _success_tween and _success_tween.is_valid():
+		_success_tween.kill()
+	_success_tween = create_tween()
+	_success_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	_success_tween.tween_interval(0.35)
+	_success_tween.tween_property(plate, "modulate:a", 0.0, 0.45)
+	_success_tween.finished.connect(_on_success_plate_finished.bind(plate))
 
 	# Emit feedback_closed for the caller awaiting it
 	feedback_closed.emit()
@@ -512,6 +521,9 @@ func _ensure_success_plate() -> PanelContainer:
 	mark.color = Color(0.1, 0.34, 0.18, 1)
 	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var column := VBoxContainer.new()
+	# _show_success_toast finds the label by this path; unnamed, Godot would
+	# auto-name the node and the lookup would return null.
+	column.name = "VBoxContainer"
 	column.alignment = BoxContainer.ALIGNMENT_CENTER
 	column.add_theme_constant_override("separation", 4)
 	column.add_child(label)
@@ -574,6 +586,12 @@ const PRACTICE_NOTICE_DURATION := 1.6
 
 var _practice_notice_label: Label = null
 var _practice_notice_token: int = 0
+var _practice_notice_tween: Tween = null
+var _success_tween: Tween = null
+## Practice notice rows: its usual spot (y 34-58) overlaps the voice banner
+## (y 52-80), so it drops below the banner while that is up.
+const PRACTICE_NOTICE_TOP := 34.0
+const PRACTICE_NOTICE_TOP_UNDER_BANNER := 84.0
 
 
 func show_practice_notice() -> void:
@@ -598,14 +616,21 @@ func show_practice_notice() -> void:
 		_practice_notice_label.anchor_bottom = 0.0
 		_practice_notice_label.offset_left = -180.0
 		_practice_notice_label.offset_right = 180.0
-		_practice_notice_label.offset_top = 34.0
-		_practice_notice_label.offset_bottom = 58.0
 		control.add_child(_practice_notice_label)
+	var top := PRACTICE_NOTICE_TOP
+	if voice_only_banner and voice_only_banner.visible:
+		top = PRACTICE_NOTICE_TOP_UNDER_BANNER
+	_practice_notice_label.offset_top = top
+	_practice_notice_label.offset_bottom = top + 24.0
 	_practice_notice_token += 1
 	var token := _practice_notice_token
 	_practice_notice_label.visible = true
 	_practice_notice_label.modulate = Color(1, 1, 1, 1)
+	# A second death mid-fade: the old fade would hide this notice early.
+	if _practice_notice_tween and _practice_notice_tween.is_valid():
+		_practice_notice_tween.kill()
 	var tween := create_tween()
+	_practice_notice_tween = tween
 	tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	tween.tween_interval(PRACTICE_NOTICE_DURATION)
 	tween.tween_property(_practice_notice_label, "modulate:a", 0.0, 0.4)

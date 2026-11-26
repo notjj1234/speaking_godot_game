@@ -80,35 +80,38 @@ window.LQPron = {
   _recorder: null,
   _chunks: [],
   _pcm: null,
-  _ctx: null,
 
+  // State: idle -> starting (awaiting the mic) -> recording -> idle.
+  // 'recording' must be set while the recorder runs: endCaptureAndScore only
+  // scores in that state, and GDScript waits on its callback.
   async beginCapture() {
     if (this._state !== 'idle') return false;
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    this._stream = stream;
-    const ctx = new AudioContext();
-    this._ctx = ctx;
-    const src = ctx.createMediaStreamSource(stream);
-    const rec = new MediaRecorder(src.mediaStream || stream, { mimeType: 'audio/webm' });
-    this._recorder = rec;
-    this._chunks = [];
-    rec.ondataavailable = (e) => { if (e.data && e.data.size > 0) this._chunks.push(e.data); };
-    await new Promise((resolve) => {
-      rec.onstop = async () => {
-        const blob = new Blob(this._chunks, { type: rec.mimeType || 'audio/webm' });
-        const buf = await blob.arrayBuffer();
-        const ab = new AudioContext();
-        const audio = await ab.decodeAudioData(buf);
-        const pcm = new Float32Array(audio.length ? audio.getChannelData(0).length : 0);
-        // resample to 16k mono is done in worker-side via AudioContext; keep simple: use channel data
-        window.LQPron._pcm = audio.getChannelData(0);
-        window.LQPron._pcmRate = audio.sampleRate;
-        resolve(true);
-      };
+    this._state = 'starting';
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (this._state !== 'starting') {
+        // Abandoned while the mic prompt was open: never keep the stream.
+        stream.getTracks().forEach(t => t.stop());
+        return false;
+      }
+      this._stream = stream;
+      const rec = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      this._recorder = rec;
+      this._chunks = [];
+      rec.ondataavailable = (e) => { if (e.data && e.data.size > 0) this._chunks.push(e.data); };
       rec.start();
-    });
-    this._state = 'recording';
-    return true;
+      this._state = 'recording';
+      return true;
+    } catch (e) {
+      console.warn('[LQPron] beginCapture failed:', e);
+      this._releaseStream();
+      this._state = 'idle';
+      return false;
+    }
+  },
+
+  _releaseStream() {
+    if (this._stream) { try { this._stream.getTracks().forEach(t => t.stop()); } catch (e) {} this._stream = null; }
   },
 
   async abandonCapture() {
@@ -116,20 +119,41 @@ window.LQPron = {
       try { this._recorder.stop(); } catch (e) { /* noop */ }
     }
     this._state = 'idle';
-    if (this._stream) { try { this._stream.getTracks().forEach(t => t.stop()); } catch (e) {} this._stream = null; }
+    this._releaseStream();
     this._pcm = null;
     return true;
   },
 
+  _reply(result) {
+    // GDScript receives JS objects as JavaScriptObject, not Dictionary; a JSON
+    // string is the one shape it can read back reliably.
+    if (window.LQPronScoreCb) {
+      try { window.LQPronScoreCb(JSON.stringify(result)); } catch (e) { console.warn('[LQPron] score callback failed:', e); }
+    }
+    return result;
+  },
+
   async endCaptureAndScore(target) {
-    if (this._state !== 'recording') return { ok: false, score: -1, phones: '', ms: -1, error: 'not-recording' };
+    // Always answer through the callback: GDScript parks a paused challenge
+    // until it hears back.
+    if (this._state !== 'recording') {
+      return this._reply({ ok: false, score: -1, phones: '', ms: -1, error: 'not-recording' });
+    }
     const rec = this._recorder;
-    if (rec) { try { rec.stop(); } catch (e) {} }
     let result;
+    let ab = null;
     try {
+      // The final dataavailable fires before 'stop'; building the blob any
+      // earlier gives an empty clip.
+      if (rec && rec.state !== 'inactive') {
+        await new Promise((resolve) => {
+          rec.addEventListener('stop', resolve, { once: true });
+          try { rec.stop(); } catch (e) { resolve(); }
+        });
+      }
       const blob = new Blob(this._chunks, { type: rec ? (rec.mimeType || 'audio/webm') : 'audio/webm' });
       const buf = await blob.arrayBuffer();
-      const ab = new AudioContext();
+      ab = new AudioContext();
       const audio = await ab.decodeAudioData(buf);
       const channel = audio.getChannelData(0);
       const pcm = new Float32Array(channel.length);
@@ -155,12 +179,10 @@ window.LQPron = {
       // otherwise the facade wedges in 'recording' and the callback never fires.
       this._state = 'idle';
       this._pcm = null;
-      if (this._stream) { try { this._stream.getTracks().forEach(t => t.stop()); } catch (e) {} this._stream = null; }
+      this._releaseStream();
+      if (ab) { try { ab.close(); } catch (e) {} }
     }
-    if (window.LQPronScoreCb) {
-      try { window.LQPronScoreCb(result); } catch (e) { /* noop */ }
-    }
-    return result;
+    return this._reply(result);
   },
 };
 

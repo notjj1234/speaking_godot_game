@@ -7,8 +7,24 @@ const API_URL = "YOUR APP SCRIPT URL"
 signal sentences_loaded(sentences)
 signal words_loaded(words)
 
+var _warned_unconfigured := false
+
+
+## False until API_URL is a real Apps Script address. Requesting the placeholder
+## only logged "Invalid URL scheme" engine errors on every launch and word save;
+## WordTracker already falls back to the local sentence list.
+func _is_configured() -> bool:
+	if API_URL.begins_with("https://"):
+		return true
+	if not _warned_unconfigured:
+		_warned_unconfigured = true
+		print("[INFO] Google Sheets URL not set — using local sentences, not syncing progress.")
+	return false
+
 # ✅ Fetch both sentences and words from Google Sheets
 func fetch_sentences_and_words():
+	if not _is_configured():
+		return
 	var http = HTTPRequest.new()
 	add_child(http)
 
@@ -23,6 +39,7 @@ func fetch_sentences_and_words():
 
 	if error != OK:
 		print("[ERROR] Failed to request sentences and words:", error)
+		http.queue_free()  # no request_completed will come to free it
 	else:
 		print("[INFO] Requesting sentences and words from Google Sheets...")
 
@@ -49,6 +66,8 @@ func _on_sentences_and_words_received(result, response_code, headers, body, http
 
 # ✅ Fetch sentences from Google Sheets
 func fetch_sentences():
+	if not _is_configured():
+		return
 	var http = HTTPRequest.new()
 	add_child(http)
 
@@ -63,6 +82,7 @@ func fetch_sentences():
 
 	if error != OK:
 		print("[ERROR] Failed to request sentences:", error)
+		http.queue_free()  # no request_completed will come to free it
 	else:
 		print("[INFO] Requesting sentences from Google Sheets...")
 
@@ -85,6 +105,8 @@ func _on_sentences_received(result, response_code, headers, body, http):
 
 # ✅ Fetch words from Google Sheets
 func fetch_words():
+	if not _is_configured():
+		return
 	var http = HTTPRequest.new()
 	add_child(http)
 
@@ -99,6 +121,7 @@ func fetch_words():
 
 	if error != OK:
 		print("[ERROR] Failed to request words:", error)
+		http.queue_free()  # no request_completed will come to free it
 	else:
 		print("[INFO] Requesting words from Google Sheets...")
 
@@ -121,6 +144,8 @@ func _on_words_received(result, response_code, headers, body, http):
 
 # ✅ Save a sentence to Google Sheets
 func save_sentence_entry(sentence: String, count: int, device_id: String = "Unknown", device_name: String = "Unknown Device"):
+	if not _is_configured():
+		return
 	var http = HTTPRequest.new()
 	add_child(http)
 
@@ -144,11 +169,14 @@ func save_sentence_entry(sentence: String, count: int, device_id: String = "Unkn
 
 	if error != OK:
 		print("[ERROR] Failed to send sentence request:", error)
+		http.queue_free()  # no request_completed will come to free it
 	else:
 		print("[INFO] Sent sentence to Google Sheets:", data)
 
 # ✅ Save a word to Google Sheets
 func save_word_entry(word: String, count: int, device_id: String = "Unknown", device_name: String = "Unknown Device"):
+	if not _is_configured():
+		return
 	var http = HTTPRequest.new()
 	add_child(http)
 
@@ -172,6 +200,7 @@ func save_word_entry(word: String, count: int, device_id: String = "Unknown", de
 
 	if error != OK:
 		print("[ERROR] Failed to send word request:", error)
+		http.queue_free()  # no request_completed will come to free it
 	else:
 		print("[INFO] Sent word to Google Sheets:", data)
 

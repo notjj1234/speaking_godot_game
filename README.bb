@@ -7,3 +7,11 @@ python3 -m http.server 8480 --bind 127.0.0.1
 open "http://127.0.0.1:8480/index.html"
 
 
+
+
+python3 tools/web/play_in_browser.py
+
+python3 tools/web/play_in_browser.py --phone
+
+
+

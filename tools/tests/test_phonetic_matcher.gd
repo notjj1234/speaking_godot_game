@@ -41,5 +41,9 @@ func _init() -> void:
 	_check("transcript_contains_fuzzy(watter,water,0.5)==true", m.transcript_contains_fuzzy("watter", "water", 0.5))
 	_check("transcript_contains_fuzzy(this is a red small dog,a dot)==false", not m.transcript_contains_fuzzy("this is a red small dog", "a dot"))
 	_check("transcript_contains_fuzzy(Hello  World ,hello world)==true", m.transcript_contains_fuzzy("Hello  World ", "hello world"))
+	_check("similarity(dog,dot)≈0.667", absf(m.similarity("dog", "dot") - 0.6667) < 0.001)
+	_check("similarity(water,woter)==0.8", absf(m.similarity("water", "woter") - 0.8) < 0.001)
+	_check("transcript_contains_fuzzy(i like red aples,i like red apples)==true", m.transcript_contains_fuzzy("i like red aples", "i like red apples"))
+	_check("transcript_contains_fuzzy(a cat,a dog)==false", not m.transcript_contains_fuzzy("a cat", "a dog"))
 
 	quit(0 if failures == 0 else 1)

@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://qtlc03dgcseo" path="res://levels/scripts/level.gd" id="1_xgrxd"]
 [ext_resource type="PackedScene" uid="uid://diwmvkgtca114" path="res://tile_maps/grass-01.tscn" id="2_on67r"]
 [ext_resource type="PackedScene" uid="uid://b3oaeqoffq7dl" path="res://levels/player_spawn.tscn" id="3_5h3qi"]
-[ext_resource type="PackedScene" uid="uid://cssawlcgy87g8" path="res://gui/player_hud/player_hud.tscn" id="4_ey1d6"]
 [ext_resource type="Script" uid="uid://dp7xt1c8ct3s4" path="res://levels/tutorial_items/tutorial_dialog.gd" id="5_kox87"]
 [ext_resource type="PackedScene" uid="uid://ctqin6e0wq3vi" path="res://touch_controls/Scene/touch_controls.tscn" id="6_te4hv"]
 [ext_resource type="PackedScene" uid="uid://cgf1781jg33w2" path="res://touch_controls/Scene/pause_button.tscn" id="7_7oy6e"]
@@ -22,7 +21,8 @@ tile_map_data = PackedByteArray("AAAAAAAAAAAAAAcAAAAAAAEAAAAAAAcAAAAAAAIAAAAAAAc
 [node name="PlayerSpawn" parent="." unique_id=1697809037 instance=ExtResource("3_5h3qi")]
 position = Vector2(304, 433)
 
-[node name="PlayerHud" parent="." unique_id=1682651684 instance=ExtResource("4_ey1d6")]
+[node name="PlayerHud" type="CanvasLayer" parent="." unique_id=1682651684]
+layer = 1
 
 [node name="TutorialDialog" type="Control" parent="PlayerHud" unique_id=1949088338]
 visible = false

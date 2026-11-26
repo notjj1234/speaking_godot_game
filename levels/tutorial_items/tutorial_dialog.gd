@@ -49,7 +49,6 @@ func _ready():
 	_apply_banner_layout()
 	UiInputRouter.bind(self, next_message)
 	call_deferred("_apply_banner_layout")
-	_hide_duplicate_hud_chrome()
 
 	if current_level == "Playground":
 		messages = _playground_messages()
@@ -141,23 +140,6 @@ func _apply_banner_layout() -> void:
 		dialog_label.offset_right = -14
 		dialog_label.offset_bottom = -10
 
-
-func _hide_duplicate_hud_chrome() -> void:
-	var parent_hud := get_parent()
-	if parent_hud == null:
-		return
-	var autoload := get_node_or_null("/root/PlayerHud")
-	if autoload != null and parent_hud == autoload:
-		return
-	var sprite := parent_hud.get_node_or_null("Control/Sprite2D")
-	if sprite:
-		sprite.visible = false
-	var hearts_row := parent_hud.get_node_or_null("Control/HFlowContainer")
-	if hearts_row:
-		hearts_row.visible = false
-	var voice_banner := parent_hud.get_node_or_null("Control/VoiceOnlyBanner")
-	if voice_banner:
-		voice_banner.visible = false
 
 func show_message(index: int):
 	if index >= 0 and index < messages.size():

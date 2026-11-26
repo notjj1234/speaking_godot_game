@@ -8,7 +8,10 @@ extends Node
 ## Press F9 to dump the current screen. It also dumps by itself shortly after
 ## the scene or the top UI layer changes, for phones with no F9.
 
-const DPAD := ["Left", "Right", "Up", "Down"]
+## Empty: the LeftCluster joystick is not a TouchScreenButton and has no
+## allowlisted TSB overlaps. Keep in sync with docs/ui-input-rules.md and
+## tools/ui_qa/input_audit.py (DPAD).
+const DPAD: Array[String] = []
 const SETTLE_SECONDS := 0.6
 const MIN_TARGET := 44.0
 

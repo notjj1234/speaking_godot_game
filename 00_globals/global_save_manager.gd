@@ -87,8 +87,13 @@ func load_game() -> void:
 		print("❌ SaveManager: Failed to open save file for reading")
 		return
 	var json := JSON.new()
-	json.parse(file.get_line())
-	var save_dict : Dictionary = json.get_data() as Dictionary
+	if json.parse(file.get_line()) != OK or not (json.get_data() is Dictionary):
+		print("❌ SaveManager: save file is corrupt — not loading")
+		return
+	var save_dict: Dictionary = json.get_data()
+	if str(save_dict.get("scene_path", "")).is_empty() or not (save_dict.get("player") is Dictionary):
+		print("❌ SaveManager: save has no scene or player data (reset save?) — not loading")
+		return
 	current_save = save_dict
 
 	var tracker := get_node_or_null("/root/ProgressTracker")
@@ -97,7 +102,10 @@ func load_game() -> void:
 		if current_save.has("progress") and current_save.progress is Dictionary:
 			progress = current_save.progress
 		tracker.load_from_save(progress)
-	
+
+	# The saved position is applied below; PlayerSpawn must not move the player
+	# back to the level's spawn point (player_spawned is false after Main Menu).
+	PlayerManager.player_spawned = true
 	LevelManager.load_new_level(current_save.scene_path, "", Vector2.ZERO)
 	
 	await LevelManager.level_load_started

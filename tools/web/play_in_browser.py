@@ -5,7 +5,9 @@
     python3 tools/web/play_in_browser.py --no-export  # just serve the last export (build/web/)
     python3 tools/web/play_in_browser.py --export-only
     python3 tools/web/play_in_browser.py --phone      # export, then serve over HTTPS on your Wi-Fi
-                                                      # (build/serve_https.py) to test on a phone/tablet
+                                                      # for a phone or tablet: it prints the phone URL,
+                                                      # firewall hint, and the certificate-trust steps
+                                                      # for iOS and Android (build/serve_https.py)
 
 Why localhost: browsers only allow the microphone (Web Speech API) in a
 "secure context". http://localhost counts as one, so desktop testing needs no
@@ -31,10 +33,12 @@ import socketserver
 import subprocess
 import sys
 import threading
+import urllib.parse
 import webbrowser
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 WEB_DIR = os.path.join(ROOT, "build", "web")
+EXTRAS_DIR = os.path.realpath(os.path.join(ROOT, "web", "extras"))
 PRESET = "Web"
 PORT = int(os.environ.get("PORT", "8060"))
 WANT_MAJOR_MINOR = "4.7"
@@ -96,6 +100,19 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=WEB_DIR, **kw)
 
+    def translate_path(self, path):
+        # The web shell imports /extras/pronunciation/window_lqpron.js (the
+        # pronunciation scorer), which lives outside the export, as in
+        # build/serve_https.py. Escapes from the mount map to a missing file.
+        clean = path.split("?", 1)[0].split("#", 1)[0]
+        if clean.startswith("/extras/"):
+            rel = urllib.parse.unquote(clean[len("/extras/"):]).lstrip("/")
+            full = os.path.realpath(os.path.join(EXTRAS_DIR, rel))
+            if os.path.commonpath([EXTRAS_DIR, full]) != EXTRAS_DIR:
+                return os.path.join(EXTRAS_DIR, "__outside_mount__")
+            return full
+        return super().translate_path(path)
+
     def end_headers(self):
         # Always load the newest export after re-exporting.
         self.send_header("Cache-Control", "no-store")
@@ -134,6 +151,7 @@ def main() -> int:
     if "--export-only" in args:
         return 0
     if "--phone" in args:
+        print("📱 Phone mode — the phone URLs and certificate steps follow.\n", flush=True)
         return subprocess.call([sys.executable, os.path.join(ROOT, "build", "serve_https.py")])
     return serve_local(open_browser="--no-open" not in args)
 

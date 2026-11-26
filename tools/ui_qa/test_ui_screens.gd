@@ -53,6 +53,7 @@ func _ready() -> void:
 	await _title()
 	await _coming_soon()
 	await _tutorial_banner()
+	await _overlays_and_loading()
 	finish()
 
 
@@ -290,31 +291,26 @@ func _hud() -> void:
 			[Control.MOUSE_FILTER_IGNORE, Control.FOCUS_NONE])
 	check("hud: Mic drives no input action", action_downs, [] as Array[String])
 
-	# D-pad: native TouchScreenButtons, the one allowed overlap.
-	var up: TouchScreenButton = left.get_node("Up")
-	var right_arrow: TouchScreenButton = left.get_node("Right")
-	await touch(centre(up), true, 0)
-	await touch(centre(right_arrow), true, 1)
-	check("hud: two fingers make a diagonal",
+	# Joystick: FIXED VirtualJoystickAddon; press NE of centre for an 8-way diagonal.
+	var stick: Control = left.get_node("Joystick")
+	var stick_ne: Vector2 = centre(stick) + Vector2(50, -50)
+	await touch(stick_ne, true, 0)
+	check("hud: joystick NE presses up+right",
 			[Input.is_action_pressed(&"up"), Input.is_action_pressed(&"right")], [true, true])
-	await touch(centre(up), false, 0)
-	await touch(centre(right_arrow), false, 1)
-	var corner: Vector2 = up.get_global_transform_with_canvas() * Vector2(73, 75)
-	await touch(corner, true, 0)
-	check("hud: one thumb on the corner overlap makes a diagonal",
-			[Input.is_action_pressed(&"up"), Input.is_action_pressed(&"right")], [true, true])
-	await touch(corner, false, 0)
+	await touch(stick_ne, false, 0)
+	check("hud: lifting the joystick releases movement",
+			[Input.is_action_pressed(&"up"), Input.is_action_pressed(&"right")], [false, false])
 
 	# Under every overlay the whole cluster is gone and held input is released.
 	await touch(centre(attack), true, 0)
-	await touch(centre(up), true, 1)
+	await touch(stick_ne, true, 1)
 	PauseMenu.show_pause_menu()
 	await frames(4)
 	check("hud: opening pause releases held Attack", Input.is_action_pressed(&"attack"), false)
-	check("hud: opening pause releases the D-pad", Input.is_action_pressed(&"up"), false)
+	check("hud: opening pause releases the joystick", Input.is_action_pressed(&"up"), false)
 	check("hud: cluster and pause button are suppressed", [hud.visible, pause_button.visible], [false, false])
 	await touch(centre(attack), false, 0)
-	await touch(centre(up), false, 1)
+	await touch(stick_ne, false, 1)
 	PauseMenu.hide_pause_menu()
 	await frames()
 	check("hud: cluster returns after pause", [hud.visible, pause_button.visible], [true, true])
@@ -322,9 +318,9 @@ func _hud() -> void:
 	DialogSystem.show_dialog("A", null, PackedStringArray(["one", "two"]), Callable(), 1)
 	await frames(4)
 	check("hud: dialog suppresses the cluster too", hud.visible, false)
-	await touch(centre(up), true, 0)
-	check("hud: the D-pad under a dialog is inert", Input.is_action_pressed(&"up"), false)
-	await touch(centre(up), false, 0)
+	await touch(stick_ne, true, 0)
+	check("hud: the joystick under a dialog is inert", Input.is_action_pressed(&"up"), false)
+	await touch(stick_ne, false, 0)
 	DialogSystem.close()
 	await frames()
 
@@ -445,3 +441,55 @@ func _tutorial_banner() -> void:
 	check("tutorial banner: one click advances one message", banner.current_index, 1)
 	layer.queue_free()
 	await frames()
+
+
+## The pause key as the keyboard and the touch pause button deliver it.
+func _press_pause() -> void:
+	for down in [true, false]:
+		var ev := InputEventAction.new()
+		ev.action = &"pause"
+		ev.pressed = down
+		Input.parse_input_event(ev)
+		Input.flush_buffered_events()
+		await frames()
+
+
+func _overlays_and_loading() -> void:
+	check("pause: drawn above the HUD and the dialog bar",
+			PauseMenu.layer > PlayerHud.layer and PauseMenu.layer > DialogSystem.layer, true)
+
+	DialogSystem.show_dialog("A", null, PackedStringArray(["one"]), Callable(), 1)
+	await frames()
+	await _press_pause()
+	check("pause: does not open over a dialog", PauseMenu.is_paused, false)
+	DialogSystem.close()
+	if PauseMenu.is_paused:
+		PauseMenu.hide_pause_menu()
+	await frames()
+
+	LevelManager.is_loading = true
+	await _press_pause()
+	check("pause: does not open during a level load", PauseMenu.is_paused, false)
+	LevelManager.is_loading = false
+	if PauseMenu.is_paused:
+		PauseMenu.hide_pause_menu()
+
+	PauseMenu.show_pause_menu()
+	await frames()
+	PauseMenu._on_save_pressed()
+	await press(PauseMenu.journal_button)
+	await get_tree().create_timer(1.0, true).timeout
+	check("pause: Save then Journal stays paused", [PauseMenu.is_paused, get_tree().paused], [true, true])
+	ProgressTracker.hide_journal()
+	PauseMenu.hide_pause_menu()
+	await frames()
+
+	# Tutorial levels host their bubble on a plain layer, not a second HUD.
+	for path in ["res://levels/playground.tscn", "res://levels/tutorial_area/01.tscn",
+			"res://levels/tutorial_area/02.tscn", "res://levels/tutorial_area/03.tscn"]:
+		var state := (load(path) as PackedScene).get_state()
+		var hud_copy := false
+		for i in state.get_node_count():
+			if state.get_node_name(i) == &"PlayerHud" and state.get_node_instance(i) != null:
+				hud_copy = true
+		check("%s: no second PlayerHud instance" % path.get_file(), hud_copy, false)

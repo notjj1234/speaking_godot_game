@@ -146,32 +146,28 @@ func make_invulnerable(_duration: float = 1.0) -> void:
 	if hit_box:
 		hit_box.monitoring = true
 
+const VOICE_STEP_DISTANCE := 128.0
+const VOICE_STEP_MAX_SEC := 2.0
+
+## One voice "move" step. Rides the continuous move so it collides with walls
+## (and stops at them) and freezes with the paused tree, then stops after
+## VOICE_STEP_DISTANCE. The time cap ends a step held up by a wall or a pause.
 func move_with_animation(direction_vector: Vector2) -> void:
 	if PlayerManager.dialog_open:
 		return
-	direction = direction_vector.normalized()
-	set_direction(true)
-
-	var walk_state = state_machine.get_node("Walk")
-	var idle_state = state_machine.get_node("Idle")
-	
-	if walk_state and idle_state:
-		state_machine.change_state(walk_state)
-		update_animation("walk")  
-
-		var distance = 128  # Total movement distance
-		var step = 4       # Distance per frame
-		var steps = int(distance / step)
-
-		for i in range(steps):
-			position += direction_vector * step
-			update_animation("walk")  
-			await get_tree().create_timer(0.05).timeout  
-
-		state_machine.change_state(idle_state)
-		update_animation("idle")
-	else:
-		print("Error: State machine missing 'Walk' or 'Idle' state.")
+	var step_dir := direction_vector.normalized()
+	start_continuous_move(step_dir)
+	var start := global_position
+	var elapsed := 0.0
+	# is_inside_tree: the player is briefly orphaned while levels swap.
+	while is_inside_tree() and _continuous_move_direction == step_dir \
+			and global_position.distance_to(start) < VOICE_STEP_DISTANCE \
+			and elapsed < VOICE_STEP_MAX_SEC:
+		await get_tree().physics_frame
+		elapsed += get_physics_process_delta_time()
+	# Only end the step this call started; a newer command owns the move now.
+	if _continuous_move_direction == step_dir:
+		stop_continuous_move()
 
 
 # Continuous movement for voice-only mode
@@ -253,19 +249,20 @@ func refresh_weapon_sprite() -> void:
 	if not weapon.visible:
 		return
 	weapon.scale = Vector2.ONE
+	# Draw order comes from show_behind_parent only. Any z_index other than 0
+	# leaves the player's y-sorted slot: +1 drew the sword over plants and
+	# enemies in front of the player.
+	weapon.z_index = 0
 	match anim_direction():
 		"down":
 			weapon.position = Vector2(10, 6)
 			weapon.rotation_degrees = 20.0
 			weapon.show_behind_parent = false
-			weapon.z_index = 1
 		"up":
 			weapon.position = Vector2(-8, -4)
 			weapon.rotation_degrees = -20.0
 			weapon.show_behind_parent = true
-			weapon.z_index = -1
 		_:
 			weapon.position = Vector2(12, 2)
 			weapon.rotation_degrees = 70.0
 			weapon.show_behind_parent = false
-			weapon.z_index = 1

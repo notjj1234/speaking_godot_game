@@ -31,6 +31,9 @@ var _snap_ready := false
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
+	# Keep refitting while paused: a phone rotated with the pause menu open
+	# would otherwise leave the map badly fitted behind the dimmer.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	LevelManager.tilemap_bounds_changed.connect(update_limits)
 	update_limits(LevelManager.current_tilemap_bounds)
 

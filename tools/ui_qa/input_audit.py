@@ -26,10 +26,12 @@ MIN_TARGET = 44.0
 
 SKIP_DIRS = {"addons", "build", "android", "godot-whisper", "tools", "ios", ".godot", ".git"}
 
-# The only gameplay controls allowed to keep a native `action`, and the only
-# overlaps allowed to exist: neighbouring D-pad arrows overlap to make diagonals.
+# Historical D-pad allowlist. Movement is now a VirtualJoystickAddon under
+# LeftCluster/Joystick (Input.action_press via the addon's _input) — not
+# TouchScreenButton nodes, so there is no native-action or TSB-overlap exception.
+# Kept empty and mirrored in docs/ui-input-rules.md + ui_overlap_probe.gd.
 DPAD_SCENE = "touch_controls/Scene/touch_controls.tscn"
-DPAD = {"Left", "Right", "Up", "Down"}
+DPAD: set[str] = set()
 
 # Not instanced by anything. Checked: the audit fails if one becomes referenced.
 UNUSED_SCENES = {
@@ -396,8 +398,9 @@ def main() -> int:
     if args.self_test:
         print()
         return self_test(findings)
-    if len(allowed) != 4:
-        print("❌ expected exactly 4 D-pad diagonal overlaps; the diagonals changed")
+    # Joystick replaced the D-pad: zero TSB diagonal overlaps are expected.
+    if len(allowed) != 0:
+        print("❌ expected 0 D-pad diagonal overlaps; leftover arrow TSBs?")
         return 1
     return 1 if findings else 0
 

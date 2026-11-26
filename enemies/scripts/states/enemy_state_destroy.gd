@@ -20,6 +20,7 @@ func init() -> void:
 
 func enter() -> void:
 	enemy.invulnerable = true
+	enemy.dying = true
 	enemy.animation_player.process_mode = Node.PROCESS_MODE_ALWAYS
 	
 	#_direction = enemy.DIR_4[rand]

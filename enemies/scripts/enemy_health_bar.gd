@@ -12,12 +12,14 @@ const CAUTION_COLOR := Color(0.95, 0.8, 0.25)
 const CRITICAL_COLOR := Color(0.85, 0.3, 0.25)
 const CAUTION_FRACTION := 0.5
 const CRITICAL_FRACTION := 0.2
-const NUMBER_FONT := preload("res://gui/fonts/Abaddon Bold.ttf")
+const NUMBER_FONT := preload("res://gui/fonts/m5x7.ttf")
+const NUMBER_SIZE := 12
+const OUTLINE_SIZE := 1
+const NUMBER_COLOR := Color(1, 1, 1)
+const OUTLINE_COLOR := Color(0, 0, 0, 0.9)
 
 var _max_hp := 1
 var _hp := 1
-
-@onready var _number: Label = _make_number()
 
 
 func _ready() -> void:
@@ -27,19 +29,21 @@ func _ready() -> void:
 func setup(max_hp: int) -> void:
 	_max_hp = maxi(max_hp, 1)
 	_hp = _max_hp
-	_update_number()
 	queue_redraw()
 
 
 func update_bar(hp: int) -> void:
 	_hp = clampi(hp, 0, _max_hp)
 	visible = true
-	_update_number()
 	queue_redraw()
 
 
 func hide_bar() -> void:
 	visible = false
+
+
+func get_display_text() -> String:
+	return "%d/%d" % [_hp, _max_hp]
 
 
 func _fraction() -> float:
@@ -63,23 +67,20 @@ func _draw() -> void:
 	if fill_w > 0.0:
 		draw_rect(Rect2(0, 0, fill_w, BAR_H), _fill_color())
 
-
-func _make_number() -> Label:
-	var label := Label.new()
-	label.text = ""
-	label.add_theme_font_override("font", NUMBER_FONT)
-	label.add_theme_font_size_override("font_size", 8)
-	label.add_theme_color_override("font_color", Color(1, 1, 1))
-	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	label.add_theme_constant_override("outline_size", 3)
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.position = Vector2(-7, -13)
-	label.size = Vector2(40, 10)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(label)
-	return label
-
-
-func _update_number() -> void:
-	_number.text = "%d/%d" % [_hp, _max_hp]
+	var text := get_display_text()
+	var text_size := NUMBER_FONT.get_string_size(
+		text, HORIZONTAL_ALIGNMENT_LEFT, -1, NUMBER_SIZE
+	)
+	# Baseline a few px above the bar; snap to whole pixels for nearest filter.
+	var pos := Vector2(
+		roundf((BAR_W - text_size.x) * 0.5),
+		roundf(-2.0)
+	)
+	draw_string_outline(
+		NUMBER_FONT, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+		NUMBER_SIZE, OUTLINE_SIZE, OUTLINE_COLOR
+	)
+	draw_string(
+		NUMBER_FONT, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+		NUMBER_SIZE, NUMBER_COLOR
+	)

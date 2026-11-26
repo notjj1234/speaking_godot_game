@@ -8,6 +8,7 @@ extends CanvasLayer
 @onready var safe_area: Control = $Root/SafeArea
 @onready var left_cluster: Control = $Root/SafeArea/LeftCluster
 @onready var right_cluster: Control = $Root/SafeArea/RightCluster
+@onready var joystick: Control = $Root/SafeArea/LeftCluster/Joystick
 @onready var player_hud = $"/root/PlayerHud"  # Reference to the Player HUD for live transcription
 
 const DEFAULT_STRUGGLE_UNLOCK_COUNT := 3
@@ -82,19 +83,16 @@ func _ready() -> void:
 	mic_restart_timer.timeout.connect(_force_mic_restart)
 
 
-## UiInputRouter owns every press here except the D-pad. Mic and Interact are
-## labels that mark their own hit area; Attack is a TouchScreenButton visual with
-## no native action. See docs/ui-input-rules.md.
+## UiInputRouter owns Mic / Interact / Attack. The Joystick under LeftCluster is
+## NOT routed — VirtualJoystickAddon claims its own touches in `_input` and drives
+## left/right/up/down via Input.action_press. DPAD allowlist is empty in
+## docs/ui-input-rules.md, input_audit.py, and ui_overlap_probe.gd.
 func _bind_pointer_regions() -> void:
 	# Click/tap toggle, not hold.
 	mic_button.toggle_mode = true
 	UiInputRouter.bind(mic_button, _on_mic_tapped)
 	UiInputRouter.bind_held(interact_button, &"interact")
 	UiInputRouter.bind_held(attack_button, &"attack")
-	# THE ONE EXCEPTION to one-press-one-action: the D-pad arrows keep their
-	# native TouchScreenButton `action`, and neighbours overlap so that one thumb
-	# on a corner holds two directions. Mirrored in tools/ui_qa/input_audit.py.
-	UiInputRouter.allow_multi_touch(left_cluster, &"dpad")
 
 
 func _notification(what: int) -> void:
@@ -187,7 +185,26 @@ func _apply_legacy_level_rules(level_name: String) -> void:
 func set_gameplay_suppressed(suppressed: bool) -> void:
 	if not _touch_ui_enabled:
 		return
+	# TouchScreenButtons used to auto-release on hide; the joystick does not, so
+	# clear its Input.action_press state and stop its `_input` when an overlay
+	# takes over (the addon ignores visibility).
+	_set_joystick_input_enabled(not suppressed)
 	visible = not suppressed
+
+
+func _set_joystick_input_enabled(enabled: bool) -> void:
+	if not enabled:
+		_release_joystick_input()
+	if joystick:
+		joystick.set_process_input(enabled)
+
+
+func _release_joystick_input() -> void:
+	if joystick and joystick.has_method("_reset"):
+		joystick.call("_reset")
+	for action in ["left", "right", "up", "down"]:
+		if Input.is_action_pressed(action):
+			Input.action_release(action)
 
 
 func _hide_controls_on_desktop() -> void:
@@ -203,26 +220,25 @@ func _hide_controls_on_desktop() -> void:
 
 
 func _disable_arrow_buttons() -> void:
-	print("🎤 Mic-only level detected. Hiding arrow buttons.")
+	print("🎤 Mic-only level detected. Hiding movement joystick.")
 	_set_movement_arrows_visible(false)
 	if has_node("Root/SafeArea/RightCluster/Attack"):
 		$Root/SafeArea/RightCluster/Attack.visible = false
 
 
 func _enable_movement_arrows() -> void:
-	print("✅ Showing movement arrows after voice struggles.")
+	print("✅ Showing movement joystick after voice struggles.")
 	_set_movement_arrows_visible(true)
 
 
 func _set_movement_arrows_visible(shown: bool) -> void:
-	if has_node("Root/SafeArea/LeftCluster/Left"):
-		$Root/SafeArea/LeftCluster/Left.visible = shown
-	if has_node("Root/SafeArea/LeftCluster/Right"):
-		$Root/SafeArea/LeftCluster/Right.visible = shown
-	if has_node("Root/SafeArea/LeftCluster/Up"):
-		$Root/SafeArea/LeftCluster/Up.visible = shown
-	if has_node("Root/SafeArea/LeftCluster/Down"):
-		$Root/SafeArea/LeftCluster/Down.visible = shown
+	# Visibility API name kept for LevelMetadata / voice-only callers; the
+	# joystick replaced the four arrow TouchScreenButtons.
+	_set_joystick_input_enabled(shown)
+	if joystick:
+		joystick.visible = shown
+	elif has_node("Root/SafeArea/LeftCluster/Joystick"):
+		$Root/SafeArea/LeftCluster/Joystick.visible = shown
 
 
 func _disable_mic_button() -> void:
@@ -510,9 +526,9 @@ func _set_voice_banner_listening(listening: bool) -> void:
 		player_hud.set_voice_only_listening(listening)
 
 
+## Called by a speech challenge on every platform. While active, transcripts
+## belong to the challenge (not voice commands) and the mic is not restarted.
 func begin_challenge_mic() -> void:
-	if not OS.has_feature("web"):
-		return
 	_challenge_mic_active = true
 	_mic_enabled_before_challenge = mic_enabled
 	if mic_restart_timer:
@@ -524,8 +540,6 @@ func begin_challenge_mic() -> void:
 
 
 func end_challenge_mic() -> void:
-	if not OS.has_feature("web"):
-		return
 	_challenge_mic_active = false
 	mic_enabled = _mic_enabled_before_challenge or _voice_only_mode
 	_update_mic_ui()
@@ -649,14 +663,9 @@ func _on_mic_error(error_code: int, error_message: String) -> void:
 		return
 	print("Microphone error occurred: ", error_message, " (Code: ", error_code, ")")
 	if error_code == -1 and _voice_only_mode:
-		# Permission / start failure. Keep voice-only armed but tell the player
-		# the next tap retries. Do not leave the "keyboard disabled" line up.
-		print("⚠️ Voice-only mic start failed. Waiting for a click/tap to retry.")
-		_hook_voice_only_gesture_retry()
-		_set_voice_banner_listening(false)
-		if player_hud and player_hud.has_method("set_voice_banner_message"):
-			player_hud.set_voice_banner_message("Tap to try the mic.")
-		_update_mic_ui()
+		# Permission refused / mic cannot start. Retrying just gets refused again
+		# and the keyboard stays locked, so the level could never be finished.
+		_fail_open_voice_only("Microphone blocked — keyboard unlocked.")
 		return
 	if error_code == 7:
 		print("Error 7 detected: Ignoring and forcing mic restart...")

@@ -59,14 +59,14 @@ func listen() -> void:
 	_last_final_transcript = ""
 	_apply_language()
 	var status := _eval_start()
-	if status == "already":
-		_eval_stop()
-		await get_tree().process_frame
-		_eval_start()
-	if status != "ok":
-		error.emit(-1)
-	else:
+	# "already": recognition is still running (continuous mode keeps it alive
+	# after a final result) or still stopping, in which case _on_js_end restarts
+	# it now that the session is active again. Either way it is live — reporting
+	# -1 here would read as a mic refusal to every caller.
+	if status == "ok" or status == "already":
 		listening_started.emit()
+	else:
+		error.emit(-1)
 
 
 func stop() -> void:
@@ -206,8 +206,12 @@ func _on_js_error(args: Array) -> void:
 			pass
 		"no-speech":
 			pass
-		"network":
-			error.emit(1)
+		"network", "audio-capture":
+			# Not recoverable by restarting (no recognizer service / no mic):
+			# end the session so onend stops restarting, and report -1 so
+			# callers fall back to typing instead of re-listening in a loop.
+			_session_active = false
+			error.emit(-1)
 			listening_stopped.emit()
 		_:
 			error.emit(1)

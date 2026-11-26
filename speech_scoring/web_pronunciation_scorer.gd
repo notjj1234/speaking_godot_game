@@ -72,9 +72,15 @@ func end_capture_and_score(target_phonemes: String, on_done: Callable) -> void:
 
 
 func _on_js_score(_args: Array) -> void:
+	# The facade sends JSON text: JS objects would arrive as JavaScriptObject,
+	# which never matches `is Dictionary`, and the score would always read -1.
 	var payload: Dictionary = {}
-	if _args.size() > 0 and _args[0] is Dictionary:
-		payload = _args[0] as Dictionary
+	if _args.size() > 0 and _args[0] is String:
+		var parsed = JSON.parse_string(_args[0])
+		if parsed is Dictionary:
+			payload = parsed
+		else:
+			print("⚠️ WebPronunciationScorer: unreadable score payload: ", _args[0])
 	var ok: bool = true
 	var score := -1
 	var phones := ""

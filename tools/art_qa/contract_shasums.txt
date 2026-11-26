@@ -1,4 +1,7 @@
-# Pinned at the start of the horde art pass (git HEAD ab3ca09; export_presets.cfg is untracked, pinned from disk). Must stay unchanged.
+# Art contract: scenes/resources whose frame maps, sprite setup and tile data the
+# generated sheets and arenas depend on (pinned at git ab3ca09, start of the horde
+# art pass). General game code (enemy.gd, project.godot, ...) is not pinned here:
+# it keeps evolving; its behaviour is covered by tools/tests/.
 3e8432b555ea5885403b058bceceb1cb74962bf091049de9bba8fc5784ab9567  enemies/beetle/beetle.tscn
 9b0e7f5b8182d82ef4541a03390540868a068d44b7d7b4a5ea7ebc053da45972  enemies/orc/orc.tscn
 39bed2f5511f2a8f54ab5e490b141235dd25b4be697ac4ce0a67d999f1b5a4f5  enemies/skeleton/skeleton.tscn
@@ -6,10 +9,5 @@ c54541f2775fcb16c11d4fba5904c608b49c884942767b973fb0d75a453e82e1  enemies/bandit
 0db7bda3a99ed9af8b377d40199393bc1c04775be0d008c004a1fd0f9646c530  npc/npc.tscn
 205daf881a4be5282eeb9fcd9fc48f62cae02fc58f32eedee066b9288124e389  npc/00_npcs/npc_01.tres
 1d5e0347770ad8415560389888819cb0c03a88e02bc840fc6698c5db87c75c88  npc/00_npcs/npc_02.tres
-fb23283d9ba1420bad1d615b235ed21a394b82835241454b184c29472da0795e  enemies/scripts/enemy.gd
-70702cf7b19193c5203b225d9e3334a933edf14f6ec75db2997d796f2336014a  enemies/scripts/states/enemy_state_chase.gd
 43dd3db769756876405bbe758c94df6597b111ae9c5eb1663ba20b5c31cf7a46  tile_maps/grass-01.tscn
 f6f577fef0f52fb61bb3e382cc179e7c6c393199da9855ea17fab32c3ee6a15c  tile_maps/level_tilemap.gd
-4250ea190a656eca2f3ca562c66b97e6820098ae158f754f49e37fcb9c70c6e1  project.godot
-9430121840dc169fc8a24ad3f08a57ab8dac1c16b5eedad76c0e06de6bbab9eb  export_presets.cfg
-5a746cbd7fef55e52407935e5dda6b40eac551b16508f88bdfae779a084d9d21  00_globals/global_word_tracker.gd

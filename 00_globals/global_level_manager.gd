@@ -9,6 +9,9 @@ signal tilemap_bounds_changed(bounds:Array[Vector2])
 var current_tilemap_bounds : Array[ Vector2 ]
 var target_transition: String
 var position_offset: Vector2
+## True from the fade-out until the new level is unpaused. Overlays that pause
+## (the pause menu) must not open meanwhile: this load unpauses at the end.
+var is_loading: bool = false
 
 
 func _ready() -> void:
@@ -29,6 +32,7 @@ func load_new_level(
 		_position_offset: Vector2
 ) -> void:
 	
+	is_loading = true
 	get_tree().paused = true
 	target_transition = _target_transition
 	position_offset = _position_offset
@@ -42,8 +46,9 @@ func load_new_level(
 	get_tree().change_scene_to_file(level_path)
 	
 	await SceneTransition.fade_in()
-	
+
 	get_tree().paused = false
+	is_loading = false
 	
 	await get_tree().process_frame
 	

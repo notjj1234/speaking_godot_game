@@ -70,7 +70,19 @@ Press Ctrl+C to stop. Other options:
 |---|---|
 | `python3 tools/web/play_in_browser.py --no-export` | serve the last export without rebuilding |
 | `python3 tools/web/play_in_browser.py --export-only` | rebuild `build/web/` only |
-| `python3 tools/web/play_in_browser.py --phone` | rebuild, then serve over HTTPS on your Wi-Fi (`build/serve_https.py`) so a phone or tablet can open `https://<your-mac-ip>:8443/` (accept the self-signed certificate warning) |
+| `python3 tools/web/play_in_browser.py --phone` | rebuild, then serve over HTTPS on your Wi-Fi for a phone or tablet (`build/serve_https.py`) |
+
+**Testing on a phone (iOS or Android).** `--phone` prints the URL to open plus the steps for your device:
+
+```
+  📱 On your phone   https://192.168.1.23:8443/
+                     https://your-mac.local:8443/   (same Wi-Fi)
+```
+
+It writes a self-signed certificate to `build/phone-certs/` (gitignored) that names your current LAN IP and
+`<mac-name>.local`, and serves it at `/cert.crt`. Tap through the warning and the game runs; install that
+certificate as a trusted root if you want the warning gone and the microphone prompt to behave.
+It also checks the URL answers and warns when the macOS firewall is likely blocking Python.
 
 Godot is found via `$GODOT`, `~/Downloads/Godot.app`, `/Applications/Godot*.app` or `godot` on your PATH.
 Desktop browsers hide the on-screen controls; phones and tablets show them, sized to the screen.

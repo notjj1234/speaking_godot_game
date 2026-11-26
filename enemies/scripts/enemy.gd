@@ -51,6 +51,10 @@ var split_orbit_count: int = 0
 var cardinal_direction: Vector2 = Vector2.DOWN
 var direction: Vector2 = Vector2.ZERO
 var is_bouncing: bool = false
+## Set by EnemyStateDestroy. While dying, physics only carries the state's
+## knockback: walking or bouncing would swap the one-shot destroy animation
+## for a looping walk, so animation_finished (and queue_free) never comes.
+var dying: bool = false
 var player: Player
 var invulnerable: bool = false
 var practice_dummy: bool = false
@@ -65,6 +69,11 @@ var challenge_tries_left: int = 0
 var max_hp: int = 0
 var _last_web_score: float = -1.0
 var _attempt_in_flight: bool = false
+## Non-web STT errors in a row. Android restarts listen() on every recoverable
+## error with the typed box hidden; past this many, offer typing so a device
+## that can never recognise (e.g. offline) cannot trap the paused challenge.
+const STT_ERRORS_BEFORE_TYPED_FALLBACK := 3
+var _stt_error_streak: int = 0
 
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
 @onready var sprite: Sprite2D = $Sprite2D
@@ -106,6 +115,9 @@ func _process(_delta): pass
 func _physics_process(_delta):
 	if practice_dummy:
 		velocity = Vector2.ZERO
+		return
+	if dying:
+		move_and_slide()
 		return
 	if is_bouncing:
 		return
@@ -344,6 +356,7 @@ func _take_damage(hurt_box: HurtBox) -> void:
 func _start_speech_challenge(target_sentence: String, hurt_box: HurtBox) -> void:
 	challenge_hurt_box = hurt_box  # Store hurt_box for later use
 	_last_partial_match = ""
+	_stt_error_streak = 0
 	challenge_tries_left = MAX_CHALLENGE_TRIES
 	if player_hud:
 		player_hud.set_challenge_tries(challenge_tries_left)
@@ -354,9 +367,11 @@ func _start_speech_challenge(target_sentence: String, hurt_box: HurtBox) -> void
 		player_hud.show_speech_challenge(target_sentence)
 
 	_connect_stt_signals()
+	# Every platform: the mic-toggle controls must not run challenge
+	# transcripts as voice commands or restart the mic under the challenge.
+	_begin_challenge_mic()
 	var stt = _stt_manager()
 	if _is_web():
-		_begin_web_challenge_mic()
 		_show_typed_fallback()
 		_connect_speak_button()
 		if stt != null and stt.is_speech_available():
@@ -388,6 +403,7 @@ func _on_listening_completed(result: String) -> void:
 
 func _on_listening_completed_impl(result: String) -> void:
 	print("Listening completed: ", result)
+	_stt_error_streak = 0
 	if player_hud:
 		player_hud.update_live_transcript(result)
 
@@ -426,17 +442,7 @@ func _on_listening_completed_impl(result: String) -> void:
 	_register_challenge_attempt(sim)
 
 func _on_speech_result(success: bool, score: int = -1) -> void:
-	var stt = _stt_manager()
-	if _is_web():
-		if stt and stt.has_method("end_challenge_listen"):
-			stt.end_challenge_listen()
-		elif stt:
-			stt.stop()
-	elif stt:
-		stt.stop()
-	_disconnect_stt_signals()
-	_disconnect_fallback()
-	_disconnect_speak_button()
+	_end_challenge_io()
 	if player_hud:
 		player_hud.hide_speech_challenge()
 		player_hud.show_feedback(success, score)
@@ -493,8 +499,26 @@ func _register_challenge_attempt(sim: float) -> void:
 	_host_challenge_fail()
 
 
+## Every challenge exit (pass or out of tries) must release the mic and every
+## per-challenge connection, or this enemy keeps judging later transcripts —
+## including the next enemy's challenge, which it would tear down.
+func _end_challenge_io() -> void:
+	var stt = _stt_manager()
+	if _is_web():
+		if stt and stt.has_method("end_challenge_listen"):
+			stt.end_challenge_listen()
+		elif stt:
+			stt.stop()
+	elif stt:
+		stt.stop()
+	_disconnect_stt_signals()
+	_disconnect_fallback()
+	_disconnect_speak_button()
+
+
 func _host_challenge_fail() -> void:
 	print("⚠️ Enemy restored to full HP. Speech challenge exhausted all tries (3/3).")
+	_end_challenge_io()
 	hp = max_hp
 	if health_bar:
 		health_bar.update_bar(hp)
@@ -590,8 +614,7 @@ func _resume_game_after_challenge() -> void:
 	get_tree().paused = false
 	if has_node("/root/WordTracker"):
 		get_node("/root/WordTracker").speech_challenge_active = false
-	if _is_web():
-		_end_web_challenge_mic()
+	_end_challenge_mic()
 
 
 func _wait_feedback_and_resume() -> void:
@@ -624,6 +647,10 @@ func _on_speech_error(error_code) -> void:
 		return
 
 	if error_code != -1:
+		_stt_error_streak += 1
+		if _stt_error_streak >= STT_ERRORS_BEFORE_TYPED_FALLBACK:
+			print("⚠️ ", _stt_error_streak, " speech errors in a row. Offering typed fallback.")
+			_show_typed_fallback()
 		print("Restarting speech recognition due to error.")
 		var stt = _stt_manager()
 		if stt != null and stt.is_speech_available():
@@ -714,13 +741,13 @@ func _normalize_web_text(text: String) -> String:
 	return " ".join(cleaned.split(" ", false))
 
 
-func _begin_web_challenge_mic() -> void:
+func _begin_challenge_mic() -> void:
 	for node in get_tree().get_nodes_in_group("touch_controls"):
 		if node.has_method("begin_challenge_mic"):
 			node.begin_challenge_mic()
 
 
-func _end_web_challenge_mic() -> void:
+func _end_challenge_mic() -> void:
 	for node in get_tree().get_nodes_in_group("touch_controls"):
 		if node.has_method("end_challenge_mic"):
 			node.end_challenge_mic()
