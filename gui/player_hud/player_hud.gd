@@ -22,6 +22,11 @@ const CREAM := Color(0.98, 0.96, 0.9, 1)
 
 var hearts: Array[HeartGUI] = []
 var target_sentence: String = ""
+## TEMPORARY (desktop testing): offer the typed box on every speech challenge,
+## even when the mic works. Set to false before shipping.
+const TEMP_TYPED_TEST_INPUT := true
+## Off in headless runs so the tests keep checking the real voice-first flow.
+var typed_test_input := TEMP_TYPED_TEST_INPUT and DisplayServer.get_name() != "headless"
 var _feedback_token: int = 0
 var _stt_state: SttState = SttState.STT_IDLE
 var _stt_plate: PanelContainer = null
@@ -286,14 +291,20 @@ func update_max_hp(_max_hp: int) -> void:
 	pass
 
 
-func show_speech_challenge(sentence: String) -> void:
+## title: optional line above "Say: ..." (bosses name their phase there).
+func show_speech_challenge(sentence: String, title: String = "") -> void:
 	_feedback_token += 1
 	# A new challenge must never start with the previous card's audio playing.
 	_stop_tts()
+	_duck_music(true)
 	target_sentence = sentence
+	_listen_armed = true
 	challenge_panel.visible = true
 	speech_challenge_label.text = "Say: " + sentence
 	speech_challenge_label.visible = true
+	if challenge_title_label:
+		challenge_title_label.text = title
+		challenge_title_label.visible = title != ""
 	live_transcript_label.text = ""
 	live_transcript_label.visible = false
 	challenge_feedback_label.text = ""
@@ -308,6 +319,14 @@ func show_speech_challenge(sentence: String) -> void:
 	_refresh_listen_button()
 	set_challenge_tries(_challenge_tries_remaining)
 	set_stt_state(_stt_state)
+
+
+## Music stays low while a challenge is up: out of the mic, the pronunciation
+## recording and the read-aloud voice.
+func _duck_music(on: bool) -> void:
+	var music := get_node_or_null("/root/MusicManager")
+	if music:
+		music.set_ducked(on)
 
 
 func _configure_web_challenge_controls() -> void:
@@ -336,6 +355,7 @@ func _focus_challenge_input() -> void:
 func hide_speech_challenge() -> void:
 	_feedback_token += 1
 	_stop_tts()
+	_duck_music(false)
 	if challenge_panel:
 		challenge_panel.visible = false
 	if speech_challenge_label:
@@ -440,6 +460,8 @@ func _mark_heard_line() -> void:
 
 
 func show_feedback(success: bool, score: int = -1) -> void:
+	_play_sfx(&"correct" if success else &"wrong")
+	_listen_armed = not success
 	if success:
 		# Success: hide challenge panel immediately, show floating toast
 		challenge_panel.visible = false
@@ -559,6 +581,7 @@ const RECOVER_FEEDBACK_DURATION := 1.4
 
 
 func show_enemy_recovered() -> void:
+	_play_sfx(&"error")
 	# Final-fail cue: the enemy heals to full, and the player must see that
 	# cost spelled out instead of discovering it on the next swing.
 	if challenge_panel and not challenge_panel.visible:
@@ -585,6 +608,12 @@ func show_enemy_recovered() -> void:
 const PRACTICE_NOTICE_DURATION := 1.6
 
 var _practice_notice_label: Label = null
+## The text of the latest show_notice, for tests.
+var last_notice := ""
+## The listen ping plays once per prompt (a new card, a retry), not on the
+## silent stop/start cycles web STT runs while waiting.
+var _listen_armed := false
+var challenge_title_label: Label = null
 var _practice_notice_token: int = 0
 var _practice_notice_tween: Tween = null
 var _success_tween: Tween = null
@@ -597,6 +626,12 @@ const PRACTICE_NOTICE_TOP_UNDER_BANNER := 84.0
 func show_practice_notice() -> void:
 	# Shown when a non-horde "death" refills HP: makes the silent full heal
 	# read as an intentional practice rule, not a bug.
+	show_notice("Practice — you can't die here!")
+
+
+## A short centred notice under the top bar that fades out (practice heal,
+## boss victory at the camp). Text must be ASCII for the pixel font.
+func show_notice(text: String) -> void:
 	var control := get_node_or_null("Control") as Control
 	if control == null:
 		return
@@ -604,7 +639,6 @@ func show_practice_notice() -> void:
 		_practice_notice_label = Label.new()
 		_practice_notice_label.name = "PracticeNotice"
 		_practice_notice_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_practice_notice_label.text = "Practice — you can't die here!"
 		_practice_notice_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_practice_notice_label.add_theme_font_size_override("font_size", 16)
 		_practice_notice_label.add_theme_color_override("font_color", CREAM)
@@ -617,6 +651,8 @@ func show_practice_notice() -> void:
 		_practice_notice_label.offset_left = -180.0
 		_practice_notice_label.offset_right = 180.0
 		control.add_child(_practice_notice_label)
+	_practice_notice_label.text = text
+	last_notice = text
 	var top := PRACTICE_NOTICE_TOP
 	if voice_only_banner and voice_only_banner.visible:
 		top = PRACTICE_NOTICE_TOP_UNDER_BANNER
@@ -626,7 +662,7 @@ func show_practice_notice() -> void:
 	var token := _practice_notice_token
 	_practice_notice_label.visible = true
 	_practice_notice_label.modulate = Color(1, 1, 1, 1)
-	# A second death mid-fade: the old fade would hide this notice early.
+	# A second notice mid-fade: the old fade would hide this notice early.
 	if _practice_notice_tween and _practice_notice_tween.is_valid():
 		_practice_notice_tween.kill()
 	var tween := create_tween()
@@ -670,6 +706,14 @@ func _style_parchment_button(button: Button) -> void:
 func _create_tries_label() -> void:
 	if challenge_vbox == null:
 		return
+	challenge_title_label = Label.new()
+	challenge_title_label.name = "ChallengeTitleLabel"
+	challenge_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	challenge_title_label.add_theme_font_size_override("font_size", 14)
+	challenge_title_label.add_theme_color_override("font_color", INK)
+	challenge_title_label.visible = false
+	challenge_vbox.add_child(challenge_title_label)
+	challenge_vbox.move_child(challenge_title_label, 0)
 	_tries_label = Label.new()
 	_tries_label.name = "TriesLabel"
 	_tries_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -975,6 +1019,9 @@ func _challenge_status_text(state: SttState) -> String:
 
 
 func set_stt_state(state: SttState) -> void:
+	if state == SttState.STT_LISTENING and _stt_state != SttState.STT_LISTENING and _listen_armed:
+		_listen_armed = false
+		_play_sfx(&"listen")
 	_stt_state = state
 	var on_card := challenge_panel != null and challenge_panel.visible
 	if _stt_plate:
@@ -1038,3 +1085,9 @@ func set_mic_state(listening: bool) -> void:
 		set_stt_state(SttState.STT_LISTENING)
 	else:
 		set_stt_state(SttState.STT_IDLE)
+
+
+func _play_sfx(cue: StringName) -> void:
+	var sfx := get_node_or_null("/root/Sfx")
+	if sfx:
+		sfx.play(cue)

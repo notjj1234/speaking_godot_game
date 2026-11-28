@@ -46,7 +46,6 @@ func _ready() -> void:
 	await _settings()
 	await _pause_menu()
 	await _journal()
-	await _bonfire()
 	await _game_over()
 	await _dialog()
 	await _hud()
@@ -191,40 +190,8 @@ func _journal() -> void:
 	await frames()
 
 
-func _bonfire() -> void:
-	PauseMenu.show_pause_menu()
-	await frames()
-	Bonfire.show_rest()
-	await screen_ok("bonfire", Bonfire.get_node("Control/CenterContainer/Panel"))
-	check("bonfire: the pause menu under it is properly closed", PauseMenu.is_paused, false)
-
-	PlayerManager.bonfire_points = 99
-	PlayerManager.vitality_rank = 0
-	PlayerManager.might_rank = 0
-	Bonfire._refresh()
-	await press(Bonfire.vitality_button)
-	check("bonfire: one click buys one rank", PlayerManager.vitality_rank, 1)
-	await press(Bonfire.might_button, true)
-	check("bonfire: one tap buys one rank", PlayerManager.might_rank, 1)
-	var crit: int = PlayerManager.crit_rank
-	Bonfire.equip_button.disabled = false
-	await press(Bonfire.equip_button)
-	check("bonfire: Equip never buys Crit", PlayerManager.crit_rank, crit)
-	await press(Bonfire.journal_button)
-	check("bonfire: Journal opens the journal", [ProgressTracker.is_journal_open(), Bonfire.visible], [true, true])
-	await press(ProgressTracker._journal._back)
-	check("bonfire: and Back returns", [ProgressTracker.is_journal_open(), Bonfire.visible], [false, true])
-
-	Bonfire._navigating = false
-	Bonfire.visible = false
-	Bonfire._close_layer()
-	get_tree().paused = false
-	Bonfire._restore_audio()
-	check("bonfire: its layer is popped", UiInputRouter.active_layer(), 0)
-
-
 func _game_over() -> void:
-	# show_defeat() normally forwards to the bonfire; exercise this screen itself.
+	# show_defeat() now loads the camp; exercise this fallback screen itself.
 	GameOver._open()
 	await screen_ok("game over")
 	check("game over: owns the top layer", UiInputRouter.active_layer() > 0, true)

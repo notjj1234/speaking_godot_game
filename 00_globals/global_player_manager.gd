@@ -48,6 +48,8 @@ func set_health(hp: int, max_hp: int) -> void:
 
 func set_player_position(_new_pos: Vector2) -> void:
 	player.global_position = _new_pos
+	# A teleport, not movement: draw it in place instead of interpolating a slide.
+	player.reset_physics_interpolation()
 
 func set_as_parent(_p: Node2D) -> void:
 	if player.get_parent():
@@ -161,13 +163,13 @@ func upgrade_cost(stat: String) -> int:
 	return 2 + _rank_for(stat)
 
 
-func try_upgrade(stat: String) -> String:
+func try_upgrade(stat: String, discount: int = 0) -> String:
 	var rank := _rank_for(stat)
 	if stat == "haste" and rank >= HASTE_MAX:
 		return "Speed is maxed"
 	if stat == "crit" and rank >= CRIT_MAX:
 		return "Crit is maxed"
-	var cost := 2 + rank
+	var cost := maxi(2 + rank - discount, 1)
 	if bonfire_points < cost:
 		return "Not enough gems"
 	bonfire_points -= cost
@@ -177,6 +179,16 @@ func try_upgrade(stat: String) -> String:
 	apply_combat_modifiers()
 	SaveManager.save_game()
 	return ""
+
+
+func item_count(item_path: String) -> int:
+	var total := 0
+	for slot in INVENTORY_DATA.slots:
+		if slot == null or slot.item_data == null:
+			continue
+		if slot.item_data.resource_path == item_path:
+			total += slot.quantity
+	return total
 
 
 func has_sword() -> bool:

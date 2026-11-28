@@ -38,6 +38,11 @@ func _make_cone_indicator() -> void:
 	add_child(_cone)
 
 
+func hide_cone() -> void:
+	if _cone:
+		_cone.visible = false
+
+
 func _on_player_entered() -> void:
 	if _cone:
 		_cone.color = ALERT_COLOR

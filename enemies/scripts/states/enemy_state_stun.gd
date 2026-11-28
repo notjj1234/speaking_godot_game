@@ -49,7 +49,7 @@ func process(_delta: float) -> EnemyState:
 	if _animation_finished or _stun_elapsed >= STUN_MAX_SEC:
 		return next_state
 	# Decrease velocity of enemy
-	enemy.velocity -= enemy.velocity * decelerate_speed * _delta
+	enemy.velocity *= State.decay_factor(decelerate_speed, _delta)
 	return null
 
 func physics(_delta: float) -> EnemyState:

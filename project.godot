@@ -23,6 +23,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 UiInputRouter="*res://00_globals/ui_input_router.gd"
+Sfx="*res://audio/sfx_player.gd"
 STTManager="*res://speech_to_text/STTManager.gd"
 TTSManager="*res://speech_tts/TTSManager.gd"
 LevelManager="*res://00_globals/global_level_manager.gd"
@@ -38,7 +39,6 @@ DialogSystem="*res://gui/dialog_system/dialog_system.tscn"
 VersionOverlay="*res://gui/version_overlay/version_overlay.tscn"
 MusicManager="*res://audio/music_manager.gd"
 GameOver="*res://gui/game_over/game_over.tscn"
-Bonfire="*res://gui/bonfire/bonfire.tscn"
 SettingsManager="*res://00_globals/global_settings.gd"
 PronunciationManager="*res://speech_scoring/pronunciation_manager.gd"
 
@@ -138,9 +138,13 @@ pointing/emulate_mouse_from_touch=false
 2d_physics/layer_5="Walls"
 2d_physics/layer_9="Enemy"
 
+[physics]
+
+common/physics_interpolation=true
+
 [rendering]
 
-2d/snap/snap_2d_transforms_to_pixel=true
+2d/snap/snap_2d_transforms_to_pixel=false
 2d/snap/snap_2d_vertices_to_pixel=true
 textures/canvas_textures/default_texture_filter=0
 textures/vram_compression/import_etc2_astc=true

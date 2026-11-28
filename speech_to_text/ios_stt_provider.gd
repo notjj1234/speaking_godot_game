@@ -2,6 +2,9 @@ class_name IosSTTProvider
 extends SttProvider
 
 var _plugin = null
+## A listen is in progress (no result, error or stop yet).
+var _listening := false
+var _resume_on_return := false
 
 
 func _ready() -> void:
@@ -23,13 +26,32 @@ func listen() -> void:
 	if _plugin == null or not _plugin.has_method("listen"):
 		error.emit(-1)
 		return
+	_listening = true
 	_plugin.listen()
 
 
 func stop() -> void:
+	_listening = false
+	_resume_on_return = false
 	_ensure_plugin()
 	if _plugin != null and _plugin.has_method("stop"):
 		_plugin.stop()
+
+
+func suspend() -> void:
+	if not _listening:
+		return
+	_resume_on_return = true
+	_listening = false
+	if _plugin != null and _plugin.has_method("stop"):
+		_plugin.stop()
+
+
+func resume() -> void:
+	if not _resume_on_return:
+		return
+	_resume_on_return = false
+	listen()
 
 
 func set_language(lang: String) -> void:
@@ -44,8 +66,10 @@ func _ensure_plugin() -> void:
 
 
 func _on_plugin_listening_completed(result) -> void:
+	_listening = false
 	listening_completed.emit(String(result) if result != null else "")
 
 
 func _on_plugin_error(error_code) -> void:
+	_listening = false
 	error.emit(error_code)

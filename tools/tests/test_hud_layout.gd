@@ -79,6 +79,11 @@ func _practice_notice() -> void:
 	_check("F28: a repeat notice is not faded by the old tween", notice.modulate.a > 0.99, str(notice.modulate.a))
 	banner.visible = false
 	await _wait(1.5)
+	PlayerHud.show_notice("Boss beaten! +10 gems")
+	_check("boss notice reuses the notice label", notice.text == "Boss beaten! +10 gems" and notice.visible, notice.text)
+	PlayerHud.show_practice_notice()
+	_check("practice notice keeps its text", notice.text == "Practice — you can't die here!", notice.text)
+	await _wait(2.2)
 
 
 func _success_toast() -> void:

@@ -45,7 +45,6 @@ UNUSED_SCENES = {
 MODAL_DIMMERS = {
     ("gui/pause_menu/pause_menu.tscn", "ColorRect"),
     ("gui/settings/settings.tscn", "Dim"),
-    ("gui/bonfire/bonfire.tscn", "Dim"),
     ("gui/game_over/game_over.tscn", "Dim"),
     ("levels/title_screen/title_screen.tscn", "ConfirmDim"),
 }

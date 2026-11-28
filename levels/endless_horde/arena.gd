@@ -19,9 +19,13 @@ extends Node2D
 @onready var ground: TileMapLayer = get_node_or_null("Ground")
 
 var _blocker_rects: Array[Rect2] = []
+## Boss pathfinding grids, one per clearance (props never move, so built once).
+var _grids := {}
+const PATH_CELL := 16.0
 
 
 func _ready() -> void:
+	add_to_group("horde_arena")
 	if ground:
 		ground.modulate = ground_tint
 	_collect_blocker_rects()
@@ -80,3 +84,72 @@ func nearest_open(world_pos: Vector2, max_rings: int = 8) -> Vector2:
 			if not is_blocked(p):
 				return p
 	return spawn_point()
+
+
+## True if a circle of radius `clearance` can travel from -> to without touching
+## a wall or prop (the real collision shapes on the Walls layer).
+func line_clear(from: Vector2, to: Vector2, clearance: float) -> bool:
+	var circle := CircleShape2D.new()
+	circle.radius = clearance
+	var query := PhysicsShapeQueryParameters2D.new()
+	query.shape = circle
+	query.collision_mask = 16
+	query.transform = Transform2D(0.0, from)
+	query.motion = to - from
+	var hit := get_world_2d().direct_space_state.cast_motion(query)
+	return hit.is_empty() or hit[0] >= 1.0
+
+
+## Grid path around walls and props for a body needing `clearance` px of room.
+## Empty when either end has no open cell nearby.
+func boss_path(from: Vector2, to: Vector2, clearance: float) -> PackedVector2Array:
+	var grid := _grid_for(clearance)
+	if grid == null:
+		return PackedVector2Array()
+	var a := _open_cell(grid, from)
+	var b := _open_cell(grid, to)
+	if a.x < 0 or b.x < 0:
+		return PackedVector2Array()
+	return grid.get_point_path(a, b, true)
+
+
+func _grid_for(clearance: float) -> AStarGrid2D:
+	if _grids.has(clearance):
+		return _grids[clearance]
+	if ground == null or ground.tile_set == null:
+		return null
+	var used := ground.get_used_rect()
+	var tile := Vector2(ground.tile_set.tile_size)
+	var top_left := ground.to_global(ground.map_to_local(used.position) - tile * 0.5)
+	var size := Vector2(used.size) * tile
+	var grid := AStarGrid2D.new()
+	grid.region = Rect2i(0, 0, int(size.x / PATH_CELL), int(size.y / PATH_CELL))
+	grid.cell_size = Vector2(PATH_CELL, PATH_CELL)
+	# Points sit on cell centres.
+	grid.offset = top_left + Vector2(PATH_CELL, PATH_CELL) * 0.5
+	grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+	grid.update()
+	var probes := [Vector2.ZERO, Vector2(clearance, 0), Vector2(-clearance, 0), Vector2(0, clearance), Vector2(0, -clearance)]
+	for x in grid.region.size.x:
+		for y in grid.region.size.y:
+			var centre := grid.offset + Vector2(x, y) * PATH_CELL
+			for o in probes:
+				if is_blocked(centre + o):
+					grid.set_point_solid(Vector2i(x, y))
+					break
+	_grids[clearance] = grid
+	return grid
+
+
+## The open grid cell nearest a world position (searched in rings), or (-1, -1).
+func _open_cell(grid: AStarGrid2D, world_pos: Vector2) -> Vector2i:
+	var c := Vector2i(((world_pos - grid.offset) / PATH_CELL).round())
+	for ring in 4:
+		for dx in range(-ring, ring + 1):
+			for dy in range(-ring, ring + 1):
+				if maxi(absi(dx), absi(dy)) != ring:
+					continue
+				var p := c + Vector2i(dx, dy)
+				if grid.is_in_boundsv(p) and not grid.is_point_solid(p):
+					return p
+	return Vector2i(-1, -1)

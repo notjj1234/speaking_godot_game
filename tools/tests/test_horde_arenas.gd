@@ -62,8 +62,12 @@ func _run() -> void:
 		await _frames(45)
 		_check_arena(horde, step[1], "stage %d" % step[0])
 		var label := (horde.get("_label") as Label).text
-		_check("stage %d label" % step[0], label == "Stage %d - %s" % [step[0], step[1]], label)
+		# Boss stages name the boss instead of the arena (the arena checks above still hold).
+		var label_name := str(HordeCurve.boss_for_stage(step[0]).get("name", step[1]))
+		_check("stage %d label" % step[0], label == "Stage %d - %s" % [step[0], label_name], label)
 		_check_spawns(horde, step[0])
+		if HordeCurve.is_boss_stage(step[0]):
+			_check_boss(horde, step[0])
 	_finish()
 
 
@@ -106,6 +110,14 @@ func _check_spawns(horde: Node, stage: int) -> void:
 	_check("stage %d: enemies spawned" % stage, not _spawned.is_empty())
 	_check("stage %d: no spawn inside a wall or prop" % stage, blocked == 0, "%d of %d" % [blocked, _spawned.size()])
 	_check("stage %d: no spawn on top of the player" % stage, close == 0, "%d of %d" % [close, _spawned.size()])
+
+
+func _check_boss(horde: Node, stage: int) -> void:
+	var enemies := (horde.get_node("HordeEnemies") as Node).get_children().filter(
+			func(c): return c is Enemy and not c.is_queued_for_deletion())
+	var bosses := enemies.filter(func(c): return c.is_boss() and c.scale == Vector2(2, 2))
+	_check("stage %d spawns exactly one boss" % stage, enemies.size() == 1 and bosses.size() == 1,
+			"%d enemies, %d bosses" % [enemies.size(), bosses.size()])
 
 
 func _check_camera(horde: Node) -> void:

@@ -258,6 +258,10 @@ func _release(index: int, pos: Vector2, canceled: bool) -> void:
 		return
 	if region.handler.is_valid():
 		activated.emit(region.item)
+		# Held actions (touch d-pad, attack) stay silent; a tap on a button clicks.
+		var sfx := get_node_or_null("/root/Sfx")
+		if sfx:
+			sfx.play(&"click")
 		region.handler.call()
 
 

@@ -117,10 +117,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _game_over_open() -> bool:
 	var game_over := get_node_or_null("/root/GameOver")
-	if game_over != null and game_over.visible:
-		return true
-	var bonfire := get_node_or_null("/root/Bonfire")
-	return bonfire != null and bonfire.visible
+	return game_over != null and game_over.visible
 
 
 func _is_menu_scene() -> bool:

@@ -27,7 +27,8 @@ func _ready() -> void:
 		print("❌ WebTTSProvider: window interface unavailable.")
 		return
 	_end_cb = JavaScriptBridge.create_callback(_on_js_end)
-	_window.set("LQSpeakEndCb", _end_cb)
+	# Property assignment, not _window.set(): see web_pronunciation_scorer.gd.
+	_window.LQSpeakEndCb = _end_cb
 
 
 func is_available() -> bool:

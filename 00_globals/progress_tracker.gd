@@ -208,6 +208,11 @@ func record_stage_cleared(stage: int) -> void:
 
 func note_stage_cleared(stage: int) -> void:
 	var run := _horde_run()
+	# A victory leaves resume_stage on the stage after the boss; once that stage
+	# is cleared it is stale, exactly like a death's resume stage.
+	if int(run.get("resume_stage", 0)) == stage:
+		run["resume_stage"] = 0
+		_data["horde_run"] = run
 	if int(run.get("stuck_stage", 0)) != stage:
 		return
 	run["resume_stage"] = 0
@@ -256,6 +261,43 @@ func horde_warmup() -> bool:
 	return bool(_horde_run().get("warmup", false))
 
 
+## A boss was beaten: resume at the next stage, drop the stuck scaffolding, and
+## leave the reward pending until the camp claims it (in the camp's own save).
+func record_boss_cleared(stage: int) -> void:
+	if stage <= 0:
+		return
+	var run := _horde_run()
+	run["resume_stage"] = stage + 1
+	run["stuck_stage"] = 0
+	run["deaths_on_stage"] = 0
+	run["short_retry"] = false
+	run["warmup"] = false
+	run["boss_cleared_stage"] = maxi(int(run.get("boss_cleared_stage", 0)), stage)
+	run["boss_reward_stage"] = stage
+	_data["horde_run"] = run
+	mark_dirty()
+	print("✅ ProgressTracker: boss on stage %d beaten, resume at %d" % [stage, stage + 1])
+
+
+## Returns the boss stage whose reward is still owed (0 = none) and clears it.
+func claim_boss_reward() -> int:
+	var run := _horde_run()
+	var stage := int(run.get("boss_reward_stage", 0))
+	if stage > 0:
+		run["boss_reward_stage"] = 0
+		_data["horde_run"] = run
+		mark_dirty()
+	return stage
+
+
+func boss_reward_pending() -> int:
+	return int(_horde_run().get("boss_reward_stage", 0))
+
+
+func boss_cleared_stage() -> int:
+	return int(_horde_run().get("boss_cleared_stage", 0))
+
+
 func show_journal() -> void:
 	if _journal == null:
 		var packed := load("res://gui/progress_journal/progress_journal.tscn") as PackedScene
@@ -302,6 +344,8 @@ func _empty_horde_run() -> Dictionary:
 		"deaths_on_stage": 0,
 		"short_retry": false,
 		"warmup": false,
+		"boss_cleared_stage": 0,
+		"boss_reward_stage": 0,
 	}
 
 

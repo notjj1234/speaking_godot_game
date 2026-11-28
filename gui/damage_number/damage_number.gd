@@ -10,6 +10,8 @@ static func spawn(at: Vector2, amount: int, crit: bool, parent: Node) -> void:
 	var popup := DamageNumber.new()
 	popup.z_index = 40
 	popup.process_mode = Node.PROCESS_MODE_ALWAYS
+	# Floated by a tween each drawn frame, not by physics: draw it as-is.
+	popup.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	parent.add_child(popup)
 	popup.global_position = at
 	popup._show(amount, crit)

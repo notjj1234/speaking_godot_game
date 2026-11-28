@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="NPCResource" format=3]
+
+[ext_resource type="Script" uid="uid://bnxcct0tps4vp" path="res://npc/scripts/npc_resource.gd" id="1_res"]
+[ext_resource type="Texture2D" uid="uid://b0kaof7dxqd0b" path="res://npc/sprites/npc_sprite_02.png" id="2_sprite"]
+[ext_resource type="Texture2D" uid="uid://bjylko1sugppr" path="res://npc/sprites/portraits/npc_portrait_02.png" id="3_portrait"]
+
+[resource]
+script = ExtResource("1_res")
+npc_name = "Trainer"
+sprite = ExtResource("2_sprite")
+portrait = ExtResource("3_portrait")
+conversation_id = "trainer"
+music_track = &"npc_trainer"
+metadata/_custom_type_script = "uid://bnxcct0tps4vp"

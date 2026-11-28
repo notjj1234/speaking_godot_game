@@ -38,7 +38,7 @@ func exit() -> void:
 	hurt_box.monitoring = false
 
 func process(_delta: float) -> State:
-	player.velocity -= player.velocity * decelerate_speed * _delta
+	player.velocity *= State.decay_factor(decelerate_speed, _delta)
 	
 	if attacking == false:
 		if player.direction == Vector2.ZERO:

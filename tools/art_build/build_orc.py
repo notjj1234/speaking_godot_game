@@ -17,7 +17,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pixrig import Mat, Rig, m_ellipse, m_limb, m_line, m_poly, m_rect, rp  # noqa: E402
 from humanoid import Pose, build_sheet  # noqa: E402
 
-SKIN = Mat("#727650", "#4e5238", "#33361f")
+# Match the player's sheet: solid outline, finer shading (tools/art_build/style_check.py).
+PLAYER_STYLE = {"outline_mode": "dark", "detail": True}
+
+SKIN = Mat("#8e9562", "#60663f", "#3b3f24")   # wider ramp than before: reads as form, not one dark block
 IRON = Mat("#a7adb3", "#6e7278", "#43464c")
 LEATHER = Mat("#8c5c34", "#5f3d21", "#3a2513")
 OCHRE = "#d0922f"
@@ -103,7 +106,7 @@ def front(P: Pose, back: bool):
     r.part(m_ellipse(px_, y(28), 5, 3), IRON)
     r.part(m_poly([(px_ - 6, y(26)), (px_ + 6, y(26)), (px_ + 5, y(23)), (px_ - 5, y(23))]), IRON)
     r.dot({(px_ - 2, int(y(29))), (px_ + 2, int(y(29)))}, IRON.hi)
-    return r.render()
+    return r.render(**PLAYER_STYLE)
 
 
 def side(P: Pose):
@@ -153,7 +156,7 @@ def side(P: Pose):
     r.part(m_ellipse(cx + 1, y(28), 5, 3), IRON)
     r.part(m_poly([(cx - 4, y(26)), (cx + 6, y(26)), (cx + 5, y(23)), (cx - 3, y(23))]), IRON)
     r.dot({(cx - 1, int(y(29)))}, IRON.hi)
-    return r.render()
+    return r.render(**PLAYER_STYLE)
 
 
 def draw(P: Pose):

@@ -76,6 +76,7 @@ func start() -> void:
 	
 	# IDLE
 	npc.global_position = target.target_position
+	npc.reset_physics_interpolation()
 	npc.state = "idle"
 	npc.velocity = Vector2.ZERO
 	npc.update_animation()

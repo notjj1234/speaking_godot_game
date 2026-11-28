@@ -19,14 +19,16 @@ class_name PlayerCamera extends Camera2D
 ## Highest zoom used to cover the screen (a 19.5:9 phone needs ~1.63 for 640x480).
 const MAX_COVER_ZOOM := 1.75
 
-## How far (px) the body may drift from its snapped pixel before the view follows.
-const SNAP_HYSTERESIS := 0.75
+## No sub-pixel `offset` of our own: physics interpolation draws the camera
+## between physics ticks at whatever rate the display runs (60/90/120/144 Hz).
+## The old offset was computed from the un-interpolated physics position, so it
+## would wobble against the interpolated view. Transform pixel snapping is off
+## in project.godot for the same reason: it rounded the hero and the camera
+## separately, so the hero rocked +-1 px while the camera followed.
 
 var _bounds: Array[Vector2] = []
 var _fit_view := Vector2.ZERO
 var _fit_touch := false
-var _snap := Vector2.ZERO
-var _snap_ready := false
 
 
 # Called when the node enters the scene tree for the first time.
@@ -47,38 +49,17 @@ func _process(_delta: float) -> void:
 	var touch := MobileSafeLayout.wants_touch_ui()
 	if view != _fit_view or touch != _fit_touch:
 		_refit()
-	_snap_to_pixels(parent_node.global_position, view)
-
-
-## Keep the view on whole pixels while the CharacterBody2D moves subpixel, without
-## the two shakes the old one-liner caused:
-## * Camera2D adds `offset` AFTER clamping to its limits, so where the view is
-##   pinned against a limit (walking along the arena wall) a changing sub-pixel
-##   offset shook the whole screen. On a pinned axis the offset is now 0.
-## * Pressing into a wall makes move_and_slide nudge the body back and forth by
-##   a fraction of a pixel; plain rounding flipped between two pixels every
-##   frame. The snapped position now only moves once the body is 0.75 px away.
-func _snap_to_pixels(pos: Vector2, view: Vector2) -> void:
-	if not _snap_ready:
-		_snap = pos.round()
-		_snap_ready = true
-	if absf(pos.x - _snap.x) > SNAP_HYSTERESIS:
-		_snap.x = roundf(pos.x)
-	if absf(pos.y - _snap.y) > SNAP_HYSTERESIS:
-		_snap.y = roundf(pos.y)
-	var o := _snap - pos
-	var half := view * 0.5 / zoom
-	if pos.x - half.x <= float(limit_left) or pos.x + half.x >= float(limit_right):
-		o.x = 0.0
-	if pos.y - half.y <= float(limit_top) or pos.y + half.y >= float(limit_bottom):
-		o.y = 0.0
-	offset = o
 
 
 func update_limits(bounds: Array[Vector2]) -> void:
 	if bounds == []:
 		return
 	_bounds = bounds.duplicate()
+	if not is_inside_tree():
+		# Mid level change (the player is unparented): no viewport to fit to
+		# yet. A zero fit size makes _process refit once the camera is back.
+		_fit_view = Vector2.ZERO
+		return
 	_refit()
 
 

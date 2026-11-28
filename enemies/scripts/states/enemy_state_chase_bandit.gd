@@ -15,6 +15,8 @@ class_name EnemyStateChaseBandit extends EnemyStateChase
 @export var dart_cooldown: float = 1.8
 @export var dart_duration: float = 0.45
 @export var retreat_duration: float = 0.5
+## The dart ends early this close to the player.
+@export var dart_stop_distance: float = 22.0
 
 enum Phase { ORBIT, DART_IN, RETREAT }
 
@@ -67,7 +69,7 @@ func process(delta: float) -> EnemyState:
 		Phase.DART_IN:
 			_phase_timer -= delta
 			desired = to_player * dart_speed
-			if _phase_timer <= 0.0 or dist < 22.0:
+			if _phase_timer <= 0.0 or dist < dart_stop_distance:
 				_phase = Phase.RETREAT
 				_phase_timer = retreat_duration
 				_dart_timer = dart_cooldown * randf_range(0.7, 1.3)
@@ -84,16 +86,23 @@ func process(delta: float) -> EnemyState:
 	if separation != Vector2.ZERO:
 		desired += separation * chase_speed * 0.8
 	enemy.state_velocity = desired
-	if desired.length_squared() > 1.0:
-		if enemy.set_direction(desired.normalized()):
+	var face := _facing(desired, _to_player())
+	if face.length_squared() > 0.0001 and (relentless or desired.length_squared() > 1.0):
+		if enemy.set_direction(face.normalized()):
 			enemy.update_animation(anim_name)
 
 	# Lose interest (same semantics as base chase)
-	if _can_see_player == false:
-		_timer -= delta
-		if _timer < 0:
-			_phase = Phase.ORBIT
-			return next_state
-	else:
-		_timer = state_aggro_duration
+	if _lost_interest(delta):
+		_phase = Phase.ORBIT
+		return give_up_state()
 	return null
+
+
+func scale_reach(factor: float) -> void:
+	orbit_inner *= factor
+	orbit_outer *= factor
+	dart_stop_distance *= factor
+
+
+func can_start_ranged() -> bool:
+	return _phase == Phase.ORBIT

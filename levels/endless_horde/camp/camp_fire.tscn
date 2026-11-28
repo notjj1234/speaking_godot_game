@@ -1,0 +1,68 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://levels/endless_horde/camp/camp_fire.gd" id="1_fire"]
+[ext_resource type="Texture2D" uid="uid://bpa5gsclvkekd" path="res://props/Sprites/Props.png" id="2_props"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_interact"]
+radius = 34.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_block"]
+size = Vector2(28, 16)
+
+[sub_resource type="Gradient" id="Gradient_embers"]
+colors = PackedColorArray(1, 0.85, 0.4, 1, 1, 0.35, 0.1, 0)
+
+[node name="CampFire" type="Node2D"]
+y_sort_enabled = true
+script = ExtResource("1_fire")
+
+[node name="Flame" type="Sprite2D" parent="."]
+texture = ExtResource("2_props")
+offset = Vector2(0, -16)
+hframes = 16
+vframes = 3
+frame = 33
+
+[node name="Embers" type="CPUParticles2D" parent="."]
+position = Vector2(0, -14)
+amount = 10
+lifetime = 1.4
+emission_shape = 3
+emission_rect_extents = Vector2(8, 2)
+direction = Vector2(0, -1)
+spread = 20.0
+gravity = Vector2(0, -12)
+initial_velocity_min = 8.0
+initial_velocity_max = 18.0
+scale_amount_min = 1.0
+scale_amount_max = 2.0
+color_ramp = SubResource("Gradient_embers")
+
+[node name="Blocker" type="StaticBody2D" parent="."]
+collision_layer = 16
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Blocker"]
+shape = SubResource("RectangleShape2D_block")
+
+[node name="InteractArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 4
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="InteractArea"]
+shape = SubResource("CircleShape2D_interact")
+
+[node name="PromptLabel" type="Label" parent="."]
+visible = false
+offset_left = -32.0
+offset_top = -56.0
+offset_right = 32.0
+offset_bottom = -38.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 1, 0.75, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 16
+text = "Rest [E]"
+horizontal_alignment = 1

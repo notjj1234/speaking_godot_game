@@ -6,8 +6,14 @@ var _recognition = null
 var _on_result_cb = null
 var _on_error_cb = null
 var _on_end_cb = null
+var _on_visibility_cb = null
+var _on_pagehide_cb = null
+var _on_pageshow_cb = null
 var _intentional_stop: bool = false
 var _session_active: bool = false
+## Page hidden or closing: the mic is released, and a session that is still
+## wanted restarts when the page is visible again.
+var _suspended: bool = false
 var _setup_attempted: bool = false
 var _lang: String = "en-US"
 var _last_final_transcript: String = ""
@@ -46,7 +52,7 @@ func prime_permission() -> void:
 
 
 func listen() -> void:
-	if not OS.has_feature("web"):
+	if not _web_runtime():
 		error.emit(-1)
 		return
 	if _recognition == null:
@@ -58,6 +64,10 @@ func listen() -> void:
 	_intentional_stop = false
 	_last_final_transcript = ""
 	_apply_language()
+	if _suspended:
+		# The page is hidden: resume() starts it once the page is visible again.
+		listening_started.emit()
+		return
 	var status := _eval_start()
 	# "already": recognition is still running (continuous mode keeps it alive
 	# after a final result) or still stopping, in which case _on_js_end restarts
@@ -67,6 +77,11 @@ func listen() -> void:
 		listening_started.emit()
 	else:
 		error.emit(-1)
+
+
+## Overridden by tests/test_stt_suspend.gd to drive the session logic off-browser.
+func _web_runtime() -> bool:
+	return OS.has_feature("web")
 
 
 func stop() -> void:
@@ -124,6 +139,63 @@ func _setup_recognition() -> void:
 	_recognition.onresult = _on_result_cb
 	_recognition.onerror = _on_error_cb
 	_recognition.onend = _on_end_cb
+	_watch_page_lifecycle()
+
+
+## Safari keeps the mic (and the orange indicator) for a hidden or closing page
+## whose recognition is still running, so release it on those events instead of
+## relying on the game loop, which the browser pauses while the page is hidden.
+func _watch_page_lifecycle() -> void:
+	_on_visibility_cb = JavaScriptBridge.create_callback(_on_js_visibility)
+	_on_pagehide_cb = JavaScriptBridge.create_callback(_on_js_pagehide)
+	_on_pageshow_cb = JavaScriptBridge.create_callback(_on_js_pageshow)
+	var document = JavaScriptBridge.get_interface("document")
+	var window = JavaScriptBridge.get_interface("window")
+	if document == null or window == null:
+		print("⚠️ [WebSTTProvider] No document/window: mic is not released when the page hides.")
+		return
+	document.addEventListener("visibilitychange", _on_visibility_cb)
+	window.addEventListener("pagehide", _on_pagehide_cb)
+	window.addEventListener("pageshow", _on_pageshow_cb)
+
+
+func _on_js_visibility(_args: Array) -> void:
+	if str(JavaScriptBridge.eval("document.visibilityState", true)) == "hidden":
+		suspend()
+	else:
+		resume()
+
+
+func _on_js_pagehide(_args: Array) -> void:
+	suspend()
+
+
+func _on_js_pageshow(_args: Array) -> void:
+	# A page restored from the back/forward cache fires pageshow, not visibilitychange.
+	if str(JavaScriptBridge.eval("document.visibilityState", true)) != "hidden":
+		resume()
+
+
+func suspend() -> void:
+	if _suspended:
+		return
+	_suspended = true
+	if _recognition == null:
+		return
+	_intentional_stop = true
+	_eval_stop()
+	print("🎤 [WebSTTProvider] Page hidden: microphone released.")
+
+
+func resume() -> void:
+	if not _suspended:
+		return
+	_suspended = false
+	if _recognition == null or not _session_active:
+		return
+	_intentional_stop = false
+	print("🎤 [WebSTTProvider] Page visible again: resuming listening.")
+	_eval_start()
 
 
 func _eval_start() -> String:
@@ -150,15 +222,26 @@ func _eval_start() -> String:
 	))
 
 
+## abort(), not stop(): iOS Safari can keep capturing after stop() even once onend
+## has fired, and stop()'s trailing result is discarded anyway (_on_js_result
+## ignores results once the session is inactive).
 func _eval_stop() -> void:
 	JavaScriptBridge.eval(
 		"""
 		(function() {
+			var r = window._godot_speech_recognition;
+			if (!r) {
+				return;
+			}
 			try {
-				if (window._godot_speech_recognition) {
-					window._godot_speech_recognition.stop();
+				if (typeof r.abort === "function") {
+					r.abort();
+				} else {
+					r.stop();
 				}
-			} catch (e) {}
+			} catch (e) {
+				console.warn("[WebSTTProvider] releasing recognition failed:", e);
+			}
 		})()
 		"""
 	)
@@ -219,12 +302,12 @@ func _on_js_error(args: Array) -> void:
 
 
 func _on_js_end(_args: Array) -> void:
-	if _intentional_stop:
+	if _intentional_stop or _suspended:
 		return
 	if _session_active:
 		# With continuous=true, onend shouldn't fire unless stopped
 		# But if it does (browser quirk), restart
 		print("[WebSTTProvider] onend fired unexpectedly, restarting...")
 		await get_tree().process_frame
-		if _session_active and not _intentional_stop:
+		if _session_active and not _intentional_stop and not _suspended:
 			_eval_start()

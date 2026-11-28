@@ -18,8 +18,15 @@ const OUTLINE_SIZE := 1
 const NUMBER_COLOR := Color(1, 1, 1)
 const OUTLINE_COLOR := Color(0, 0, 0, 0.9)
 
+const PIP_W := 4.0
+const PIP_H := 3.0
+const PIP_GAP := 2.0
+
 var _max_hp := 1
 var _hp := 1
+## Boss only: phases still to break (pips) out of _phase_total. 0 total = no pips.
+var _phases_left := 0
+var _phase_total := 0
 
 
 func _ready() -> void:
@@ -42,7 +49,21 @@ func hide_bar() -> void:
 	visible = false
 
 
+## Boss bars: pips under the bar and "Phase N/M" instead of the HP number, so
+## a refilled bar after a phase pass still reads as progress.
+func set_phases(left: int, total: int) -> void:
+	_phase_total = maxi(total, 0)
+	_phases_left = clampi(left, 0, _phase_total)
+	queue_redraw()
+
+
+func phases_left() -> int:
+	return _phases_left
+
+
 func get_display_text() -> String:
+	if _phase_total > 0:
+		return "Phase %d/%d" % [_phase_total - _phases_left + 1, _phase_total]
 	return "%d/%d" % [_hp, _max_hp]
 
 
@@ -66,6 +87,14 @@ func _draw() -> void:
 	var fill_w := BAR_W * _fraction()
 	if fill_w > 0.0:
 		draw_rect(Rect2(0, 0, fill_w, BAR_H), _fill_color())
+
+	if _phase_total > 0:
+		var row_w := _phase_total * PIP_W + (_phase_total - 1) * PIP_GAP
+		var x0 := roundf((BAR_W - row_w) * 0.5)
+		for i in _phase_total:
+			var pip := Rect2(x0 + i * (PIP_W + PIP_GAP), BAR_H + 2.0, PIP_W, PIP_H)
+			draw_rect(pip.grow(1.0), BORDER_COLOR)
+			draw_rect(pip, BORDER_COLOR if i < _phases_left else BG_COLOR)
 
 	var text := get_display_text()
 	var text_size := NUMBER_FONT.get_string_size(

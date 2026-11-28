@@ -53,9 +53,11 @@ func process(delta: float) -> EnemyState:
 		Phase.STALK:
 			_cooldown -= delta
 			desired = to_player * stalk_speed
-			if enemy.set_direction(to_player):
+			if enemy.set_direction(_facing(to_player, _to_player())):
 				enemy.update_animation(anim_name)
-			if _cooldown <= 0.0 and dist >= charge_min_range and dist <= charge_max_range:
+			# A boss following a path round a prop must not charge into it.
+			var lined_up := not relentless or _line_to_player_clear()
+			if _cooldown <= 0.0 and dist >= charge_min_range and dist <= charge_max_range and lined_up:
 				_phase = Phase.TELEGRAPH
 				_phase_timer = telegraph_duration
 				desired = Vector2.ZERO  # stop dead on the transition frame
@@ -63,7 +65,7 @@ func process(delta: float) -> EnemyState:
 		Phase.TELEGRAPH:
 			_phase_timer -= delta
 			# Face the player during the wind-up, but hold position.
-			if enemy.set_direction(to_player):
+			if enemy.set_direction(_facing(to_player, _to_player())):
 				enemy.update_animation(anim_name)
 			_shake()
 			if _phase_timer <= 0.0:
@@ -83,6 +85,9 @@ func process(delta: float) -> EnemyState:
 		Phase.STAGGER:
 			_phase_timer -= delta
 			_shake()
+			# Dazed, but a boss still keeps its eyes on the player.
+			if relentless and enemy.set_direction(_to_player()):
+				enemy.update_animation(anim_name)
 			if _phase_timer <= 0.0:
 				_stop_flash()  # clears the shake jitter, not just the flash
 				_phase = Phase.STALK
@@ -94,14 +99,10 @@ func process(delta: float) -> EnemyState:
 			desired += separation * stalk_speed * 0.5
 	enemy.state_velocity = desired
 
-	if _can_see_player == false:
-		_timer -= delta
-		if _timer < 0:
-			_stop_flash()
-			_phase = Phase.STALK
-			return next_state
-	else:
-		_timer = state_aggro_duration
+	if _lost_interest(delta):
+		_stop_flash()
+		_phase = Phase.STALK
+		return give_up_state()
 	return null
 
 
@@ -128,3 +129,12 @@ func _shake() -> void:
 		return
 	var jx: float = randf_range(-1.0, 1.0)
 	enemy.sprite.position = Vector2(jx, -14)
+
+
+func scale_reach(factor: float) -> void:
+	charge_min_range *= factor
+	charge_max_range *= factor
+
+
+func can_start_ranged() -> bool:
+	return _phase == Phase.STALK

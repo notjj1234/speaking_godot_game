@@ -1,8 +1,10 @@
 extends CanvasLayer
 
 const TITLE_PATH := "res://levels/title_screen/title_screen.tscn"
+const CAMP_PATH := "res://levels/endless_horde/camp/camp.tscn"
 
 var _navigating := false
+var _camp_requested := false
 var _master_was_muted := false
 var _input_layer := 0
 
@@ -14,12 +16,23 @@ func _ready() -> void:
 	visible = false
 
 
+## An Endless Horde death: rest at the camp. Falls back to this screen only if
+## the camp scene is missing from the build.
 func show_defeat() -> void:
-	var bonfire := get_node_or_null("/root/Bonfire")
-	if bonfire and bonfire.has_method("show_rest"):
-		bonfire.show_rest()
+	if LevelManager.is_loading or _camp_requested:
 		return
-	_open()
+	if not ResourceLoader.exists(CAMP_PATH):
+		print("❌ GameOver: camp scene missing, showing game over")
+		_open()
+		return
+	_camp_requested = true
+	PlayerManager.player_spawned = false
+	LevelManager.level_loaded.connect(_on_camp_loaded, CONNECT_ONE_SHOT)
+	LevelManager.load_new_level(CAMP_PATH, "", Vector2.ZERO)
+
+
+func _on_camp_loaded() -> void:
+	_camp_requested = false
 
 
 func _open() -> void:

@@ -1,0 +1,56 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://levels/endless_horde/camp/camp.gd" id="1_camp"]
+[ext_resource type="PackedScene" uid="uid://f0b40yoyusyg" path="res://tile_maps/grass_background.tscn" id="2_bg"]
+[ext_resource type="PackedScene" path="res://levels/endless_horde/arenas/arena_03.tscn" id="3_ground"]
+[ext_resource type="PackedScene" uid="uid://b3oaeqoffq7dl" path="res://levels/player_spawn.tscn" id="4_spawn"]
+[ext_resource type="PackedScene" uid="uid://ctqin6e0wq3vi" path="res://touch_controls/Scene/touch_controls.tscn" id="5_touch"]
+[ext_resource type="PackedScene" uid="uid://cgf1781jg33w2" path="res://touch_controls/Scene/pause_button.tscn" id="6_pause"]
+[ext_resource type="PackedScene" path="res://levels/endless_horde/camp/camp_fire.tscn" id="7_fire"]
+[ext_resource type="Script" path="res://npc/conversation/camp_conversation.gd" id="8_conv"]
+[ext_resource type="PackedScene" uid="uid://dn6fi4mt6rurg" path="res://npc/npc.tscn" id="9_npc"]
+[ext_resource type="PackedScene" uid="uid://co6lekkmfdftj" path="res://npc/npc_behavior_wander.tscn" id="10_wander"]
+[ext_resource type="Resource" path="res://npc/00_npcs/camp_smith.tres" id="11_smith"]
+[ext_resource type="Resource" path="res://npc/00_npcs/camp_trainer.tres" id="12_trainer"]
+[ext_resource type="Resource" path="res://npc/00_npcs/camp_cook.tres" id="13_cook"]
+
+[node name="Camp" type="Node2D"]
+y_sort_enabled = true
+script = ExtResource("1_camp")
+
+[node name="GrassBackground" parent="." instance=ExtResource("2_bg")]
+modulate = Color(0.98, 0.66, 0.52, 1)
+
+[node name="CampGround" parent="." instance=ExtResource("3_ground")]
+y_sort_enabled = true
+
+[node name="PlayerSpawn" parent="." instance=ExtResource("4_spawn")]
+position = Vector2(304, 224)
+
+[node name="CampFire" parent="." instance=ExtResource("7_fire")]
+position = Vector2(304, 176)
+
+[node name="CampConversation" type="Node" parent="."]
+script = ExtResource("8_conv")
+
+[node name="Smith" parent="." instance=ExtResource("9_npc")]
+position = Vector2(208, 208)
+npc_resource = ExtResource("11_smith")
+
+[node name="NpcWanderBehavior" parent="Smith" instance=ExtResource("10_wander")]
+
+[node name="Trainer" parent="." instance=ExtResource("9_npc")]
+position = Vector2(400, 208)
+npc_resource = ExtResource("12_trainer")
+
+[node name="NpcWanderBehavior" parent="Trainer" instance=ExtResource("10_wander")]
+
+[node name="Cook" parent="." instance=ExtResource("9_npc")]
+position = Vector2(304, 304)
+npc_resource = ExtResource("13_cook")
+
+[node name="NpcWanderBehavior" parent="Cook" instance=ExtResource("10_wander")]
+
+[node name="TouchControls" parent="." instance=ExtResource("5_touch")]
+
+[node name="PauseButton" parent="." instance=ExtResource("6_pause")]

@@ -76,15 +76,21 @@ func process(delta: float) -> EnemyState:
 	if separation != Vector2.ZERO:
 		desired += separation * chase_speed * 0.6
 	enemy.state_velocity = desired
-	if desired.length_squared() > 1.0:
-		if enemy.set_direction(desired.normalized()):
+	var face := _facing(desired, _to_player())
+	if face.length_squared() > 0.0001 and (relentless or desired.length_squared() > 1.0):
+		if enemy.set_direction(face.normalized()):
 			enemy.update_animation(anim_name)
 
-	if _can_see_player == false:
-		_timer -= delta
-		if _timer < 0:
-			_phase = Phase.HOLD
-			return next_state
-	else:
-		_timer = state_aggro_duration
+	if _lost_interest(delta):
+		_phase = Phase.HOLD
+		return give_up_state()
 	return null
+
+
+func scale_reach(factor: float) -> void:
+	hold_inner *= factor
+	hold_outer *= factor
+
+
+func can_start_ranged() -> bool:
+	return _phase == Phase.HOLD

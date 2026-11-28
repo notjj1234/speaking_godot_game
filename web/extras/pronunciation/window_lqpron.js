@@ -186,6 +186,18 @@ window.LQPron = {
   },
 };
 
+// A hidden or closing page must not keep the mic: Safari shows it as still in use.
+// The challenge then scores without the clip (endCaptureAndScore replies
+// 'not-recording'), which GDScript already treats as "no phoneme pass".
+function releaseCaptureWhenHidden() {
+  if (window.LQPron._state === 'idle') return;
+  window.LQPron.abandonCapture().catch((e) => console.warn('[LQPron] release on hide failed:', e));
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') releaseCaptureWhenHidden();
+});
+window.addEventListener('pagehide', releaseCaptureWhenHidden);
+
 // Kick off the worker model load as soon as the module runs. Readiness flags
 // are owned by the main onmessage handler (status loaded/error) — never set
 // them here, or a failed load gets flipped back to "ready".

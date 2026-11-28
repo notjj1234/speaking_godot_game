@@ -155,22 +155,23 @@ func get_random_speech_challenge() -> String:
 	return selected_challenge
 
 
-## Stage-aware pick for Endless Horde. Prefers the stage's band; if empty, tries
-## harder bands first, then easier, then any phrase, then "cat".
-func get_speech_challenge_for_stage(stage: int) -> String:
+## Stage-aware pick for Endless Horde. Prefers the stage's band (or
+## band_override, used by boss phases); if empty, tries harder bands first, then
+## easier, then any phrase, then "cat".
+func get_speech_challenge_for_stage(stage: int, band_override: int = -1) -> String:
 	_ensure_local_corpus_merged()
 	_apply_builtin_defaults()
 	if available_words.is_empty() and available_sentences.is_empty():
 		return "cat"
 
-	var target_band := HordeCurve.band_for_stage(stage)
+	var target_band := band_override if band_override >= 0 else HordeCurve.band_for_stage(stage)
 	var tracker := get_node_or_null("/root/ProgressTracker")
 	if tracker \
 			and tracker.has_method("horde_warmup") \
 			and tracker.has_method("horde_stuck_stage") \
 			and bool(tracker.horde_warmup()) \
 			and int(tracker.horde_stuck_stage()) == stage:
-		target_band = maxi(0, HordeCurve.band_for_stage(stage) - 1)
+		target_band = maxi(0, target_band - 1)
 	# Exact band first.
 	var pool := _phrases_in_band(target_band)
 	if not pool.is_empty():

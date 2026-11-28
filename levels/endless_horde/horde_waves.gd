@@ -8,6 +8,12 @@ const PICKUP_PULL_SPEED := 280.0
 const PICKUP_COLLECT_DISTANCE := 18.0
 const WALLS_LAYER := 16
 const STAGE_CLEAR_PAUSE := 0.6
+## Beating a block's boss rests you at the camp, as a victory (not a death).
+const CAMP_PATH := "res://levels/endless_horde/camp/camp.tscn"
+## MusicManager tracks: one per arena (HordeCurve.ARENA_NAMES order), one per boss kind.
+const ARENA_MUSIC: Array[StringName] = [&"meadow", &"ruins", &"ashen", &"frozen"]
+const BOSS_MUSIC := {"slime": &"boss_slime", "skeleton": &"boss_bone", "orc": &"boss_orc", "bandit": &"boss_frost"}
+const CAMP_RETRY_DELAY := 0.25
 
 const NORMAL_HP := 6
 
@@ -32,6 +38,10 @@ const SAFE_SPAWN_GAP := 72.0
 ## WaveLabel rows: normal, and pushed below the HUD's mic banner when it shows.
 const LABEL_TOP := 56.0
 const LABEL_TOP_UNDER_BANNER := 84.0
+## The wave label and mic banner fade to this while the player or a boss is
+## under them, so the top wall is never a blind spot.
+const HUD_FADE_ALPHA := 0.35
+const HUD_FADE_SPEED := 6.0
 
 var _stage := 0
 var _spawn_quota := 0
@@ -39,6 +49,9 @@ var _spawned_count := 0
 var _spawn_accum := 0.0
 var _stage_active := false
 var _clear_pause := 0.0
+## Set when a boss stage is cleared: the clear pause ends in the camp, not the next stage.
+var _boss_exit := false
+var _leaving := false
 var _practice := true
 var _start_pad: Node2D
 var _pad_restore: Array[Dictionary] = []
@@ -67,6 +80,7 @@ func _ready() -> void:
 	# Load the right arena before anything spawns: resuming at stage 47 goes straight
 	# to arena 2; practice (resume 0) uses arena 0. Also adds the TopBarrier.
 	await _apply_arena(resume)
+	_play_music(resume)
 	if resume > 0:
 		_practice = false
 		_begin_stage(resume)
@@ -85,6 +99,7 @@ func _free_level() -> void:
 
 func _process(delta: float) -> void:
 	_place_wave_label()
+	_fade_top_hud(delta)
 	if get_tree().paused:
 		return
 	if _speech_challenge_active():
@@ -97,7 +112,10 @@ func _process(delta: float) -> void:
 	if _clear_pause > 0.0:
 		_clear_pause -= delta
 		if _clear_pause <= 0.0:
-			_begin_stage(_stage + 1)
+			if _boss_exit:
+				_go_to_camp()
+			else:
+				_begin_stage(_stage + 1)
 		return
 
 	if not _stage_active:
@@ -190,6 +208,7 @@ func _jump_to_stage(target: int) -> void:
 		_start_timer.stop()
 	_clear_horde()
 	_clear_pause = 0.0
+	_boss_exit = false
 	_spawn_accum = 0.0
 	print("✅ Dev skip to horde stage ", target)
 	_begin_stage(target)
@@ -199,6 +218,7 @@ func _spawn_practice_dummy() -> void:
 	var enemy: Enemy = SLIME.instantiate()
 	_enemies.add_child(enemy)
 	enemy.global_position = _open_position(_clamp_to_grass(_player_position() + Vector2(72, 0)))
+	enemy.reset_physics_interpolation()
 	enemy.make_practice_dummy()
 
 
@@ -342,8 +362,10 @@ func _begin_stage(stage: int) -> void:
 	_spawn_accum = HordeCurve.spawn_interval(_stage) # first enemy promptly
 	_stage_active = true
 	_clear_pause = 0.0
+	_boss_exit = false
 	_set_word_tracker_stage(_stage)
 	_label.text = _stage_label(_stage)
+	_play_music(_stage)
 	print("✅ Starting horde stage ", _stage, " (quota ", _spawn_quota, ", short=", short_retry, ")")
 	if tracker and tracker.has_method("record_stage_reached"):
 		tracker.record_stage_reached(_stage)
@@ -356,9 +378,37 @@ func _on_stage_cleared() -> void:
 	var tracker := get_node_or_null("/root/ProgressTracker")
 	if tracker and tracker.has_method("record_stage_cleared"):
 		tracker.record_stage_cleared(_stage)
+	if HordeCurve.is_boss_stage(_stage):
+		# Victory: never the death route (no show_defeat / record_horde_death).
+		if tracker and tracker.has_method("record_boss_cleared"):
+			tracker.record_boss_cleared(_stage)
+		_label.text = "Boss defeated!"
+		_boss_exit = true
+		_play_music(-1)  # the victory sting plays over silence; the camp has its own track
+		var sfx := get_node_or_null("/root/Sfx")
+		if sfx:
+			sfx.play(&"victory")
+		print("✅ Boss stage ", _stage, " cleared, resting at the camp")
 	if tracker and tracker.has_method("request_flush"):
 		tracker.request_flush()
-	_clear_pause = STAGE_CLEAR_PAUSE
+	_clear_pause = HordeCurve.BOSS_CLEAR_PAUSE if _boss_exit else STAGE_CLEAR_PAUSE
+
+
+func _go_to_camp() -> void:
+	if _leaving:
+		return
+	if LevelManager.is_loading:
+		# Another load owns the transition; re-arm so _process tries again after it.
+		_clear_pause = CAMP_RETRY_DELAY
+		return
+	if not ResourceLoader.exists(CAMP_PATH):
+		print("⚠️ Horde: camp scene missing, continuing to the next stage")
+		_boss_exit = false
+		_begin_stage(_stage + 1)
+		return
+	_leaving = true
+	PlayerManager.player_spawned = false
+	LevelManager.load_new_level(CAMP_PATH, "", Vector2.ZERO)
 
 
 func _spawn_one_enemy(index: int) -> void:
@@ -390,15 +440,53 @@ func _spawn_one_enemy(index: int) -> void:
 	else:
 		enemy.splits_on_destroy = false
 
+	var boss := HordeCurve.boss_for_stage(_stage)
+	if not boss.is_empty():
+		enemy.make_boss(boss, HordeCurve.boss_phase_hp(_stage))
+		for hb: HurtBox in enemy.find_children("*", "HurtBox"):
+			hb.damage = mini(hb.damage, HordeCurve.BOSS_MAX_HIT)
+
 	var origin := _player_position()
 	var count := _spawn_quota
 	var radius := _ring_radius(count)
 	var angle := TAU * float(index) / float(maxi(count, 1))
 	var pos := _pick_spawn_position(origin, angle, radius)
+	if enemy.is_boss():
+		pos = _boss_spawn_position(origin)
 
 	_enemies.add_child(enemy)
 	enemy.global_position = pos
+	enemy.reset_physics_interpolation()
 	_apply_speed_multiplier(enemy, HordeCurve.speed_multiplier(_stage))
+	if enemy.is_boss():
+		enemy.boss_phase_changed.connect(_on_boss_phase_changed.bind(enemy))
+
+
+func _on_boss_phase_changed(phase: int, phases: int, boss: Enemy) -> void:
+	_label.text = "%s %d/%d" % [boss.boss_name, phase, phases]
+	var music := get_node_or_null("/root/MusicManager")
+	if music:
+		music.set_intensity(phase)
+
+
+## The horde picks its track per stage (_music_for), not per level.
+func music_track() -> StringName:
+	return &""
+
+
+## Boss stages play the boss's theme, other stages their arena's; -1 is silence.
+func _music_for(stage: int) -> StringName:
+	if stage < 0:
+		return &""
+	if HordeCurve.is_boss_stage(stage):
+		return BOSS_MUSIC.get(str(HordeCurve.boss_for_stage(stage).get("kind", "")), &"")
+	return ARENA_MUSIC[HordeCurve.arena_index_for(stage) % ARENA_MUSIC.size()]
+
+
+func _play_music(stage: int) -> void:
+	var music := get_node_or_null("/root/MusicManager")
+	if music:
+		music.play_track(_music_for(stage))
 
 
 func _apply_speed_multiplier(enemy: Enemy, mult: float) -> void:
@@ -406,8 +494,37 @@ func _apply_speed_multiplier(enemy: Enemy, mult: float) -> void:
 	if wander and wander.get("wander_speed") != null:
 		wander.set("wander_speed", float(wander.get("wander_speed")) * mult)
 	var chase := enemy.get_node_or_null("EnemyStateMachine/Chase")
-	if chase and chase.get("chase_speed") != null:
-		chase.set("chase_speed", float(chase.get("chase_speed")) * mult)
+	# The orc walks at stalk_speed (its chase_speed is unused), so scale both.
+	for prop in ["chase_speed", "stalk_speed"]:
+		if chase and chase.get(prop) != null:
+			chase.set(prop, float(chase.get(prop)) * mult)
+
+
+## Bosses enter from the far side: the roomy open spot farthest from the
+## player, out of the top HUD band, so the fight never opens with a hit.
+func _boss_spawn_position(origin: Vector2) -> Vector2:
+	var best := _pick_spawn_position(origin, 0.0, HordeCurve.BOSS_SPAWN_MIN_GAP)
+	var best_dist := -1.0
+	for ring in range(0, 5):
+		var radius := HordeCurve.BOSS_SPAWN_MIN_GAP + 40.0 * float(ring)
+		for i in 24:
+			var p := _clamp_to_grass(origin + Vector2.RIGHT.rotated(TAU * float(i) / 24.0) * radius)
+			if p.y < HordeCurve.BOSS_SPAWN_TOP_BAND or not _roomy_for_boss(p):
+				continue
+			var d := p.distance_to(origin)
+			if d > best_dist:
+				best_dist = d
+				best = p
+	return best
+
+
+func _roomy_for_boss(p: Vector2) -> bool:
+	if _arena == null:
+		return true
+	for o in [Vector2.ZERO, Vector2(24, 0), Vector2(-24, 0), Vector2(0, 12), Vector2(0, -12)]:
+		if _arena.is_blocked(p + o):
+			return false
+	return true
 
 
 func _scene_for_kind(kind: String) -> PackedScene:
@@ -458,6 +575,47 @@ func _unstick_enemy(node: Node) -> void:
 		return
 	if _arena and _arena.is_blocked(enemy.global_position):
 		enemy.global_position = _arena.nearest_open(enemy.global_position)
+		enemy.reset_physics_interpolation()
+
+
+func _exit_tree() -> void:
+	# The banner lives in the PlayerHud autoload: never leave it faded.
+	var banner := _hud_banner()
+	if banner:
+		banner.modulate.a = 1.0
+
+
+func _hud_banner() -> CanvasItem:
+	var hud := get_node_or_null("/root/PlayerHud")
+	return hud.get("voice_only_banner") as CanvasItem if hud else null
+
+
+func _fade_top_hud(delta: float) -> void:
+	var banner := _hud_banner()
+	var covers: Array[Rect2] = [_label.get_global_rect()]
+	if banner and banner.visible and banner is Control:
+		covers.append((banner as Control).get_global_rect())
+	var under := _under_hud(PlayerManager.player, covers)
+	for child in _enemies.get_children():
+		if not under and child is Enemy and (child as Enemy).is_boss():
+			under = _under_hud(child, covers)
+	var a := move_toward(_label.modulate.a, HUD_FADE_ALPHA if under else 1.0, HUD_FADE_SPEED * delta)
+	_label.modulate.a = a
+	if banner:
+		banner.modulate.a = a
+
+
+## Whether a body's on-screen sprite box overlaps any of the HUD rects.
+func _under_hud(body: Node2D, covers: Array[Rect2]) -> bool:
+	if body == null or not is_instance_valid(body) or not body.is_inside_tree():
+		return false
+	var s := absf(body.global_scale.x)
+	var world := Rect2(body.global_position + Vector2(-12.0, -30.0) * s, Vector2(24.0, 30.0) * s)
+	var screen := get_viewport().get_canvas_transform() * world
+	for r in covers:
+		if r.intersects(screen):
+			return true
+	return false
 
 
 func _place_wave_label() -> void:
@@ -522,6 +680,8 @@ func _pull_pickups(pickups: Array[ItemPickup], delta: float) -> void:
 		if drop.has_meta("horde_collecting"):
 			continue
 		drop.velocity = Vector2.ZERO
+		# Pulled every drawn frame, not on the physics tick: draw it as-is.
+		drop.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 		drop.global_position = drop.global_position.move_toward(dest, PICKUP_PULL_SPEED * delta)
 		if drop.global_position.distance_to(dest) <= PICKUP_COLLECT_DISTANCE:
 			_collect_pickup(drop)
@@ -595,6 +755,8 @@ func _apply_arena(stage: int) -> void:
 func _stage_label(stage: int) -> String:
 	# Plain hyphen: the wave font (Abaddon Bold) has no middle-dot glyph and the
 	# web build has no system font to fall back on.
+	if HordeCurve.is_boss_stage(stage):
+		return "Stage %d - %s" % [stage, str(HordeCurve.boss_for_stage(stage).get("name", "Boss"))]
 	var arena_name := _arena.display_name if _arena else HordeCurve.arena_name_for(HordeCurve.arena_index_for(stage))
 	return "Stage %d - %s" % [stage, arena_name]
 

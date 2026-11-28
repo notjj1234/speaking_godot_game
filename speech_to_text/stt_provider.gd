@@ -22,3 +22,13 @@ func stop() -> void:
 
 func set_language(_lang: String) -> void:
 	pass
+
+
+## The app went to the background or the page was hidden: release the mic.
+## Callers' sessions stay as they are; resume() picks a wanted one back up.
+func suspend() -> void:
+	pass
+
+
+func resume() -> void:
+	pass

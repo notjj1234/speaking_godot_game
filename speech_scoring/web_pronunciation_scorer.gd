@@ -29,7 +29,9 @@ func _ready() -> void:
 		_capture_state = "failed"
 		return
 	_score_cb = JavaScriptBridge.create_callback(_on_js_score)
-	window.set("LQPronScoreCb", _score_cb)
+	# Property assignment, not window.set(): on a JavaScriptObject every method
+	# call goes to JS, and window has no set() ("obj[method] is not a function").
+	window.LQPronScoreCb = _score_cb
 
 
 func is_available() -> bool:

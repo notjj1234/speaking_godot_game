@@ -18,6 +18,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pixrig import Mat, Rig, m_ellipse, m_limb, m_line, m_poly, m_rect, rp  # noqa: E402
 from humanoid import Pose, build_sheet  # noqa: E402
 
+# Match the player's sheet: solid outline, finer shading (tools/art_build/style_check.py).
+PLAYER_STYLE = {"outline_mode": "dark", "detail": True}
+
 HOOD = Mat("#a8494d", "#7e3236", "#531f20")
 LEATHER = Mat("#a06e44", "#7a5230", "#4c3119")
 STEEL = Mat("#d6e0e6", "#9fb0bd", "#5f6e7a")
@@ -50,9 +53,9 @@ def front(P: Pose, back: bool):
     # legs + tall boots
     for lx, raise_ in ((cx - 3, lr), (cx + 3, rr)):
         fy = P.g - raise_
-        r.part(m_limb(lx, yy(16), lx, fy - 6, 3), LEATHER, tone="lo")
-        r.part(m_rect(lx - 1, fy - 7, lx + 1, fy), LEATHER)
-        r.part(m_rect(lx - 1, fy, lx + 2, fy), LEATHER, tone="lo")
+        r.part(m_limb(lx, yy(16), lx, fy - 6, 4), LEATHER, tone="lo")
+        r.part(m_rect(lx - 2, fy - 7, lx + 1, fy), LEATHER)
+        r.part(m_rect(lx - 2, fy, lx + 2, fy), LEATHER, tone="lo")
     # short leather jack: narrow shoulders
     torso = m_poly([(cx - 5, yy(15)), (cx + 5, yy(15)), (cx + 6, yy(26)), (cx + 4, yy(29)), (cx - 4, yy(29)), (cx - 6, yy(26))])
     r.part(torso, LEATHER)
@@ -90,7 +93,7 @@ def front(P: Pose, back: bool):
         r.part(m_rect(hand[0] - 1, int(hand[1]) - 1, hand[0] + 1, int(hand[1]) - 1), STEEL, tone="lo")
     r.part(m_limb(kx + (1 if not back else -1), yy(27), hand[0], hand[1], 3), LEATHER)
     r.part(m_rect(hand[0] - 1, int(hand[1]) - 1, hand[0] + 1, int(hand[1])), LEATHER, tone="hi")
-    return r.render()
+    return r.render(**PLAYER_STYLE)
 
 
 def side(P: Pose):
@@ -103,12 +106,12 @@ def side(P: Pose):
     ndx, nr, fdx, frs = P.side_feet()
     # scarf streams behind (left)
     scarf(r, cx - 3 + lean, yy(30), -1, P.p, 10 if P.chase else 8, P.chase)
-    r.part(m_limb(cx, yy(16), cx + fdx, P.g - frs - 6, 3), LEATHER, tone="lo")
-    r.part(m_rect(cx + fdx - 1, P.g - frs - 7, cx + fdx + 1, P.g - frs), LEATHER, tone="lo")
+    r.part(m_limb(cx, yy(16), cx + fdx, P.g - frs - 6, 4), LEATHER, tone="lo")
+    r.part(m_rect(cx + fdx - 2, P.g - frs - 7, cx + fdx + 1, P.g - frs), LEATHER, tone="lo")
     # far arm with buckler, held forward
     r.part(m_ellipse(cx + 5 + lean, yy(19), 2, 4), STEEL, tone="lo")
-    r.part(m_limb(cx + 1, yy(16), cx + ndx, P.g - nr - 6, 3), LEATHER, tone="lo")
-    r.part(m_rect(cx + ndx - 1, P.g - nr - 7, cx + ndx + 1, P.g - nr), LEATHER)
+    r.part(m_limb(cx + 1, yy(16), cx + ndx, P.g - nr - 6, 4), LEATHER, tone="lo")
+    r.part(m_rect(cx + ndx - 2, P.g - nr - 7, cx + ndx + 1, P.g - nr), LEATHER)
     r.part(m_rect(cx + ndx, P.g - nr, cx + ndx + 2, P.g - nr), LEATHER, tone="lo")
     torso = m_poly([(cx - 3, yy(15)), (cx + 3, yy(15)), (cx + 4 + lean, yy(27)), (cx + 2 + lean, yy(29)), (cx - 3 + lean, yy(29)), (cx - 4, yy(26))])
     r.part(torso, LEATHER)
@@ -129,7 +132,7 @@ def side(P: Pose):
         r.part(m_line(hand[0] + 1, int(hand[1]), hand[0] + 6, int(hand[1]) - 1), STEEL)
     r.part(m_limb(cx, yy(27), hand[0], hand[1], 3), LEATHER)
     r.part(m_rect(hand[0] - 1, int(hand[1]) - 1, hand[0] + 1, int(hand[1])), LEATHER, tone="hi")
-    return r.render()
+    return r.render(**PLAYER_STYLE)
 
 
 def draw(P: Pose):

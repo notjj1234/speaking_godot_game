@@ -10,6 +10,8 @@ var direction: Vector2 = Vector2.DOWN
 var direction_name: String = "down"
 var do_behavior: bool = true
 var _player_in_range: bool = false
+## Track that was playing before this NPC's theme took over.
+var _music_before: StringName = &""
 
 @export var npc_resource: NPCResource: set = _set_npc_resource
 
@@ -92,6 +94,12 @@ func _on_area_exit(_a: Area2D) -> void:
 func player_interact() -> void:
 	if PlayerManager.dialog_open:
 		return
+	if npc_resource and npc_resource.conversation_id != "":
+		var conv := get_tree().get_first_node_in_group("camp_conversation")
+		if conv:
+			_begin_talk()
+			conv.start(npc_resource.conversation_id, npc_resource.portrait, npc_resource.portrait_hframes, _end_talk)
+			return
 	var dialog := get_node_or_null("/root/DialogSystem")
 	if dialog == null or not dialog.has_method("show_dialog"):
 		return
@@ -111,6 +119,7 @@ func player_interact() -> void:
 
 
 func _begin_talk() -> void:
+	_play_theme()
 	do_behavior = false
 	velocity = Vector2.ZERO
 	state = "idle"
@@ -122,11 +131,28 @@ func _begin_talk() -> void:
 
 
 func _end_talk() -> void:
+	_restore_music()
 	do_behavior = true
 	do_behavior_enabled.emit()
 	_set_prompt_visible(_player_in_range)
 	if _player_in_range:
 		_set_talk_button(true)
+
+
+## The NPC's own theme while you talk; the level's track comes back after.
+func _play_theme() -> void:
+	var music := get_node_or_null("/root/MusicManager")
+	if music == null or npc_resource == null or npc_resource.music_track == &"":
+		return
+	_music_before = music.current_track()
+	music.play_track(npc_resource.music_track)
+
+
+func _restore_music() -> void:
+	var music := get_node_or_null("/root/MusicManager")
+	if music and _music_before != &"":
+		music.play_track(_music_before)
+	_music_before = &""
 
 
 func _set_prompt_visible(show_prompt: bool) -> void:

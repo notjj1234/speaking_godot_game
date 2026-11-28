@@ -41,7 +41,7 @@ func exit() -> void:
 
 # _process update in this State
 func process(_delta: float) -> State:
-	player.velocity -= player.velocity * decelerate_speed * _delta
+	player.velocity *= State.decay_factor(decelerate_speed, _delta)
 	return next_state # Returns the idle state
 
 # physics_process update in this State

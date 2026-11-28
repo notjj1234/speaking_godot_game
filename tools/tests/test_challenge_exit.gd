@@ -49,6 +49,7 @@ func _ready() -> void:
 	add_child(killer)
 	await _test_fail_path_releases_io(killer)
 	await _test_error_streak_offers_typing(killer)
+	await _test_typed_test_input(killer)
 	print("RESULT passes=%d failures=%d" % [passes, failures])
 	get_tree().quit(1 if failures else 0)
 
@@ -118,5 +119,28 @@ func _test_error_streak_offers_typing(killer: HurtBox) -> void:
 	PlayerHud.fallback_submitted.emit(PlayerHud.target_sentence)
 	await _wait(1.0)
 	_check("typed answer after errors passes", not get_tree().paused)
+	STTManager.provider = real_provider
+	fake.queue_free()
+
+
+## TEMPORARY desktop testing aid: with typed_test_input on, every challenge
+## offers the typed box from the start, even when STT is available.
+func _test_typed_test_input(killer: HurtBox) -> void:
+	_check("typed test input: off in headless runs", not PlayerHud.typed_test_input)
+	var real_provider = STTManager.provider
+	var fake := FakeStt.new()
+	STTManager.add_child(fake)
+	STTManager.provider = fake
+	PlayerHud.typed_test_input = true
+	var d := _spawn(Vector2(5000, 5000))
+	await get_tree().physics_frame
+	d._take_damage(killer)
+	_check("typed test input: box shown at challenge start", PlayerHud.challenge_fallback_row.visible)
+	_check("typed test input: mic still listens", fake.listen_calls >= 1, "listen_calls=%d" % fake.listen_calls)
+	PlayerHud.fallback_submitted.emit(PlayerHud.target_sentence)
+	await _wait(1.0)
+	_check("typed test input: typed answer passes", not get_tree().paused)
+	_check("typed test input: box hidden after", not PlayerHud.challenge_fallback_row.visible)
+	PlayerHud.typed_test_input = false
 	STTManager.provider = real_provider
 	fake.queue_free()

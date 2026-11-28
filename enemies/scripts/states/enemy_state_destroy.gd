@@ -46,7 +46,7 @@ func exit() -> void:
 
 func process(_delta: float) -> EnemyState:
 	# Decrease velocity of enemy
-	enemy.velocity -= enemy.velocity * decelerate_speed * _delta
+	enemy.velocity *= State.decay_factor(decelerate_speed, _delta)
 	return null
 
 func physics(_delta: float) -> EnemyState:
@@ -79,6 +79,8 @@ func drop_items() -> void:
 			drop.item_data = drops[i].item
 			enemy.get_parent().call_deferred("add_child", drop)
 			drop.global_position = enemy.global_position
+			# Queued after the deferred add_child, so it runs once the drop is in the tree.
+			drop.call_deferred("reset_physics_interpolation")
 			drop.velocity = enemy.velocity.rotated(randf_range(-1.5, 1.5)) * randf_range(0.9, 1.5)
 	
 	pass

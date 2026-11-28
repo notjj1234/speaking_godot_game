@@ -64,7 +64,19 @@ class FakeAudioContext {
   close() {}
 }
 const scoreCalls = [];
+// Page lifecycle stand-ins: the facade must drop the mic when the page hides.
+function eventTarget() {
+  const fns = {};
+  return {
+    addEventListener(type, fn) { (fns[type] ||= []).push(fn); },
+    dispatch(type) { (fns[type] || []).forEach((fn) => fn({ type })); },
+  };
+}
+const fakeDocument = { visibilityState: 'visible', ...eventTarget() };
+const windowEvents = eventTarget();
 const sandbox = {
+  document: fakeDocument,
+  addEventListener: windowEvents.addEventListener,
   console,
   setTimeout,
   clearTimeout,
@@ -112,6 +124,32 @@ await pron.abandonCapture();
 const lateBegin = await pending;
 check('abandon during mic prompt cancels capture', lateBegin === false && pron._state === 'idle');
 check('late stream is released', tracksStopped === 2, `stopped=${tracksStopped}`);
+
+// 4. Page hidden mid-recording (iOS: app switch, tab switch): mic released.
+micDelayMs = 0;
+await pron.beginCapture();
+fakeDocument.visibilityState = 'hidden';
+fakeDocument.dispatch('visibilitychange');
+await tick();
+check('hidden page releases the recording mic', tracksStopped === 3 && pron._state === 'idle',
+  `stopped=${tracksStopped} state=${pron._state}`);
+r = await pron.endCaptureAndScore('h ə l oʊ');
+check('scoring after a hide still answers (not-recording)',
+  JSON.parse(scoreCalls[scoreCalls.length - 1]).error === 'not-recording');
+
+// 5. Tab closed mid-recording: pagehide releases the mic.
+fakeDocument.visibilityState = 'visible';
+fakeDocument.dispatch('visibilitychange');
+await pron.beginCapture();
+windowEvents.dispatch('pagehide');
+await tick();
+check('pagehide releases the recording mic', tracksStopped === 4 && pron._state === 'idle',
+  `stopped=${tracksStopped} state=${pron._state}`);
+
+// 6. Becoming visible with nothing recording does not touch the mic.
+fakeDocument.dispatch('visibilitychange');
+await tick();
+check('visible page with no capture stops nothing', tracksStopped === 4, `stopped=${tracksStopped}`);
 
 console.log(`RESULT passes=${passes} failures=${failures}`);
 process.exit(failures ? 1 : 0);

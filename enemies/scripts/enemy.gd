@@ -6,8 +6,19 @@ extends CharacterBody2D
 signal direction_changed(new_direction: Vector2)
 signal enemy_damaged(hurt_box: HurtBox)
 signal enemy_destroyed(hurt_box: HurtBox)
+## Boss only: a non-final phase was passed and the next bar is up. phase is 1-based.
+signal boss_phase_changed(phase: int, phases: int)
 
 const DIR_4 = [Vector2.RIGHT, Vector2.DOWN, Vector2.LEFT, Vector2.UP]
+## Kinds without a Chase (the Slime King) get one at this base speed; the
+## horde's stage speed multiplier is applied on top after add_child.
+const BOSS_SLIME_CHASE_SPEED := 34.0
+## A boss stands still this long after it appears (its entrance).
+const BOSS_ENTRANCE_SEC := 1.0
+## Chase distance bands (hold, orbit, charge range) were tuned for 1x bodies;
+## a 2x boss hugs the player unless they grow too. Less than BOSS_SCALE so
+## the lunges (fixed speed x time) still reach.
+const BOSS_REACH_SCALE := 1.5
 
 @export var hp: int = 3
 @export var move_speed: float = 30.0
@@ -61,6 +72,32 @@ var practice_dummy: bool = false
 var _tts_said_on_spawn: bool = false
 var _tts_said_on_damage: bool = false
 
+## Boss stages (HordeCurve.boss_for_stage). 0 phases = a normal enemy. Each
+## phase is one bar of max_hp ending in a speech challenge; only the last
+## pass emits enemy_destroyed.
+var boss_phases: int = 0
+var boss_phase: int = 0
+var boss_name: String = ""
+var _boss_sheet: String = ""
+var _boss_tune: Dictionary = {}
+var _boss_adds: int = 0
+var _boss_ranged: Dictionary = {}
+## Bosses: the body's room around props when pathing, and how often the path
+## is recomputed while the straight line to the player is blocked.
+const BOSS_CLEARANCE := 16.0
+## Ordinary enemies' body half-width (capsule radius 5-8 px) for wall paths.
+const ENEMY_CLEARANCE := 8.0
+const REPATH_MSEC := 250
+const WAYPOINT_REACHED := 8.0
+var _path: PackedVector2Array = PackedVector2Array()
+var _path_msec: int = -REPATH_MSEC
+## Set by BossRangedAttack during its wind-up: the boss stands still.
+var attack_hold: bool = false
+## Split children only: a sheet to wear instead of the base art (same frame
+## layout), and whether to chase the player for good. Set before add_child.
+var minion_sheet: String = ""
+var minion_chase: bool = false
+
 var challenge_hurt_box: HurtBox  # Store the hurt_box during the speech challenge
 var _last_partial_match: String = ""
 ## Speech challenge: failed attempts allowed before the enemy is restored to full HP.
@@ -95,6 +132,12 @@ func _ready() -> void:
 	health_bar.scale = Vector2.ONE / maxf(scale.x, 0.0001)
 	add_child(health_bar)
 	health_bar.setup(max_hp)
+	if is_boss():
+		health_bar.set_phases(boss_phases, boss_phases)
+		_attach_boss_art()
+		_make_relentless()
+	elif minion_sheet != "":
+		_wear_minion_sheet()
 
 # Start facing a random direction
 	var directions = [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]
@@ -119,6 +162,9 @@ func _physics_process(_delta):
 	if dying:
 		move_and_slide()
 		return
+	if attack_hold:
+		velocity = Vector2.ZERO
+		return
 	if is_bouncing:
 		return
 
@@ -136,9 +182,16 @@ func _physics_process(_delta):
 	for i in get_slide_collision_count():
 		var collision = get_slide_collision(i)
 		if collision:
-			if slide_bounce_enabled:
+			# A chase or search steers around walls by path; a random bounce
+			# would throw it off course and leave it pinned on the wall.
+			if slide_bounce_enabled and not _hunting():
 				_handle_bounce()
 			break
+
+func _hunting() -> bool:
+	var st := state_machine.current_state if state_machine else null
+	return st is EnemyStateChase or st is EnemyStateSearch
+
 
 func _handle_bounce() -> void:
 	is_bouncing = true
@@ -218,6 +271,8 @@ func spawn_split_children() -> void:
 		child.splits_on_destroy = false
 		child.split_scene = null
 		child.hp = split_hp
+		child.minion_sheet = minion_sheet
+		child.minion_chase = minion_chase
 		child.scale = scale * split_scale
 		child.separation_distance = split_separation
 		child.split_orbit_index = i
@@ -228,6 +283,7 @@ func spawn_split_children() -> void:
 		var angle: float = TAU * float(i) / float(maxi(split_count, 1))
 		var offset := Vector2.from_angle(angle) * ring_radius
 		child.global_position = global_position + offset
+		child.reset_physics_interpolation()
 		child.call_deferred(
 			"_apply_split_aggro",
 			split_chase_speed,
@@ -242,8 +298,10 @@ func get_chase_target_position() -> Vector2:
 	if player_node == null:
 		return global_position
 	var player_pos: Vector2 = player_node.global_position
+	if is_boss():
+		return pursuit_target(player_pos)
 	if split_orbit_index < 0 or split_orbit_count <= 0:
-		return player_pos
+		return pursuit_target(player_pos)
 	# Hold a slot around the player so splits don't stack on the same pixel.
 	var angle: float = TAU * float(split_orbit_index) / float(split_orbit_count)
 	angle += Time.get_ticks_msec() * 0.00035
@@ -276,7 +334,9 @@ func get_separation_vector() -> Vector2:
 
 func _apply_split_aggro(chase_speed: float, vision_scale: float, spawn_grace: float = 1.0) -> void:
 	move_speed = maxf(move_speed, chase_speed * 0.85)
-	var chase := get_node_or_null("EnemyStateMachine/Chase")
+	var chase: Node = get_node_or_null("EnemyStateMachine/Chase")
+	if chase == null and minion_chase:
+		chase = _ensure_chase(chase_speed)
 	if chase:
 		chase.set("chase_speed", chase_speed)
 		chase.set("state_aggro_duration", 2.5)
@@ -293,6 +353,120 @@ func _apply_split_aggro(chase_speed: float, vision_scale: float, spawn_grace: fl
 	invulnerable = false
 
 
+func _wear_minion_sheet() -> void:
+	if not ResourceLoader.exists(minion_sheet):
+		print("⚠️ Minion sheet missing (%s), keeping the base art" % minion_sheet)
+		return
+	sprite.texture = load(minion_sheet)
+
+
+## Kinds without a Chase state (slimes) get one built here: no vision area and
+## no exit, so the minion keeps after the player; a stun or idle returns to it.
+## An existing Chase is returned as is (rewired the same way).
+func _ensure_chase(chase_speed: float) -> EnemyStateChase:
+	var existing := get_node_or_null("EnemyStateMachine/Chase") as EnemyStateChase
+	if existing:
+		_route_states_to(existing)
+		return existing
+	var chase := EnemyStateChase.new()
+	chase.name = "Chase"
+	chase.anim_name = "walk"
+	chase.chase_speed = chase_speed
+	chase.state_aggro_duration = 2.5
+	state_machine.add_child(chase)
+	chase.enemy = self
+	chase.state_machine = state_machine
+	state_machine.states.append(chase)
+	chase.init()
+	_route_states_to(chase)
+	return chase
+
+
+## The horde Search state (built once, on first loss of sight).
+func _ensure_search() -> EnemyStateSearch:
+	var existing := get_node_or_null("EnemyStateMachine/Search") as EnemyStateSearch
+	if existing:
+		return existing
+	var search := EnemyStateSearch.new()
+	search.name = "Search"
+	state_machine.add_child(search)
+	search.enemy = self
+	search.state_machine = state_machine
+	state_machine.states.append(search)
+	search.init()
+	return search
+
+
+func _route_states_to(chase: EnemyStateChase) -> void:
+	for state in state_machine.states:
+		if state is EnemyStateStun:
+			state.next_state = chase
+		elif state is EnemyStateIdle:
+			state.after_idle_state = chase
+		elif state is EnemyStateWander:
+			state.next_state = chase
+
+
+## Bosses hunt for good: always in Chase (a stun returns to it), no random
+## pauses or wall bounces, and a ranged attack at EnemyStateMachine/Ranged.
+func _make_relentless() -> void:
+	chaos_pauses_enabled = false
+	slide_bounce_enabled = false
+	var chase := _ensure_chase(BOSS_SLIME_CHASE_SPEED)
+	chase.relentless = true
+	chase.scale_reach(BOSS_REACH_SCALE)
+	state_machine.change_state(chase)
+	# A relentless boss no longer uses its cone, and at 2x it tints half the screen.
+	var vision := get_node_or_null("VisionArea") as VisionArea
+	if vision:
+		vision.hide_cone()
+	_boss_entrance()
+	if not _boss_ranged.is_empty():
+		var ranged := BossRangedAttack.new()
+		ranged.name = "Ranged"
+		ranged.configure(_boss_ranged)
+		state_machine.add_child(ranged)
+
+
+func _boss_entrance() -> void:
+	attack_hold = true
+	await get_tree().create_timer(BOSS_ENTRANCE_SEC, false).timeout
+	attack_hold = false
+
+
+## The arena the boss paths in, or null (test scenes, non-horde levels).
+func horde_arena() -> HordeArena:
+	if not is_inside_tree():
+		return null
+	return get_tree().get_first_node_in_group("horde_arena") as HordeArena
+
+
+## Straight at the target when the line is clear; otherwise toward the next
+## reachable point of a grid path around walls and props, at the target's real
+## distance so chase bands (hold, orbit) still read the true range.
+func pursuit_target(player_pos: Vector2) -> Vector2:
+	var arena := horde_arena()
+	var clearance := BOSS_CLEARANCE if is_boss() else ENEMY_CLEARANCE
+	if arena == null or arena.line_clear(global_position, player_pos, clearance):
+		_path.clear()
+		return player_pos
+	var now := Time.get_ticks_msec()
+	if _path.is_empty() or now - _path_msec >= REPATH_MSEC:
+		_path = arena.boss_path(global_position, player_pos, clearance)
+		_path_msec = now
+	while _path.size() > 1 and global_position.distance_to(_path[0]) <= WAYPOINT_REACHED:
+		_path.remove_at(0)
+	if _path.is_empty():
+		return player_pos
+	# Skip ahead to the farthest waypoint already in a clear straight line.
+	var waypoint := _path[0]
+	for i in range(1, mini(_path.size(), 8)):
+		if not arena.line_clear(global_position, _path[i], clearance):
+			break
+		waypoint = _path[i]
+	return global_position + global_position.direction_to(waypoint) * global_position.distance_to(player_pos)
+
+
 func make_practice_dummy() -> void:
 	practice_dummy = true
 	move_speed = 0.0
@@ -306,6 +480,89 @@ func make_practice_dummy() -> void:
 		idle.set("after_idle_state", null)
 	if state_machine and idle is EnemyState:
 		state_machine.change_state(idle)
+
+
+## Turns this enemy into a boss. Call before add_child: _ready copies hp into
+## max_hp, which is one phase bar.
+func make_boss(profile: Dictionary, phase_hp: int) -> void:
+	boss_phases = HordeCurve.BOSS_PHASES
+	boss_phase = 0
+	hp = maxi(phase_hp, 1)
+	boss_name = str(profile.get("name", "Boss"))
+	_boss_sheet = str(profile.get("sheet", ""))
+	_boss_tune = profile.get("tune", {})
+	_boss_adds = int(profile.get("adds", 0))
+	_boss_ranged = profile.get("ranged", {})
+	minion_sheet = str(profile.get("add_sheet", ""))
+	minion_chase = bool(profile.get("add_chase", false))
+	scale = Vector2.ONE * HordeCurve.BOSS_SCALE
+	splits_on_destroy = false
+	# Adds land at net scale 1.0 (2.0 x 0.5), on the same pixel grid as the rest.
+	split_scale = 1.0 / HordeCurve.BOSS_SCALE
+	split_hp = maxi(1, hp / 4)
+	name = boss_name.replace(" ", "")
+
+
+## The boss is a 2x enemy (hitboxes and animations scale with it), but its art
+## is a sheet drawn at 2x resolution shown at 0.5, so one art pixel is one
+## screen pixel like the player. It rides on the base sprite as a child: the
+## base sprite's flip, position keys and modulate flashes all carry over, and
+## only the base sprite's own pixels are hidden.
+func _attach_boss_art() -> void:
+	if _boss_sheet == "" or not ResourceLoader.exists(_boss_sheet):
+		print("⚠️ Boss %s: sheet missing (%s), showing the base sprite at 2x" % [boss_name, _boss_sheet])
+		return
+	var art := Sprite2D.new()
+	art.name = "BossSprite"
+	art.texture = load(_boss_sheet)
+	art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	art.hframes = sprite.hframes
+	art.vframes = sprite.vframes
+	art.frame = sprite.frame
+	art.centered = sprite.centered
+	art.offset = sprite.offset * scale.x
+	art.scale = Vector2.ONE / scale.x
+	sprite.add_child(art)
+	sprite.self_modulate.a = 0.0
+	sprite.frame_changed.connect(func(): art.frame = sprite.frame)
+
+
+func is_boss() -> bool:
+	return boss_phases > 0
+
+
+func _advance_boss_phase() -> void:
+	boss_phase += 1
+	hp = max_hp
+	if health_bar:
+		health_bar.set_phases(boss_phases - boss_phase, boss_phases)
+		health_bar.update_bar(hp)
+	var sfx := get_node_or_null("/root/Sfx")
+	if sfx:
+		sfx.play(&"phase")
+	if player_hud:
+		player_hud.show_notice("%s hit! Phase %d/%d" % [boss_name, boss_phase + 1, boss_phases])
+	var ranged := get_node_or_null("EnemyStateMachine/Ranged") as BossRangedAttack
+	if ranged:
+		ranged.reset()
+	for key in _boss_tune:
+		var parts := str(key).split("/")
+		if parts.size() != 2:
+			continue
+		var state := get_node_or_null("EnemyStateMachine/" + parts[0])
+		if state and state.get(parts[1]) != null:
+			state.set(parts[1], float(state.get(parts[1])) * float(_boss_tune[key]))
+	if _boss_adds > 0:
+		splits_on_destroy = true
+		split_count = _boss_adds
+		spawn_split_children()
+	boss_phase_changed.emit(boss_phase + 1, boss_phases)
+	print("✅ Boss %s: phase %d/%d" % [boss_name, boss_phase + 1, boss_phases])
+	# Process-always grace (like split children): a swing landing as the game
+	# resumes must not chain straight into the next phase's challenge.
+	invulnerable = true
+	await get_tree().create_timer(HordeCurve.BOSS_PHASE_GRACE, true, false, true).timeout
+	invulnerable = false
 
 
 # Handle taking damage from the player or other sources
@@ -342,7 +599,10 @@ func _take_damage(hurt_box: HurtBox) -> void:
 			word_tracker.speech_challenge_active = true
 			var challenge: String
 			var stage := _horde_challenge_stage(word_tracker)
-			if stage > 0:
+			if stage > 0 and is_boss():
+				challenge = word_tracker.get_speech_challenge_for_stage(stage, HordeCurve.boss_phase_band(boss_phase))
+				print("✅ Boss phase ", boss_phase + 1, " challenge:", challenge)
+			elif stage > 0:
 				challenge = word_tracker.get_speech_challenge_for_stage(stage)
 				print("✅ Horde stage ", stage, " challenge:", challenge)
 			else:
@@ -364,7 +624,10 @@ func _start_speech_challenge(target_sentence: String, hurt_box: HurtBox) -> void
 	get_tree().paused = true  # Pause the game
 
 	if player_hud:
-		player_hud.show_speech_challenge(target_sentence)
+		var title := ""
+		if is_boss():
+			title = "%s - phase %d/%d" % [boss_name, boss_phase + 1, boss_phases]
+		player_hud.show_speech_challenge(target_sentence, title)
 
 	_connect_stt_signals()
 	# Every platform: the mic-toggle controls must not run challenge
@@ -385,6 +648,8 @@ func _start_speech_challenge(target_sentence: String, hurt_box: HurtBox) -> void
 		return
 	if stt != null and stt.is_speech_available():
 		stt.listen()
+		if player_hud and player_hud.typed_test_input:
+			_show_typed_fallback()
 	else:
 		print("STT unavailable. Showing typed fallback.")
 		_show_typed_fallback()
@@ -450,10 +715,13 @@ func _on_speech_result(success: bool, score: int = -1) -> void:
 
 	if success:
 		print("Speech challenge passed! Storing word:", player_hud.target_sentence)
-		var progress := get_node_or_null("/root/ProgressTracker")
-		if progress and progress.has_method("record_kill"):
-			progress.record_kill(_progress_kill_kind())
-		enemy_destroyed.emit(challenge_hurt_box)
+		if is_boss() and boss_phase < boss_phases - 1:
+			_advance_boss_phase()
+		else:
+			var progress := get_node_or_null("/root/ProgressTracker")
+			if progress and progress.has_method("record_kill"):
+				progress.record_kill(_progress_kill_kind())
+			enemy_destroyed.emit(challenge_hurt_box)
 
 		if has_node("/root/WordTracker"):
 			var word_tracker = get_node("/root/WordTracker")
@@ -650,6 +918,10 @@ func _on_speech_error(error_code) -> void:
 		_stt_error_streak += 1
 		if _stt_error_streak >= STT_ERRORS_BEFORE_TYPED_FALLBACK:
 			print("⚠️ ", _stt_error_streak, " speech errors in a row. Offering typed fallback.")
+			if _stt_error_streak == STT_ERRORS_BEFORE_TYPED_FALLBACK:
+				var sfx := get_node_or_null("/root/Sfx")
+				if sfx:
+					sfx.play(&"error")
 			_show_typed_fallback()
 		print("Restarting speech recognition due to error.")
 		var stt = _stt_manager()

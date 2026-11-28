@@ -56,6 +56,18 @@ func _ready():
 			show_restart_notice(true)
 
 
+## Android/iOS apps: release the mic in the background and pick a wanted listen
+## back up on return. Web providers react to page visibility themselves, since
+## the browser pauses the game loop while the page is hidden.
+func _notification(what: int) -> void:
+	if provider == null:
+		return
+	if what == NOTIFICATION_APPLICATION_PAUSED:
+		provider.suspend()
+	elif what == NOTIFICATION_APPLICATION_RESUMED:
+		provider.resume()
+
+
 func is_speech_available() -> bool:
 	return provider != null and provider.is_available()
 

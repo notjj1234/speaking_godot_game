@@ -24,9 +24,15 @@ func _ready() -> void:
 	elif _offers_optional_mic():
 		# Final tutorial (03) and onwards: mic is optional; keyboard stays free.
 		call_deferred("_set_optional_mic", true)
+	var track := music_track()
 	var music = get_node_or_null("/root/MusicManager")
-	if music and music.has_method("play_for_level"):
-		music.play_for_level()
+	if music and track != &"":
+		music.play_track(track)
+
+
+## The MusicManager track this level plays; &"" lets the level pick its own.
+func music_track() -> StringName:
+	return &"tutorial"
 
 
 func _free_level() -> void:

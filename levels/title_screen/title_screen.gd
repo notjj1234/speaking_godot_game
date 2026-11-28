@@ -31,8 +31,8 @@ var _confirm_layer: int = 0
 
 func _ready() -> void:
 	var music = get_node_or_null("/root/MusicManager")
-	if music and music.has_method("stop_for_menu"):
-		music.stop_for_menu()
+	if music:
+		music.play_track(&"title")
 	await SceneTransition.fade_in()
 
 	# Web has no app process to quit; hide Exit on browser builds.

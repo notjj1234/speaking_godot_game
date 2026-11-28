@@ -45,9 +45,23 @@ class Mat:
         self.lo = hx(lo)
         self.rim = hx(rim) if rim else None
         self.flat = flat
+        # detail-mode grain; turn off for faces and clean whites, which read dirty
+        self.grain = True
 
     def tone(self, name: str):
         return {"hi": self.hi, "mid": self.mid, "lo": self.lo, "rim": self.rim or self.hi}[name]
+
+    @property
+    def mid_hi(self):
+        return _mix(self.hi, self.mid)
+
+    @property
+    def mid_lo(self):
+        return _mix(self.mid, self.lo)
+
+
+def _mix(a, b):
+    return ((a[0] + b[0]) // 2, (a[1] + b[1]) // 2, (a[2] + b[2]) // 2, 255)
 
 
 # ----------------------------------------------------------------- masks ---
@@ -171,7 +185,13 @@ class Rig:
                 self.over[p] = c
 
     # ------------------------------------------------------------ render ---
-    def render(self, outline_mode="selective") -> Image.Image:
+    def render(self, outline_mode="selective", detail=False) -> Image.Image:
+        """outline_mode "selective" lets lit-side outline pixels take the part's
+        dark tone; anything else draws a solid outline (the player's style).
+        detail=True is the player-matched shading: two extra blended tones one
+        pixel in from the lit/dark edges, a form shadow on the lower body, and
+        contact lines in the part's own dark tone (never outline-dark, which
+        doubles the line weight)."""
         img = Image.new("RGBA", (self.w, self.h), (0, 0, 0, 0))
         px = img.load()
         lab = self.lab
@@ -186,6 +206,17 @@ class Rig:
                 c = mat.tone(info["tone"])
                 for p in pts:
                     px[p] = c
+                if detail and len(pts) >= 6 and info["tone"] in ("lo", "hi"):
+                    # Forced-tone parts (legs in shadow, lit trims) still get a
+                    # 1 px edge band toward mid, so they don't read as flat blocks.
+                    edge = _mix(c, mat.mid)
+                    for (x, y) in pts:
+                        if info["tone"] == "lo":
+                            on_edge = not same((x - 1, y), i) or not same((x, y - 1), i)
+                        else:
+                            on_edge = not same((x + 1, y), i) or not same((x, y + 1), i)
+                        if on_edge:
+                            px[x, y] = edge
                 continue
             ys = [p[1] for p in pts]
             y0, y1 = min(ys), max(ys)
@@ -211,7 +242,18 @@ class Rig:
                     c = mat.lo
                 if info["rim"] and mat.rim and not same((x + 1, y), i) and y <= y0 + (y1 - y0) * 0.6 and same((x - 1, y), i):
                     c = mat.rim
+                if detail and c == mat.mid:
+                    lit2 = any(not same((x - k, y), i) or not same((x, y - k), i) for k in range(1, bd + 2))
+                    dark2 = any(not same((x + k, y), i) or not same((x, y + k), i) for k in range(1, dk + 2))
+                    if lit2 and not dark2:
+                        c = mat.mid_hi
+                    elif dark2 and not lit2:
+                        c = mat.mid_lo
+                    elif not lit2 and not dark2 and y1 - y0 >= 6 and y >= y0 + (y1 - y0) * 0.6:
+                        c = mat.mid_lo
                 px[x, y] = c
+        if detail:
+            self._grain(px, same)
         # contact lines: a part behind something in front darkens where it touches it
         for (x, y), i in lab.items():
             info = self.parts[i]
@@ -221,7 +263,10 @@ class Rig:
                 j = lab.get(q)
                 if j is not None and j > i and self.parts[j]["mat"] is not info["mat"]:
                     cur = px[x, y]
-                    px[x, y] = self.outline if cur == info["mat"].lo else info["mat"].lo
+                    if detail:
+                        px[x, y] = info["mat"].lo
+                    else:
+                        px[x, y] = self.outline if cur == info["mat"].lo else info["mat"].lo
                     break
         for p, c in self.over.items():
             px[p] = c
@@ -239,6 +284,28 @@ class Rig:
             else:
                 px[x, y] = self.outline
         return img
+
+
+    def _grain_hit(self, x, y) -> bool:
+        """Which interior pixels take a grain step (subclasses may change density)."""
+        return ((x * 73856093) ^ (y * 19349663)) % 7 == 0
+
+    def _grain(self, px, same):
+        """Sparse, deterministic one-step-darker pixels inside big parts, so long
+        single-tone strips break up the way hand-shaded sprites (goblin) do."""
+        for (x, y), i in self.lab.items():
+            info = self.parts[i]
+            mat = info["mat"]
+            if mat.flat or not mat.grain or not all(same(q, i) for q in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1))):
+                continue
+            if not self._grain_hit(x, y):
+                continue
+            ramp = [mat.hi, mat.mid_hi, mat.mid, mat.mid_lo, mat.lo]
+            cur = px[x, y]
+            if cur in ramp[:-1]:
+                px[x, y] = ramp[ramp.index(cur) + 1]
+            elif cur == mat.lo:
+                px[x, y] = mat.mid_lo
 
 
 def sheet(cells, cols, cw, ch):

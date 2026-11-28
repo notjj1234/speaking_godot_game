@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="NPCResource" format=3]
+
+[ext_resource type="Script" uid="uid://bnxcct0tps4vp" path="res://npc/scripts/npc_resource.gd" id="1_res"]
+[ext_resource type="Texture2D" path="res://npc/sprites/npc_sprite_03.png" id="2_sprite"]
+[ext_resource type="Texture2D" path="res://npc/sprites/portraits/npc_portrait_03.png" id="3_portrait"]
+
+[resource]
+script = ExtResource("1_res")
+npc_name = "Cook"
+sprite = ExtResource("2_sprite")
+portrait = ExtResource("3_portrait")
+conversation_id = "cook"
+music_track = &"npc_cook"
+metadata/_custom_type_script = "uid://bnxcct0tps4vp"

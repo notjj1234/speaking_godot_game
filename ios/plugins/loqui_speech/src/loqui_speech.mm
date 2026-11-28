@@ -18,6 +18,36 @@
 
 static LoquiSpeech *plugin = nullptr;
 
+// The audio session as Godot configured it, saved before listen() switches it to
+// Record. Record silences all playback, so stop() must put it back or the game
+// stays mute after the first challenge.
+static AVAudioSessionCategory saved_category = nil;
+static AVAudioSessionMode saved_mode = nil;
+static AVAudioSessionCategoryOptions saved_options = 0;
+
+static void save_audio_session(AVAudioSession *audio) {
+	if (saved_category != nil) {
+		return;
+	}
+	saved_category = audio.category;
+	saved_mode = audio.mode;
+	saved_options = audio.categoryOptions;
+}
+
+static void restore_audio_session() {
+	if (saved_category == nil) {
+		return;
+	}
+	NSError *error = nil;
+	[[AVAudioSession sharedInstance] setCategory:saved_category mode:saved_mode options:saved_options error:&error];
+	if (error != nil) {
+		NSLog(@"[LoquiSpeech] restoring audio session failed: %@", error);
+	}
+	saved_category = nil;
+	saved_mode = nil;
+	saved_options = 0;
+}
+
 extern "C" __attribute__((visibility("default"))) void loqui_speech_init() {
 	ClassDB::register_class<LoquiSpeech>();
 	plugin = memnew(LoquiSpeech);
@@ -62,18 +92,19 @@ void LoquiSpeech::set_language(const String &lang) {
 
 void LoquiSpeech::stop() {
 	_listening = false;
-	if (_session == nullptr) {
-		return;
+	if (_session != nullptr) {
+		LoquiSpeechSession *session = (__bridge_transfer LoquiSpeechSession *)_session;
+		_session = nullptr;
+		[session.task cancel];
+		session.task = nil;
+		[session.engine stop];
+		[session.engine.inputNode removeTapOnBus:0];
+		[session.request endAudio];
+		session.request = nil;
+		session.engine = nil;
+		session.recognizer = nil;
 	}
-	LoquiSpeechSession *session = (__bridge_transfer LoquiSpeechSession *)_session;
-	_session = nullptr;
-	[session.task cancel];
-	session.task = nil;
-	[session.engine stop];
-	[session.engine.inputNode removeTapOnBus:0];
-	session.request = nil;
-	session.engine = nil;
-	session.recognizer = nil;
+	restore_audio_session();
 }
 
 void LoquiSpeech::listen() {
@@ -92,13 +123,17 @@ void LoquiSpeech::listen() {
 	LoquiSpeech *self_ptr = this;
 	[SFSpeechRecognizer requestAuthorization:^(SFSpeechRecognizerAuthorizationStatus status) {
 		if (status != SFSpeechRecognizerAuthorizationStatusAuthorized) {
-			self_ptr->emit_failure(-1);
+			dispatch_async(dispatch_get_main_queue(), ^{
+				self_ptr->emit_failure(-1);
+			});
 			return;
 		}
 		AVAudioSession *audio = [AVAudioSession sharedInstance];
 		[audio requestRecordPermission:^(BOOL granted) {
 			if (!granted || !self_ptr->_listening) {
-				self_ptr->emit_failure(-1);
+				dispatch_async(dispatch_get_main_queue(), ^{
+					self_ptr->emit_failure(-1);
+				});
 				return;
 			}
 			dispatch_async(dispatch_get_main_queue(), ^{
@@ -106,9 +141,11 @@ void LoquiSpeech::listen() {
 					return;
 				}
 				NSError *sessionError = nil;
+				save_audio_session(audio);
 				[audio setCategory:AVAudioSessionCategoryRecord mode:AVAudioSessionModeMeasurement options:AVAudioSessionCategoryOptionDuckOthers error:&sessionError];
 				[audio setActive:YES error:&sessionError];
 				if (sessionError != nil) {
+					restore_audio_session();
 					self_ptr->emit_failure(-1);
 					return;
 				}
@@ -126,22 +163,30 @@ void LoquiSpeech::listen() {
 					[session.request appendAudioPCMBuffer:buffer];
 				}];
 
+				// The handler runs on a Speech framework queue. Godot signals and the
+				// audio session are only safe to touch on the main thread.
 				session.task = [session.recognizer recognitionTaskWithRequest:session.request resultHandler:^(SFSpeechRecognitionResult *result, NSError *error) {
-					if (!self_ptr->_listening) {
+					BOOL final_result = result != nil && result.isFinal;
+					NSString *text = final_result ? result.bestTranscription.formattedString : nil;
+					if (error == nil && !final_result) {
 						return;
 					}
-					if (error != nil) {
-						self_ptr->stop();
-						self_ptr->emit_failure(1);
-						return;
-					}
-					if (result != nil && result.isFinal) {
-						NSString *text = result.bestTranscription.formattedString;
+					dispatch_async(dispatch_get_main_queue(), ^{
+						// Ignore a late callback for a session that stop() or a newer
+						// listen() already replaced.
+						if (!self_ptr->_listening || self_ptr->_session != (__bridge void *)session) {
+							return;
+						}
+						if (error != nil) {
+							self_ptr->stop();
+							self_ptr->emit_failure(1);
+							return;
+						}
 						const char *utf8 = text.UTF8String;
 						String spoken = String::utf8(utf8 != nullptr ? utf8 : "");
 						self_ptr->stop();
 						self_ptr->emit_completed(spoken);
-					}
+					});
 				}];
 
 				NSError *startError = nil;
