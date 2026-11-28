@@ -51,7 +51,9 @@ func speak(text: String) -> bool:
 
 	_speaking = true
 	_speaking_since = Time.get_ticks_msec()
-	_max_ms = clampi(4000 + cleaned.length() * 250, 5000, 20000)
+	# Short cap: a stuck "still speaking" report must not hold the mic off
+	# for long after Listen (one word used to wait 5 s).
+	_max_ms = clampi(1500 + cleaned.length() * 150, 2500, 15000)
 	_idle_frames = 0
 	set_process(true)
 	speech_started.emit()

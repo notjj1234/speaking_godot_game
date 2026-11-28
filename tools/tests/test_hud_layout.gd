@@ -27,6 +27,7 @@ func _ready() -> void:
 	await _practice_notice()
 	await _success_toast()
 	_layers_and_draw_order()
+	await _one_prompt_at_a_time()
 	print("RESULT passes=%d failures=%d" % [passes, failures])
 	get_tree().quit(1 if failures else 0)
 
@@ -112,3 +113,76 @@ func _layers_and_draw_order() -> void:
 	var camera := player.find_children("*", "PlayerCamera", true, false)
 	_check("F33: player camera keeps refitting while paused",
 			not camera.is_empty() and (camera[0] as Node).process_mode == Node.PROCESS_MODE_ALWAYS)
+
+
+## A conversation or speech card owns the screen: the optional-mic banner,
+## the desktop Mic button and the battle card stay out of it.
+func _one_prompt_at_a_time() -> void:
+	var banner: Control = PlayerHud.voice_only_banner
+	PlayerHud.mic_banner_fade_sec = 30.0
+	PlayerHud.show_optional_mic_banner()
+	_check("mic banner shows in play", banner.visible)
+
+	var controls: Node = load("res://touch_controls/Scene/touch_controls.tscn").instantiate()
+	add_child(controls)
+	await get_tree().process_frame
+	controls._ensure_mic_button_visible()
+	var desktop := not bool(controls.get("_touch_ui_enabled"))
+	_check("desktop: no lone floating Mic button (the HUD plate is the switch)", not desktop or not controls.right_cluster.is_visible_in_tree())
+
+	DialogSystem.show_conversation("Smith", null, 1, Callable())
+	DialogSystem.show_say_box("A", "Hit harder")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check("dialog hides the mic banner", not banner.visible)
+	_check("dialog hides the desktop Mic button", not desktop or not controls.visible)
+	_check("dialog never opens the battle card", not PlayerHud.challenge_panel.visible)
+	var bar: Rect2 = DialogSystem.dialog_bar.get_global_rect()
+	var box: Rect2 = DialogSystem.say_box.get_global_rect()
+	_check("say box clear of the dialog bar", not box.intersects(bar), "box %s bar %s" % [box, bar])
+	var portrait: Control = DialogSystem.portrait_slot
+	_check("portrait capped", portrait.custom_minimum_size.y <= 112.0, str(portrait.custom_minimum_size))
+	DialogSystem.close()
+	await get_tree().process_frame
+	# Portrait card: a framed square exactly as tall as the text box, beside it.
+	var face := ImageTexture.create_from_image(Image.create(32, 32, false, Image.FORMAT_RGBA8))
+	DialogSystem.show_conversation("Cook", face, 1, Callable())
+	DialogSystem.set_conversation_line("Pull up a log! Something to eat?")
+	for i in 4:
+		await get_tree().process_frame
+	var panel: Rect2 = DialogSystem.text_panel.get_global_rect()
+	var card: Rect2 = DialogSystem.portrait_slot.get_global_rect()
+	_check("portrait as tall as the text box", DialogSystem.portrait_slot.visible and absf(card.size.y - panel.size.y) <= 2.0,
+		"card %s panel %s" % [card, panel])
+	_check("portrait top-aligned with the text box", absf(card.position.y - panel.position.y) <= 2.0,
+		"card %s panel %s" % [card, panel])
+	_check("portrait is square", absf(card.size.x - card.size.y) <= 2.0, str(card))
+	_check("portrait sits left of the text box", card.end.x <= panel.position.x, "card %s panel %s" % [card, panel])
+	DialogSystem.set_choices([{"id": "a", "label": "A  Apple"}, {"id": "b", "label": "B  Bye"}], func(_id): pass)
+	await get_tree().process_frame
+	_check("Leave sits with the choices (last chip)", DialogSystem.leave_button.get_parent() == DialogSystem.choice_row
+		and DialogSystem.leave_button.get_index() == DialogSystem.choice_row.get_child_count() - 1)
+	_check("one-line text box isn't a tall empty box", panel.size.y <= 70.0, str(panel.size))
+	var wide: Rect2 = DialogSystem.bar_rect_for(Vector2(1280, 480))
+	_check("wide screen: bar capped and centred", wide.size.x <= 600.0 and absf(wide.get_center().x - 640.0) <= 1.0, str(wide))
+	var narrow: Rect2 = DialogSystem.bar_rect_for(Vector2(360, 640))
+	_check("phone: bar fills the width", absf(narrow.size.x - 336.0) <= 1.0 and absf(narrow.position.x - 12.0) <= 1.0, str(narrow))
+	_check("bar keeps a 12 px bottom gutter", absf(narrow.end.y - 628.0) <= 1.0, str(narrow))
+	DialogSystem.close()
+	await get_tree().process_frame
+	_check("mic banner back after the dialog", banner.visible)
+	_check("desktop: still no floating Mic button after the dialog", not desktop or not controls.right_cluster.is_visible_in_tree())
+
+	PlayerHud.show_speech_challenge("cat")
+	await get_tree().process_frame
+	_check("speech card hides the mic banner", not banner.visible)
+	PlayerHud.hide_speech_challenge()
+	await get_tree().process_frame
+	_check("mic banner back after the card", banner.visible)
+
+	PlayerHud.mic_banner_fade_sec = 0.2
+	PlayerHud.show_optional_mic_banner()
+	await _wait(0.5)
+	_check("mic hint fades by itself", not banner.visible)
+	PlayerHud.hide_optional_mic_banner()
+	controls.queue_free()

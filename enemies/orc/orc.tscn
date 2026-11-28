@@ -736,6 +736,7 @@ _data = {
 collision_layer = 256
 collision_mask = 16
 script = ExtResource("1_f3wku")
+body_scale = 1.5
 hp = 5
 move_speed = 16.0
 chaos_pauses_enabled = false

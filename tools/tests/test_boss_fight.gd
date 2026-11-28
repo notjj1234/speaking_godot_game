@@ -226,7 +226,8 @@ func _check_minions(boss: Enemy) -> void:
 	_check("minions: royal sheet", tex != null and tex.resource_path.ends_with("slime_minion.png"),
 			tex.resource_path if tex else "none")
 	_check("minions: same frame layout", add.sprite.hframes == 16 and add.sprite.vframes == 2)
-	_check("minions: net scale 1.0", is_equal_approx(add.scale.x, 1.0), str(add.scale))
+	# Adds come out at the slime's own body size (Enemy.body_scale), not the boss's 2x.
+	_check("minions: slime body size", is_equal_approx(add.scale.x, 1.15), str(add.scale))
 	PlayerManager.set_as_parent(self)
 	var target: Node2D = PlayerManager.player
 	target.global_position = add.global_position + Vector2(200, 0)

@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://dsgaak6scyr71"]
+[gd_scene format=3 uid="uid://dsgaak6scyr71"]
 
 [ext_resource type="Script" uid="uid://cufclhfll0abb" path="res://gui/dialog_system/scripts/dialog_system.gd" id="1_gle0o"]
 [ext_resource type="Texture2D" uid="uid://5tm1nkk6c6b4" path="res://gui/dialog_system/sprites/text-bubble.png" id="2_h0xjv"]
@@ -31,42 +31,31 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="DialogBar" type="HBoxContainer" parent="DialogUI"]
+[node name="DialogBar" type="VBoxContainer" parent="DialogUI"]
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 12.0
-offset_top = -140.0
+offset_top = -13.0
 offset_right = -12.0
 offset_bottom = -12.0
 grow_horizontal = 2
 grow_vertical = 0
-theme_override_constants/separation = 12
-alignment = 0
 mouse_filter = 2
-
-[node name="PortraitSlot" type="Control" parent="DialogUI/DialogBar"]
-clip_contents = true
-custom_minimum_size = Vector2(96, 96)
-layout_mode = 2
-size_flags_vertical = 8
-mouse_filter = 2
-
-[node name="PortraitSprite" type="Sprite2D" parent="DialogUI/DialogBar/PortraitSlot"]
-texture_filter = 1
-position = Vector2(48, 48)
-centered = true
-
-[node name="ContentColumn" type="VBoxContainer" parent="DialogUI/DialogBar"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 8
 theme_override_constants/separation = 4
+
+[node name="NameRow" type="HBoxContainer" parent="DialogUI/DialogBar"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="NameIndent" type="Control" parent="DialogUI/DialogBar/NameRow"]
+layout_mode = 2
 mouse_filter = 2
 
-[node name="NameLabel" type="Label" parent="DialogUI/DialogBar/ContentColumn"]
+[node name="NameLabel" type="Label" parent="DialogUI/DialogBar/NameRow"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.12, 0.08, 0.04, 1)
 theme_override_colors/font_outline_color = Color(0.93, 0.88, 0.78, 1)
@@ -75,26 +64,61 @@ theme_override_fonts/font = ExtResource("4_jxevo")
 theme_override_font_sizes/font_size = 16
 text = "Name"
 
-[node name="PanelContainer" type="PanelContainer" parent="DialogUI/DialogBar/ContentColumn"]
+[node name="Row" type="HBoxContainer" parent="DialogUI/DialogBar"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="PortraitSlot" type="PanelContainer" parent="DialogUI/DialogBar/Row"]
+clip_contents = true
+custom_minimum_size = Vector2(80, 80)
+layout_mode = 2
+size_flags_vertical = 0
+mouse_filter = 2
+
+[node name="PortraitSprite" type="Sprite2D" parent="DialogUI/DialogBar/Row/PortraitSlot"]
+texture_filter = 1
+position = Vector2(40, 40)
+centered = true
+
+[node name="PanelContainer" type="PanelContainer" parent="DialogUI/DialogBar/Row"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 0
 theme_override_styles/panel = SubResource("StyleBoxTexture_3jka7")
 
-[node name="RichTextLabel" type="RichTextLabel" parent="DialogUI/DialogBar/ContentColumn/PanelContainer"]
-custom_minimum_size = Vector2(0, 56)
+[node name="RichTextLabel" type="RichTextLabel" parent="DialogUI/DialogBar/Row/PanelContainer"]
+custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 theme_override_colors/default_color = Color(0.12, 0.08, 0.04, 1)
 theme_override_fonts/normal_font = ExtResource("3_f7bgx")
 theme_override_fonts/bold_italics_font = ExtResource("4_jxevo")
-theme_override_font_sizes/normal_font_size = 14
+theme_override_font_sizes/normal_font_size = 15
 bbcode_enabled = true
 text = ""
 fit_content = true
 scroll_active = false
 
-[node name="ContinueHint" type="Label" parent="DialogUI/DialogBar/ContentColumn"]
+[node name="Footer" type="HBoxContainer" parent="DialogUI/DialogBar"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.35, 0.24, 0.12, 1)
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="FooterIndent" type="Control" parent="DialogUI/DialogBar/Footer"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="ContentColumn" type="VBoxContainer" parent="DialogUI/DialogBar/Footer"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="ContinueHint" type="Label" parent="DialogUI/DialogBar/Footer/ContentColumn"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93, 0.88, 0.78, 1)
+theme_override_colors/font_outline_color = Color(0.12, 0.08, 0.04, 1)
+theme_override_constants/outline_size = 3
 theme_override_fonts/font = ExtResource("3_f7bgx")
 theme_override_font_sizes/font_size = 12
 text = "Tap or E"

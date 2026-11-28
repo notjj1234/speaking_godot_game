@@ -201,7 +201,7 @@ static func layout_touch_controls(viewport: Viewport) -> Dictionary:
 	# Never below a 44 px tall touch target.
 	var pause_k := clampf(k, 44.0 / PAUSE_BUTTON_SIZE.y, 1.2)
 	if vis.size.y > vis.size.x:
-		var arena_h := DESIGN_SIZE.y * (vis.size.x / DESIGN_SIZE.x)
+		var arena_h := portrait_arena_height(vis, k)
 		var arena := Rect2(vis.position.x, vis.position.y + PORTRAIT_ARENA_TOP, vis.size.x, arena_h)
 		placed["arena"] = arena
 		var band := Rect2(inner.position.x, arena.end.y + MARGIN, inner.size.x, maxf(0.0, inner.end.y - arena.end.y - MARGIN))
@@ -217,7 +217,7 @@ static func layout_touch_controls(viewport: Viewport) -> Dictionary:
 			placed["right"] = _corner_rect(inner, RIGHT_CLUSTER_SIZE * k, "bottom_right")
 		# Portrait top band is busy on the right (mic indicator, version) and in the
 		# middle (hearts, banner): pause goes top-left, beside the hearts.
-		var hearts_left := vis.position.x + vis.size.x * 0.5 - 70.0 - MARGIN
+		var hearts_left := vis.position.x + vis.size.x * 0.5 - 84.0 - MARGIN
 		var corner := Rect2(inner.position, Vector2(maxf(0.0, hearts_left - inner.position.x), 44.0))
 		var want := PAUSE_BUTTON_SIZE * pause_k
 		if corner.size.x >= 1.0 and want.x > 0.0:
@@ -260,6 +260,16 @@ static func _corner_rect(slot: Rect2, visual: Vector2, corner: String) -> Rect2:
 	return Rect2(Vector2(slot.position.x, y), size)
 
 
+## Portrait: the map takes all the height between the HUD band and the
+## controls band (the camera zooms to fill it), never less than the width's
+## 4:3 share and never more than the camera's max zoom can fill.
+static func portrait_arena_height(vis: Rect2, k: float) -> float:
+	var min_h := DESIGN_SIZE.y * (vis.size.x / DESIGN_SIZE.x)
+	var band := maxf(LEFT_CLUSTER_SIZE.y, RIGHT_CLUSTER_SIZE.y) * k + CLUSTER_BOTTOM_INSET + MARGIN * 2.0
+	var free := vis.size.y - PORTRAIT_ARENA_TOP - band
+	return clampf(free, min_h, min_h * PlayerCamera.MAX_COVER_ZOOM)
+
+
 static func _arena_rect(vis: Rect2) -> Rect2:
 	var aspect := DESIGN_SIZE.x / DESIGN_SIZE.y
 	var play_w: float
@@ -296,7 +306,7 @@ static func _hud_rects(vis: Rect2) -> Array[Rect2]:
 	var mid_x := vis.position.x + vis.size.x * 0.5
 	var top := vis.position.y
 	return [
-		Rect2(mid_x - 70.0, top + 2.0, 140.0, 48.0),
+		Rect2(mid_x - 84.0, top + 2.0, 168.0, 48.0),
 		Rect2(mid_x - 250.0, top + 52.0, 500.0, 60.0),
 		Rect2(vis.end.x - 176.0, top + 8.0, 168.0, 28.0),
 		Rect2(vis.end.x - 72.0, top + 40.0, 64.0, 20.0),

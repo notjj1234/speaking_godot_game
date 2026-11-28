@@ -67,5 +67,16 @@ func _ready() -> void:
 	await get_tree().create_timer(2.5, true, false, true).timeout
 	_check("step ends after the pause", player._continuous_move_direction == Vector2.ZERO)
 
+	# Training's voice lesson listens for this signal.
+	var controls: Node = load("res://touch_controls/Scene/touch_controls.tscn").instantiate()
+	add_child(controls)
+	await get_tree().process_frame
+	var heard: Array[String] = []
+	controls.voice_command_executed.connect(func(c: String): heard.append(c))
+	controls._execute_command("attack")
+	await get_tree().create_timer(0.6, true, false, true).timeout
+	_check("voice command signal fires", heard == ["attack"], str(heard))
+	controls.queue_free()
+
 	print("RESULT passes=%d failures=%d" % [passes, failures])
 	get_tree().quit(1 if failures else 0)

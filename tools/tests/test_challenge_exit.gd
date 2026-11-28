@@ -3,7 +3,8 @@ extends Node2D
 ##   Godot --headless --path <copy> res://tools/tests/test_challenge_exit.tscn
 ## F01: an out-of-tries challenge must drop every STT/HUD connection, so a
 ##      later enemy's challenge is not judged (and torn down) by the old one.
-## F04: an STT backend that keeps erroring must eventually offer typing.
+## F04: an STT backend that keeps erroring must eventually offer a way through
+##      (word tiles for players; typing is developer-only).
 
 const SLIME := "res://enemies/slime/slime.tscn"
 const FakeStt := preload("res://tools/tests/fake_stt_provider.gd")
@@ -113,7 +114,8 @@ func _test_error_streak_offers_typing(killer: HurtBox) -> void:
 	STTManager.error.emit(7)
 	_check("two errors: still voice only", not PlayerHud.challenge_fallback_row.visible)
 	STTManager.error.emit(7)
-	_check("third error in a row: typed box offered", PlayerHud.challenge_fallback_row.visible)
+	_check("third error in a row: word tiles offered", PlayerHud.word_tiles_row.visible)
+	_check("third error in a row: no typing box for players", not PlayerHud.challenge_fallback_input.is_visible_in_tree())
 	_check("listening restarted after each error", fake.listen_calls >= 4,
 			"listen_calls=%d" % fake.listen_calls)
 	PlayerHud.fallback_submitted.emit(PlayerHud.target_sentence)
@@ -123,7 +125,7 @@ func _test_error_streak_offers_typing(killer: HurtBox) -> void:
 	fake.queue_free()
 
 
-## TEMPORARY desktop testing aid: with typed_test_input on, every challenge
+## Developer-only typing aid: with typed_test_input on, every challenge
 ## offers the typed box from the start, even when STT is available.
 func _test_typed_test_input(killer: HurtBox) -> void:
 	_check("typed test input: off in headless runs", not PlayerHud.typed_test_input)

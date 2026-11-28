@@ -29,6 +29,9 @@ const BOSS_REACH_SCALE := 1.5
 ## (orbit, retreat, charge) write state_velocity every tick. Default off
 ## keeps Goblin/Slime/Beetle movement exactly as before.
 @export var uses_state_velocity: bool = false
+## How big this kind is drawn next to the hero (player = 1.0). Scales the art
+## and the hit/hurt boxes together; vision range is kept as authored.
+@export var body_scale: float = 1.0
 ## Random 1-in-400 chaos pause mid-movement. Disable for enemies whose states
 ## own their movement timing (a charge must not freeze mid-run).
 @export var chaos_pauses_enabled: bool = true
@@ -111,6 +114,13 @@ var _attempt_in_flight: bool = false
 ## that can never recognise (e.g. offline) cannot trap the paused challenge.
 const STT_ERRORS_BEFORE_TYPED_FALLBACK := 3
 var _stt_error_streak: int = 0
+## Players have no keyboard: when the mic can't help (no STT, a mic error, a
+## miss, or nothing landing for tiles_after_sec) the card offers pick-the-word
+## tiles. A tile pass wins the fight but isn't logged as a spoken word.
+var tiles_after_sec := 10.0
+const TILE_COUNT := 3
+var _tile_token := 0
+var _tile_pass := false
 
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
 @onready var sprite: Sprite2D = $Sprite2D
@@ -125,6 +135,7 @@ func _ready() -> void:
 	player = PlayerManager.player
 	hit_box.damaged.connect(_take_damage)
 	max_hp = hp
+	_apply_body_scale()
 	health_bar = EnemyHealthBar.new()
 	health_bar.position = Vector2(-20, -32)
 	health_bar.z_index = 10
@@ -274,6 +285,7 @@ func spawn_split_children() -> void:
 		child.minion_sheet = minion_sheet
 		child.minion_chase = minion_chase
 		child.scale = scale * split_scale
+		child.body_scale = 1.0  # already carried by scale * split_scale
 		child.separation_distance = split_separation
 		child.split_orbit_index = i
 		child.split_orbit_count = split_count
@@ -469,6 +481,13 @@ func pursuit_target(player_pos: Vector2) -> Vector2:
 
 func make_practice_dummy() -> void:
 	practice_dummy = true
+	make_training_target()
+
+
+## Guided Training: stands still and deals no damage like a practice dummy, but
+## keeps real HP, so 0 HP starts the normal speech challenge. Call after
+## add_child; set hp before add_child to choose its health.
+func make_training_target() -> void:
 	move_speed = 0.0
 	velocity = Vector2.ZERO
 	var hurt := get_node_or_null("HurtBox")
@@ -497,8 +516,8 @@ func make_boss(profile: Dictionary, phase_hp: int) -> void:
 	minion_chase = bool(profile.get("add_chase", false))
 	scale = Vector2.ONE * HordeCurve.BOSS_SCALE
 	splits_on_destroy = false
-	# Adds land at net scale 1.0 (2.0 x 0.5), on the same pixel grid as the rest.
-	split_scale = 1.0 / HordeCurve.BOSS_SCALE
+	# Adds land at the kind's own body size (e.g. a slime's 1.15).
+	split_scale = body_scale / HordeCurve.BOSS_SCALE
 	split_hp = maxi(1, hp / 4)
 	name = boss_name.replace(" ", "")
 
@@ -525,6 +544,17 @@ func _attach_boss_art() -> void:
 	sprite.add_child(art)
 	sprite.self_modulate.a = 0.0
 	sprite.frame_changed.connect(func(): art.frame = sprite.frame)
+
+
+## Grows a normal enemy to its body_scale. Bosses are sized by make_boss and
+## split children inherit their parent's scale, so both skip this.
+func _apply_body_scale() -> void:
+	if is_boss() or is_equal_approx(body_scale, 1.0):
+		return
+	scale = Vector2.ONE * body_scale
+	var vision := get_node_or_null("VisionArea") as Node2D
+	if vision:
+		vision.scale = Vector2.ONE / body_scale
 
 
 func is_boss() -> bool:
@@ -634,6 +664,7 @@ func _start_speech_challenge(target_sentence: String, hurt_box: HurtBox) -> void
 	# transcripts as voice commands or restart the mic under the challenge.
 	_begin_challenge_mic()
 	var stt = _stt_manager()
+	_schedule_word_tiles()
 	if _is_web():
 		_show_typed_fallback()
 		_connect_speak_button()
@@ -645,14 +676,17 @@ func _start_speech_challenge(target_sentence: String, hurt_box: HurtBox) -> void
 			# Record a mic clip for the phoneme forgiveness pass (scored only
 			# if the transcript misses).
 			_begin_web_scorer_capture()
+		else:
+			_offer_word_tiles()
 		return
 	if stt != null and stt.is_speech_available():
 		stt.listen()
 		if player_hud and player_hud.typed_test_input:
 			_show_typed_fallback()
 	else:
-		print("STT unavailable. Showing typed fallback.")
+		print("STT unavailable. Offering word tiles.")
 		_show_typed_fallback()
+		_offer_word_tiles()
 
 func _on_listening_completed(result: String) -> void:
 	# The scoring await below yields while STT signals stay connected; a second
@@ -723,11 +757,14 @@ func _on_speech_result(success: bool, score: int = -1) -> void:
 				progress.record_kill(_progress_kill_kind())
 			enemy_destroyed.emit(challenge_hurt_box)
 
-		if has_node("/root/WordTracker"):
+		if _tile_pass:
+			print("✅ Won by a word tile (not logged as spoken).")
+		elif has_node("/root/WordTracker"):
 			var word_tracker = get_node("/root/WordTracker")
 			word_tracker.add_spoken_word(player_hud.target_sentence)
 		else:
 			print("Error: WordTracker singleton not found! Cannot store the word.")
+		_tile_pass = false
 		# EnemyStateDestroy handles queue_free after the destroy animation finishes
 
 		_flash_challenge_success()
@@ -755,6 +792,7 @@ func _register_challenge_attempt(sim: float) -> void:
 	if challenge_tries_left > 0:
 		if _is_web():
 			_show_typed_fallback()
+		_offer_word_tiles()
 		var stt = _stt_manager()
 		if stt != null and stt.is_speech_available():
 			stt.listen()
@@ -906,7 +944,8 @@ func _on_speech_error(error_code) -> void:
 	if _is_web():
 		_show_typed_fallback()
 		if error_code == -1:
-			print("Web speech permission/start failed. Keeping typed fallback.")
+			print("Web speech permission/start failed. Offering word tiles.")
+			_offer_word_tiles()
 			return
 		print("Restarting web speech recognition due to error.")
 		var web_stt = _stt_manager()
@@ -923,15 +962,18 @@ func _on_speech_error(error_code) -> void:
 				if sfx:
 					sfx.play(&"error")
 			_show_typed_fallback()
+			_offer_word_tiles()
 		print("Restarting speech recognition due to error.")
 		var stt = _stt_manager()
 		if stt != null and stt.is_speech_available():
 			stt.listen()
 		else:
 			_show_typed_fallback()
+			_offer_word_tiles()
 	else:
-		print("Speech recognition failed. Showing typed fallback.")
+		print("Speech recognition failed. Offering word tiles.")
 		_show_typed_fallback()
+		_offer_word_tiles()
 
 
 func _stt_manager():
@@ -1084,6 +1126,55 @@ func _on_partial_transcript(partial: String) -> void:
 				_last_partial_match = ""
 
 
+## Voice first: the tiles wait tiles_after_sec, then appear if the challenge
+## is still open.
+func _schedule_word_tiles() -> void:
+	_tile_token += 1
+	var token := _tile_token
+	await get_tree().create_timer(tiles_after_sec, true, false, true).timeout
+	if token == _tile_token and is_instance_valid(self) and _challenge_open():
+		_offer_word_tiles()
+
+
+func _challenge_open() -> bool:
+	var tracker := get_node_or_null("/root/WordTracker")
+	return tracker != null and tracker.speech_challenge_active and challenge_tries_left > 0 \
+		and player_hud != null and player_hud.challenge_panel.visible
+
+
+## Shows (or reshuffles) the tiles: the target plus look-alike phrases.
+func _offer_word_tiles() -> void:
+	if player_hud == null or not player_hud.has_method("show_word_tiles"):
+		return
+	var target: String = player_hud.target_sentence
+	var options: Array = [target]
+	var tracker := get_node_or_null("/root/WordTracker")
+	if tracker:
+		for other in tracker.lookalike_phrases(target, TILE_COUNT - 1):
+			if not options.any(func(o): return _same_phrase(o, other)):
+				options.append(other)
+	options.shuffle()
+	player_hud.show_word_tiles(options)
+	if not player_hud.word_tile_picked.is_connected(_on_word_tile):
+		player_hud.word_tile_picked.connect(_on_word_tile)
+
+
+func _same_phrase(a: String, b: String) -> bool:
+	return _normalize_web_text(a) == _normalize_web_text(b)
+
+
+func _on_word_tile(text: String) -> void:
+	if _attempt_in_flight or not _challenge_open():
+		return
+	if _same_phrase(text, player_hud.target_sentence):
+		_tile_pass = true
+		_on_speech_result(true)
+		return
+	_attempt_in_flight = true
+	await _register_challenge_attempt(0.0)
+	_attempt_in_flight = false
+
+
 func _show_typed_fallback() -> void:
 	if player_hud == null:
 		return
@@ -1099,6 +1190,10 @@ func _disconnect_fallback() -> void:
 		return
 	if player_hud.fallback_submitted.is_connected(_on_listening_completed):
 		player_hud.fallback_submitted.disconnect(_on_listening_completed)
+	_tile_token += 1
+	if player_hud.word_tile_picked.is_connected(_on_word_tile):
+		player_hud.word_tile_picked.disconnect(_on_word_tile)
+	player_hud.hide_word_tiles()
 	player_hud.hide_typed_fallback()
 	player_hud.hide_speak_button()
 

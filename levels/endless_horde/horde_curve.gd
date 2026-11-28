@@ -39,6 +39,14 @@ static func damage_multiplier(stage: int) -> float:
 	return minf(2.5, 1.0 + 0.08 * float(stage - 1))
 
 
+## Gentler opening on the player's first run only (lifetime runs <= 1):
+## stages 1-5 ramp 0.6 → 1.0. Multiplies HP, damage and speed.
+static func first_run_ease(stage: int, runs: int) -> float:
+	if runs > 1 or stage < 1 or stage > 5:
+		return 1.0
+	return 0.6 + 0.1 * float(stage - 1)
+
+
 static func split_count_for(stage: int) -> int:
 	if stage < 8:
 		return 0

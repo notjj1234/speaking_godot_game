@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://0m3n5koscq2h" path="res://touch_controls/Scripts/touch_controls.gd" id="1_qogkm"]
 [ext_resource type="PackedScene" uid="uid://dmr0fcamx7t56" path="res://addons/virtual_joystick/virtual_joystick_scene.tscn" id="2_joystick"]
-[ext_resource type="Texture2D" uid="uid://cuwrmnqqcgbds" path="res://touch_controls/UsedIcons/Attack.png" id="5_g2tuf"]
+[ext_resource type="Texture2D" path="res://touch_controls/UsedIcons/AttackSword.png" id="5_g2tuf"]
 
 [node name="TouchControls" type="CanvasLayer"]
 follow_viewport_enabled = false

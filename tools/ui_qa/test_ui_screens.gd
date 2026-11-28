@@ -48,6 +48,7 @@ func _ready() -> void:
 	await _journal()
 	await _game_over()
 	await _dialog()
+	await _conversation_say_box()
 	await _hud()
 	await _title()
 	await _coming_soon()
@@ -105,15 +106,20 @@ func _pause_menu() -> void:
 	var m := get_node("/root/SettingsManager")
 	m.set_music_muted(false)
 	m.set_music_volume(0.5)
-	await press(menu.music_quieter_button)
-	check("pause: '-' lowers volume by one step", snappedf(m.music_volume, 0.01), 0.4)
+	check("pause: no duplicate -/+ music buttons", menu.music_quieter_button.visible or menu.music_louder_button.visible, false)
 	await press(menu.music_mute_button, true)
 	check("pause: one tap mutes once", m.music_muted, true)
 	await press(menu.music_mute_button)
 	check("pause: one click unmutes once", m.music_muted, false)
-	menu.music_louder_button.grab_focus()
-	await key_accept()
-	check("pause: keyboard '+' raises volume one step", snappedf(m.music_volume, 0.01), 0.5)
+	var card_rect: Rect2 = menu.get_node("Control/MenuRoot/Center/MenuCard").get_global_rect()
+	check("pause: close X sits inside the card", card_rect.has_point(menu.close_icon.global_position + Vector2(4, 4)), true)
+	check("pause: word panel title is plain", menu.get_node("Control/MenuRoot/Center/MenuCard/Card/Columns/RightColumn/WordPanel/WordColumn/Title").text, "Words you said")
+	check("pause: journal button at the bottom", menu.journal_button.get_index(), menu.journal_button.get_parent().get_child_count() - 1)
+	PlayerManager.INVENTORY_DATA.parse_save_data([])
+	menu.hide_pause_menu()
+	menu.show_pause_menu()
+	await frames()
+	check("pause: empty bag says so instead of black squares", menu.inventory_empty_label.visible, true)
 
 	# Inventory: one click must use exactly one item.
 	var grid: Node = menu.get_node("Control/MenuRoot/Center/MenuCard/Card/Columns/LeftColumn/PanelContainer/GridContainer")
@@ -216,6 +222,40 @@ func _dialog() -> void:
 	await frames()
 
 
+## Camp conversation with the Say-it box and its own tools (Listen, Speak,
+## typing). One press, one effect; nothing overlaps.
+func _conversation_say_box() -> void:
+	var listens := [0]
+	var speaks := [0]
+	var typed: Array[String] = []
+	var on_listen := func(): listens[0] += 1
+	var on_speak := func(): speaks[0] += 1
+	var on_typed := func(t: String): typed.append(t)
+	DialogSystem.say_listen_pressed.connect(on_listen)
+	DialogSystem.say_speak_pressed.connect(on_speak)
+	DialogSystem.say_typed_submitted.connect(on_typed)
+	DialogSystem.show_conversation("Smith", null, 1, Callable())
+	DialogSystem.set_conversation_line("Still breathing. Need steel?")
+	DialogSystem.set_choices([{"id": "a", "label": "A  +1 DMG"}, {"id": "b", "label": "B  Bye"}], func(_id): pass)
+	DialogSystem.show_say_box("A", "Hit harder")
+	DialogSystem.set_say_tools(true, true, true)
+	await screen_ok("say box", DialogSystem.say_box)
+	await press(DialogSystem.say_listen_button)
+	check("say box: one click on Listen, one listen", listens[0], 1)
+	await press(DialogSystem.say_speak_button, true)
+	check("say box: one tap on Speak, one speak", speaks[0], 1)
+	DialogSystem.say_typed_input.text = "hit harder"
+	await press(DialogSystem.say_submit_button)
+	check("say box: one Submit, one answer", typed.size(), 1)
+	check("say box: battle card stays shut", PlayerHud.challenge_panel.visible, false)
+	DialogSystem.close()
+	check("say box: its layer is popped", UiInputRouter.active_layer(), 0)
+	DialogSystem.say_listen_pressed.disconnect(on_listen)
+	DialogSystem.say_speak_pressed.disconnect(on_speak)
+	DialogSystem.say_typed_submitted.disconnect(on_typed)
+	await frames()
+
+
 func _hud() -> void:
 	var hud = load("res://touch_controls/Scene/touch_controls.tscn").instantiate()
 	var pause_button = load("res://touch_controls/Scene/pause_button.tscn").instantiate()
@@ -247,10 +287,14 @@ func _hud() -> void:
 
 	# interact: state_idle emits PlayerManager.interact_pressed
 	interacts = 0
+	check("hud: Interact hidden with nothing in reach", hud.interact_button.visible, false)
+	hud.set_talk_prompt(true)  # something to talk to is in reach
+	await frames()
 	await press(hud.interact_button)
 	check("hud: one click on Interact emits interact_pressed once", interacts, 1)
 	await press(hud.interact_button, true)
 	check("hud: one tap on Interact emits interact_pressed once", interacts, 2)
+	hud.set_talk_prompt(false)
 
 	action_downs.clear()
 	await press(hud.mic_button)

@@ -54,6 +54,8 @@ var _boss_exit := false
 var _leaving := false
 var _practice := true
 var _start_pad: Node2D
+## Arrow toward the start pad while practising.
+var _pad_pointer: GuidePointer
 var _pad_restore: Array[Dictionary] = []
 var _idle_accum := 0.0
 var _arena: HordeArena
@@ -81,9 +83,16 @@ func _ready() -> void:
 	# to arena 2; practice (resume 0) uses arena 0. Also adds the TopBarrier.
 	await _apply_arena(resume)
 	_play_music(resume)
+	var direct := TrainingState.consume_direct_start()
 	if resume > 0:
 		_practice = false
 		_begin_stage(resume)
+	elif direct:
+		# Straight from Training (camp tour or Skip tutorial): no practice pad.
+		_practice = false
+		if tracker and tracker.has_method("record_run_started"):
+			tracker.record_run_started()
+		_begin_stage(1)
 	else:
 		_set_word_tracker_stage(0)
 		_label.text = "Practice"
@@ -126,7 +135,7 @@ func _process(delta: float) -> void:
 		_spawn_accum += delta
 		var interval := HordeCurve.spawn_interval(_stage)
 		while _spawned_count < _spawn_quota and _spawn_accum >= interval:
-			if _enemy_count() >= HordeCurve.alive_cap(_stage):
+			if _enemy_count() >= _alive_cap():
 				break
 			_spawn_accum -= interval
 			_spawn_one_enemy(_spawned_count)
@@ -231,9 +240,9 @@ func _spawn_start_pad() -> void:
 	root.name = "StartPad"
 	root.z_index = 3
 	var label := Label.new()
-	label.text = "START"
-	label.position = Vector2(-32, -28)
-	label.size = Vector2(64, 18)
+	label.text = "Walk here to start!"
+	label.position = Vector2(-64, 36)  # under the square; the arrow is above it
+	label.size = Vector2(128, 18)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_font_override("font", START_FONT)
@@ -256,37 +265,16 @@ func _spawn_start_pad() -> void:
 	root.add_child(area)
 	add_child(root)
 	root.global_position = center
+	HordeArenaHelpers.add_glow(root, center, Vector2(64, 64))
 	_start_pad = root
+	_pad_pointer = GuidePointer.new()
+	add_child(_pad_pointer)
+	_pad_pointer.follow(func(): return _start_pad if is_instance_valid(_start_pad) else null)
+	CoachTips.show_once(self, "practice_pad", CoachTips.PRACTICE_PAD)
 
 
 func _paint_start_path(around: Vector2) -> Vector2:
-	if _grass == null:
-		return around
-	var origin := _grass.local_to_map(_grass.to_local(around))
-	var cells: Array[Vector2i] = [
-		origin,
-		origin + Vector2i(1, 0),
-		origin + Vector2i(0, 1),
-		origin + Vector2i(1, 1),
-	]
-	var patches: Array[Vector2i] = [
-		Vector2i(9, 1),
-		Vector2i(10, 1),
-		Vector2i(9, 2),
-		Vector2i(10, 2),
-	]
-	var sum := Vector2.ZERO
-	for i in cells.size():
-		var cell: Vector2i = cells[i]
-		_pad_restore.append({
-			"cell": cell,
-			"source": _grass.get_cell_source_id(cell),
-			"atlas": _grass.get_cell_atlas_coords(cell),
-			"alt": _grass.get_cell_alternative_tile(cell),
-		})
-		_grass.set_cell(cell, 0, patches[i])
-		sum += _grass.map_to_local(cell)
-	return _grass.to_global(sum / float(cells.size()))
+	return HordeArenaHelpers.paint_patch(_grass, around, _pad_restore)
 
 
 func _on_start_pad_body(body: Node) -> void:
@@ -308,21 +296,14 @@ func _end_practice() -> void:
 	if _start_pad and is_instance_valid(_start_pad):
 		_start_pad.queue_free()
 	_start_pad = null
+	if _pad_pointer and is_instance_valid(_pad_pointer):
+		_pad_pointer.queue_free()
+	_pad_pointer = null
 	_restore_start_path()
 
 
 func _restore_start_path() -> void:
-	if _grass == null:
-		_pad_restore.clear()
-		return
-	for item in _pad_restore:
-		var cell: Vector2i = item.cell
-		var source := int(item.source)
-		if source == -1:
-			_grass.erase_cell(cell)
-		else:
-			_grass.set_cell(cell, source, item.atlas, int(item.alt))
-	_pad_restore.clear()
+	HordeArenaHelpers.restore_patch(_grass, _pad_restore)
 
 
 func _grass_center() -> Vector2:
@@ -347,8 +328,13 @@ func _clear_horde() -> void:
 func _begin_stage(stage: int) -> void:
 	# Arena first (no-op unless this stage starts a new 20-stage block). Never mid-stage.
 	_stage_active = false
+	var arena_before := _arena_index
 	await _apply_arena(stage)
 	_stage = maxi(stage, 1)
+	if HordeCurve.is_boss_stage(_stage):
+		CoachTips.show_once(self, "first_boss", CoachTips.FIRST_BOSS)
+	elif _arena_index > 0 and _arena_index != arena_before:
+		CoachTips.show_once(self, "new_arena", CoachTips.NEW_ARENA)
 	var short_retry := false
 	var tracker := get_node_or_null("/root/ProgressTracker")
 	if tracker \
@@ -420,11 +406,12 @@ func _spawn_one_enemy(index: int) -> void:
 
 	# Apply HP / split before add_child so _ready copies max_hp correctly.
 	var base_hp := enemy.hp
-	var mult := HordeCurve.hp_multiplier(_stage)
+	var easing := _first_run_ease()
+	var mult := HordeCurve.hp_multiplier(_stage) * easing
 	enemy.hp = maxi(1, roundi(float(base_hp) * mult))
 
 	# Scale outgoing damage (body contact + goblin's nested AttackHurtBox).
-	var damage_mult := HordeCurve.damage_multiplier(_stage)
+	var damage_mult := HordeCurve.damage_multiplier(_stage) * easing
 	for hb: HurtBox in enemy.find_children("*", "HurtBox"):
 		hb.damage = maxi(1, roundi(float(hb.damage) * damage_mult))
 
@@ -457,9 +444,27 @@ func _spawn_one_enemy(index: int) -> void:
 	_enemies.add_child(enemy)
 	enemy.global_position = pos
 	enemy.reset_physics_interpolation()
-	_apply_speed_multiplier(enemy, HordeCurve.speed_multiplier(_stage))
+	_apply_speed_multiplier(enemy, HordeCurve.speed_multiplier(_stage) * easing)
 	if enemy.is_boss():
 		enemy.boss_phase_changed.connect(_on_boss_phase_changed.bind(enemy))
+
+
+## First-run easing (HordeCurve.first_run_ease) for the current stage.
+func _first_run_ease() -> float:
+	return HordeCurve.first_run_ease(_stage, _lifetime_runs())
+
+
+func _lifetime_runs() -> int:
+	var tracker := get_node_or_null("/root/ProgressTracker")
+	if tracker == null or not tracker.has_method("lifetime"):
+		return 0
+	return int(tracker.lifetime().get("runs", 0))
+
+
+## One fewer enemy on screen while the first run is still eased.
+func _alive_cap() -> int:
+	var cap := HordeCurve.alive_cap(_stage)
+	return cap - 1 if _first_run_ease() < 1.0 else cap
 
 
 func _on_boss_phase_changed(phase: int, phases: int, boss: Enemy) -> void:
@@ -606,8 +611,10 @@ func _fade_top_hud(delta: float) -> void:
 
 
 ## Whether a body's on-screen sprite box overlaps any of the HUD rects.
-func _under_hud(body: Node2D, covers: Array[Rect2]) -> bool:
-	if body == null or not is_instance_valid(body) or not body.is_inside_tree():
+## Untyped `body`: a typed Node2D argument errors on a freed object before the
+## validity check can run.
+func _under_hud(body, covers: Array[Rect2]) -> bool:
+	if body == null or not is_instance_valid(body) or not (body is Node2D) or not body.is_inside_tree():
 		return false
 	var s := absf(body.global_scale.x)
 	var world := Rect2(body.global_position + Vector2(-12.0, -30.0) * s, Vector2(24.0, 30.0) * s)
@@ -762,54 +769,11 @@ func _stage_label(stage: int) -> String:
 
 
 func _add_top_barrier() -> void:
-	if _grass == null:
-		return
-	var rect := _grass.get_used_rect()
-	if rect.size == Vector2i.ZERO:
-		return
-	var left_cell := rect.position
-	var right_cell := rect.position + Vector2i(rect.size.x - 1, 0)
-	var left := _grass.to_global(_grass.map_to_local(left_cell))
-	var right := _grass.to_global(_grass.map_to_local(right_cell))
-	var top_y := minf(left.y, right.y) - 16.0
-	var x0 := minf(left.x, right.x) - 16.0
-	var x1 := maxf(left.x, right.x) + 16.0
-	var body := StaticBody2D.new()
-	body.name = "TopBarrier"
-	body.collision_layer = WALLS_LAYER
-	body.collision_mask = 0
-	var shape_node := CollisionShape2D.new()
-	var shape := RectangleShape2D.new()
-	shape.size = Vector2(x1 - x0, 24.0)
-	shape_node.shape = shape
-	body.add_child(shape_node)
-	add_child(body)
-	body.global_position = Vector2((x0 + x1) * 0.5, top_y)
+	HordeArenaHelpers.add_top_barrier(self, _grass, WALLS_LAYER)
 
 
 func _clamp_to_grass(pos: Vector2) -> Vector2:
-	if _grass == null:
-		return pos
-	var rect := _grass.get_used_rect()
-	if rect.size == Vector2i.ZERO:
-		return pos
-	var min_cell := rect.position
-	var max_cell := rect.position + rect.size - Vector2i.ONE
-	var min_pos := _grass.to_global(_grass.map_to_local(min_cell))
-	var max_pos := _grass.to_global(_grass.map_to_local(max_cell))
-	var lo := Vector2(minf(min_pos.x, max_pos.x), minf(min_pos.y, max_pos.y))
-	var hi := Vector2(maxf(min_pos.x, max_pos.x), maxf(min_pos.y, max_pos.y))
-	lo += Vector2(BOUNDS_INSET, BOUNDS_INSET)
-	hi -= Vector2(BOUNDS_INSET, BOUNDS_INSET)
-	if lo.x > hi.x:
-		var mid_x := (lo.x + hi.x) * 0.5
-		lo.x = mid_x
-		hi.x = mid_x
-	if lo.y > hi.y:
-		var mid_y := (lo.y + hi.y) * 0.5
-		lo.y = mid_y
-		hi.y = mid_y
-	return Vector2(clampf(pos.x, lo.x, hi.x), clampf(pos.y, lo.y, hi.y))
+	return HordeArenaHelpers.clamp_to_grass(_grass, pos, BOUNDS_INSET)
 
 
 func _speech_challenge_active() -> bool:

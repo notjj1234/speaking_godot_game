@@ -6,6 +6,10 @@ extends CanvasLayer
 signal fallback_submitted(text: String)
 signal speak_pressed
 signal feedback_closed
+## A pick-the-word tile was tapped (players' no-mic way through a challenge).
+signal word_tile_picked(text: String)
+## Desktop: the top-right mic plate is the mic switch (no floating button).
+signal stt_plate_pressed
 
 enum SttState {
 	STT_IDLE = 0,
@@ -18,18 +22,22 @@ enum SttState {
 const FEEDBACK_DURATION := 0.8
 const MAX_CHALLENGE_TRIES := 3
 const INK := Color(0.13, 0.08, 0.03, 1)
+## Hearts and the LIFE label drawn a bit bigger (9 px hearts were tiny).
+const HEART_SCALE := 1.25
 const CREAM := Color(0.98, 0.96, 0.9, 1)
 
 var hearts: Array[HeartGUI] = []
 var target_sentence: String = ""
-## TEMPORARY (desktop testing): offer the typed box on every speech challenge,
-## even when the mic works. Set to false before shipping.
-const TEMP_TYPED_TEST_INPUT := true
-## Off in headless runs so the tests keep checking the real voice-first flow.
-var typed_test_input := TEMP_TYPED_TEST_INPUT and DisplayServer.get_name() != "headless"
+## Developer-only typing (players have no keyboard): offer the typed box on
+## every speech challenge. Driven by SettingsManager.dev_mode.
+var typed_test_input := false
+## Pick-the-word tiles, built in code under the challenge card.
+var word_tiles_row: VBoxContainer = null
+var _word_tiles_flow: HFlowContainer = null
 var _feedback_token: int = 0
 var _stt_state: SttState = SttState.STT_IDLE
 var _stt_plate: PanelContainer = null
+var _stt_plate_clickable := false
 var _stt_indicator_row: HBoxContainer = null
 var _stt_dot: ColorRect = null
 var _stt_label: Label = null
@@ -45,6 +53,17 @@ var _listen_button: Button = null
 var _listen_token: int = 0
 var _listen_pending: bool = false
 var _listen_pending_token: int = 0
+## When the mic was last restarted after a Listen; a refusal right after it
+## (the browser wants a tap) gets a clear "Tap Speak" prompt.
+var _rearm_at_ms: int = -100000
+## Top banner: 0 none, 1 "Mic optional" hint, 2 voice-only. It steps aside
+## while a dialog or the speech card is up; the optional hint also fades.
+var _mic_banner_mode: int = 0
+var _mic_banner_faded := false
+var _mic_banner_token := 0
+var _dialog_open := false
+var mic_banner_fade_sec := 8.0
+const REARM_REFUSAL_WINDOW_MS := 3000
 var _listen_warned: bool = false
 
 @onready var challenge_panel: PanelContainer = $Control/ChallengeCenter/ChallengePanel
@@ -75,14 +94,16 @@ var _voice_commands_label: Label = null
 
 
 func _ready() -> void:
+	call_deferred("_hook_dialog_signals")
 	for child in $Control/HFlowContainer.get_children():
 		if child is HeartGUI:
 			hearts.append(child)
 			child.visible = false
 	hide_speech_challenge()
-	challenge_fallback_submit.pressed.connect(_on_fallback_submit_pressed)
 	challenge_fallback_input.text_submitted.connect(_on_fallback_text_submitted)
-	challenge_speak_button.pressed.connect(_on_speak_pressed)
+	# Router-bound so a real touch presses it (native buttons only see mice).
+	UiInputRouter.bind_button(challenge_speak_button, _on_speak_pressed)
+	UiInputRouter.bind_button(challenge_fallback_submit, _on_fallback_submit_pressed)
 	_style_parchment_button(challenge_speak_button)
 	_style_parchment_button(challenge_fallback_submit)
 	hide_voice_only_banner()
@@ -96,6 +117,7 @@ func _ready() -> void:
 	_create_tries_label()
 	_create_warmup_label()
 	_create_listen_button()
+	_create_word_tiles()
 	_create_voice_commands_panel()
 
 
@@ -116,11 +138,17 @@ func _center_life_hud() -> void:
 		if viewport:
 			mid_x = viewport.get_visible_rect().size.x * 0.5
 	life_sprite.position = Vector2(mid_x, 6)
+	life_sprite.scale = Vector2(HEART_SCALE, HEART_SCALE)
+	var row := get_node_or_null("Control/HFlowContainer") as Control
+	if row:
+		row.pivot_offset = Vector2(row.size.x * 0.5, 0.0)
+		row.scale = Vector2(HEART_SCALE, HEART_SCALE)
 
 
 func show_voice_only_banner() -> void:
-	if voice_only_banner:
-		voice_only_banner.visible = true
+	_mic_banner_mode = 2
+	_mic_banner_faded = false
+	_refresh_mic_banner()
 	if voice_only_label:
 		voice_only_label.text = "VOICE ONLY — keyboard disabled. Speak to move."
 	set_voice_only_listening(false)
@@ -128,27 +156,67 @@ func show_voice_only_banner() -> void:
 
 
 func hide_voice_only_banner() -> void:
-	if voice_only_banner:
-		voice_only_banner.visible = false
+	_mic_banner_mode = 0
+	_refresh_mic_banner()
 	set_voice_only_listening(false)
 	hide_voice_commands_list()
 
 
 func show_optional_mic_banner() -> void:
-	if voice_only_banner:
-		voice_only_banner.visible = true
+	_mic_banner_mode = 1
+	_mic_banner_faded = false
+	_refresh_mic_banner()
+	_fade_mic_hint_later()
 	if voice_only_label:
-		voice_only_label.text = "Mic optional — keyboard works. Toggle Mic On to speak."
+		voice_only_label.text = "Mic is optional. Turn Mic On to move and attack by voice."
 		voice_only_label.add_theme_color_override("font_color", Color(1, 1, 1, 1))
 	set_voice_only_listening(false)
 	# Commands appear when the player turns the mic on.
 
 
 func hide_optional_mic_banner() -> void:
-	if voice_only_banner:
-		voice_only_banner.visible = false
+	_mic_banner_mode = 0
+	_refresh_mic_banner()
 	set_voice_only_listening(false)
 	hide_voice_commands_list()
+
+
+func _refresh_mic_banner() -> void:
+	if voice_only_banner == null:
+		return
+	var card_up := challenge_panel != null and challenge_panel.visible
+	var faded := _mic_banner_mode == 1 and _mic_banner_faded
+	voice_only_banner.visible = _mic_banner_mode != 0 and not _dialog_open and not card_up and not faded
+
+
+## The "Mic optional" line is a hint: it leaves after a few seconds.
+func _fade_mic_hint_later() -> void:
+	_mic_banner_token += 1
+	var token := _mic_banner_token
+	await get_tree().create_timer(mic_banner_fade_sec, true, false, true).timeout
+	if token != _mic_banner_token or _mic_banner_mode != 1:
+		return
+	_mic_banner_faded = true
+	_refresh_mic_banner()
+
+
+func _hook_dialog_signals() -> void:
+	var dialog := get_node_or_null("/root/DialogSystem")
+	if dialog == null or not dialog.has_signal("opened"):
+		return
+	if not dialog.opened.is_connected(_on_dialog_opened):
+		dialog.opened.connect(_on_dialog_opened)
+		dialog.closed.connect(_on_dialog_closed)
+
+
+func _on_dialog_opened() -> void:
+	_dialog_open = true
+	_refresh_mic_banner()
+
+
+func _on_dialog_closed() -> void:
+	_dialog_open = false
+	_refresh_mic_banner()
 
 
 func show_voice_commands_list() -> void:
@@ -319,6 +387,7 @@ func show_speech_challenge(sentence: String, title: String = "") -> void:
 	_refresh_listen_button()
 	set_challenge_tries(_challenge_tries_remaining)
 	set_stt_state(_stt_state)
+	_refresh_mic_banner()
 
 
 ## Music stays low while a challenge is up: out of the mic, the pronunciation
@@ -332,7 +401,7 @@ func _duck_music(on: bool) -> void:
 func _configure_web_challenge_controls() -> void:
 	show_typed_fallback()
 	show_speak_button()
-	# Desktop: keyboard-first (type + Enter). Speak stays for Chrome's user-gesture mic rule.
+	# Typing is dev-only (see show_typed_fallback). Speak stays for Chrome's user-gesture mic rule.
 	# Touch: keep larger tap targets from the scene defaults.
 	if MobileSafeLayout.wants_touch_ui():
 		challenge_speak_button.custom_minimum_size = Vector2(80, 44)
@@ -347,7 +416,7 @@ func _configure_web_challenge_controls() -> void:
 
 
 func _focus_challenge_input() -> void:
-	if challenge_fallback_input and challenge_fallback_row and challenge_fallback_row.visible:
+	if challenge_fallback_input and challenge_fallback_input.is_visible_in_tree():
 		challenge_fallback_input.grab_focus()
 		challenge_fallback_input.caret_column = challenge_fallback_input.text.length()
 
@@ -374,36 +443,131 @@ func hide_speech_challenge() -> void:
 		_warmup_label.text = ""
 	hide_typed_fallback()
 	hide_speak_button()
+	hide_word_tiles()
 	_refresh_listen_button()
 	set_stt_state(_stt_state)
+	_refresh_mic_banner()
 
 
+## The typing box is developer-only (typed_test_input): players never see it.
 func show_typed_fallback() -> void:
-	var already_open := challenge_fallback_row.visible
-	challenge_fallback_row.visible = true
+	if not typed_test_input:
+		_sync_fallback_row()
+		return
+	var already_open := challenge_fallback_input.visible and challenge_fallback_row.visible
+	challenge_fallback_input.visible = true
+	challenge_fallback_submit.visible = true
+	_sync_fallback_row()
 	if not already_open:
 		challenge_fallback_input.text = ""
 		challenge_fallback_input.grab_focus()
 
 
 func hide_typed_fallback() -> void:
-	if challenge_fallback_row:
-		challenge_fallback_row.visible = false
 	if challenge_fallback_input:
+		challenge_fallback_input.visible = false
 		challenge_fallback_input.text = ""
+	if challenge_fallback_submit:
+		challenge_fallback_submit.visible = false
 	hide_speak_button()
 
 
 func show_speak_button() -> void:
 	if challenge_speak_button:
 		challenge_speak_button.visible = true
+	_sync_fallback_row()
+
+
+## The row holds Speak and the (dev-only) typing box: shown when either is.
+func _sync_fallback_row() -> void:
+	if challenge_fallback_row == null:
+		return
+	challenge_fallback_row.visible = challenge_speak_button.visible or challenge_fallback_input.visible
+
+
+## Pick-the-word tiles: tap the words on the card. `options` holds the target
+## and a couple of look-alikes, already shuffled.
+func show_word_tiles(options: Array) -> void:
+	if word_tiles_row == null:
+		return
+	_clear_word_tiles()
+	for text in options:
+		var btn := Button.new()
+		btn.text = str(text)
+		btn.focus_mode = Control.FOCUS_NONE
+		btn.custom_minimum_size = Vector2(88, 44)
+		btn.add_theme_font_size_override("font_size", 15)
+		_style_parchment_button(btn)
+		_word_tiles_flow.add_child(btn)
+		UiInputRouter.bind_button(btn, _on_word_tile.bind(str(text)))
+	word_tiles_row.visible = true
+
+
+func hide_word_tiles() -> void:
+	_clear_word_tiles()
+	if word_tiles_row:
+		word_tiles_row.visible = false
+
+
+func word_tile_texts() -> Array:
+	var out: Array = []
+	if _word_tiles_flow:
+		for child in _word_tiles_flow.get_children():
+			if not child.is_queued_for_deletion():
+				out.append((child as Button).text)
+	return out
+
+
+func word_tile_button(text: String) -> Button:
+	if _word_tiles_flow:
+		for child in _word_tiles_flow.get_children():
+			if not child.is_queued_for_deletion() and (child as Button).text == text:
+				return child
+	return null
+
+
+func _clear_word_tiles() -> void:
+	if _word_tiles_flow == null:
+		return
+	for child in _word_tiles_flow.get_children():
+		UiInputRouter.unbind(child)
+		_word_tiles_flow.remove_child(child)
+		child.queue_free()
+
+
+func _on_word_tile(text: String) -> void:
+	_stop_tts()
+	word_tile_picked.emit(text)
+
+
+func _create_word_tiles() -> void:
+	if challenge_vbox == null or word_tiles_row != null:
+		return
+	word_tiles_row = VBoxContainer.new()
+	word_tiles_row.name = "WordTiles"
+	word_tiles_row.add_theme_constant_override("separation", 4)
+	word_tiles_row.visible = false
+	var hint := Label.new()
+	hint.text = "Or tap the right words:"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_color_override("font_color", INK)
+	word_tiles_row.add_child(hint)
+	_word_tiles_flow = HFlowContainer.new()
+	_word_tiles_flow.name = "Tiles"
+	_word_tiles_flow.alignment = FlowContainer.ALIGNMENT_CENTER
+	_word_tiles_flow.add_theme_constant_override("h_separation", 8)
+	_word_tiles_flow.add_theme_constant_override("v_separation", 6)
+	word_tiles_row.add_child(_word_tiles_flow)
+	challenge_vbox.add_child(word_tiles_row)
 	if challenge_fallback_row:
-		challenge_fallback_row.visible = true
+		challenge_vbox.move_child(word_tiles_row, challenge_fallback_row.get_index() + 1)
 
 
 func hide_speak_button() -> void:
 	if challenge_speak_button:
 		challenge_speak_button.visible = false
+	_sync_fallback_row()
 
 
 func _on_speak_pressed() -> void:
@@ -775,7 +939,7 @@ func _create_listen_button() -> void:
 	_listen_button.tooltip_text = "Hear the word"
 	# Never steal focus from the typed fallback input on web.
 	_listen_button.focus_mode = Control.FOCUS_NONE
-	_listen_button.pressed.connect(_on_listen_pressed)
+	UiInputRouter.bind_button(_listen_button, _on_listen_pressed)
 	_style_parchment_button(_listen_button)
 	var bold := load("res://gui/fonts/Abaddon Bold.ttf")
 	if bold:
@@ -841,6 +1005,8 @@ func _on_listen_pressed() -> void:
 
 	if not tts.speech_finished.is_connected(_on_tts_speech_finished):
 		tts.speech_finished.connect(_on_tts_speech_finished)
+	if stt != null and not stt.error.is_connected(_on_stt_error_after_listen):
+		stt.error.connect(_on_stt_error_after_listen)
 
 	# Keep this synchronous: web speech synthesis needs the button's user gesture.
 	var ok: bool = tts.speak(text)
@@ -873,10 +1039,34 @@ func _rearm_challenge_capture(token: int) -> void:
 		return
 	var stt = get_node_or_null("/root/STTManager")
 	if stt != null and stt.has_method("begin_challenge_listen"):
+		_rearm_at_ms = Time.get_ticks_msec()
 		stt.begin_challenge_listen()
 	# Fresh clip for the post-TTS attempt, so the forgiveness pass scores the
 	# player and not the synthesizer.
 	_restart_scorer_clip()
+
+
+## A mic restart from the end of read-aloud isn't a user tap; a browser may
+## refuse it. Offer Speak (a real tap) instead of leaving the player stuck.
+func _on_stt_error_after_listen(code) -> void:
+	if str(code) != "-1":
+		return
+	if challenge_panel == null or not challenge_panel.visible:
+		return
+	if Time.get_ticks_msec() - _rearm_at_ms > REARM_REFUSAL_WINDOW_MS:
+		return
+	# Deferred: the enemy's own error handler writes its status after us.
+	call_deferred("_offer_speak_after_listen")
+
+
+func _offer_speak_after_listen() -> void:
+	if challenge_panel == null or not challenge_panel.visible:
+		return
+	show_speak_button()
+	if _challenge_status_label:
+		_challenge_status_label.text = "Mic paused after Listen - Tap Speak"
+		_challenge_status_label.visible = true
+	print("⚠️ PlayerHud: mic refused to restart after Listen, offering Speak")
 
 
 func _drop_scorer_clip(target: String) -> void:
@@ -1011,9 +1201,9 @@ func _challenge_status_text(state: SttState) -> String:
 		SttState.STT_PROCESSING:
 			return "Processing"
 		SttState.STT_ERROR:
-			return "Mic blocked — type it or tap Speak"
+			return "Mic blocked - tap Speak to try again"
 		SttState.STT_UNAVAILABLE:
-			return "Mic unavailable — type the phrase"
+			return "No mic found"
 		_:
 			return ""
 
@@ -1042,7 +1232,7 @@ func set_stt_state(state: SttState) -> void:
 		SttState.STT_IDLE:
 			_stt_dot.visible = true
 			_stt_label.visible = true
-			_stt_label.text = "Mic off"
+			_stt_label.text = "Mic Off"
 			_stt_dot.color = Color(0.4, 0.4, 0.4, 1)
 			_stt_dot.modulate = Color(1, 1, 1, 1)
 
@@ -1075,9 +1265,40 @@ func set_stt_state(state: SttState) -> void:
 		SttState.STT_UNAVAILABLE:
 			_stt_dot.visible = true
 			_stt_label.visible = true
-			_stt_label.text = "Mic unavailable"
+			_stt_label.text = "No mic"
 			_stt_dot.color = Color(0.5, 0.5, 0.5, 1)
 			_stt_dot.modulate = Color(1, 1, 1, 1)
+
+
+func stt_plate_text() -> String:
+	return _stt_label.text if _stt_label else ""
+
+
+func stt_plate_clickable() -> bool:
+	return _stt_plate_clickable
+
+
+## Desktop: clicking the plate toggles the mic (it replaces the floating Mic
+## button). Router-bound like every other press.
+func set_stt_plate_clickable(on: bool) -> void:
+	_stt_plate_clickable = on
+	if _stt_plate == null:
+		return
+	if on:
+		UiInputRouter.bind(_stt_plate, _on_stt_plate_pressed)
+		_stt_plate.mouse_filter = Control.MOUSE_FILTER_PASS
+		_stt_plate.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		_stt_plate.tooltip_text = "Click to turn the mic on or off"
+	else:
+		UiInputRouter.unbind(_stt_plate)
+		_stt_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_stt_plate.mouse_default_cursor_shape = Control.CURSOR_ARROW
+		_stt_plate.tooltip_text = ""
+
+
+func _on_stt_plate_pressed() -> void:
+	if _stt_plate_clickable:
+		stt_plate_pressed.emit()
 
 
 func set_mic_state(listening: bool) -> void:

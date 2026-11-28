@@ -135,6 +135,10 @@ func update_scene_path() -> void:
 		if c is Level:
 			p = c.scene_file_path
 			break
+	# Never resume mid-Training (autosaves fire there too): it saves as "go to
+	# the horde"; the title still routes unfinished players back to Training.
+	if p == TrainingState.TRAINING_PATH:
+		p = TrainingState.HORDE_PATH
 	# Keep previous scene_path when no Level is current (e.g. title screen).
 	if p != "":
 		current_save.scene_path = p

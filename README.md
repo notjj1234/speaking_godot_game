@@ -59,8 +59,13 @@ Original sprites will come later once the core gameplay is finished! (Or when I 
 Needs Godot **4.7** with its Web export templates installed (Editor → Manage Export Templates).
 
 ```
-python3 tools/web/play_in_browser.py
+python3 tools/web/play_in_browser.py          # macOS / Linux
+py tools\web\play_in_browser.py               # Windows (or double-click tools\web\play_in_browser.cmd)
 ```
+
+On Windows it finds `Godot_v4.7*_win64_console.exe` in Downloads, Desktop, Program Files and similar
+places; otherwise set `$env:GODOT` to the editor exe. Use `py`/`python`, not `python3`, which on Windows is
+often the Microsoft Store stub. The options below work the same with `py`.
 
 This exports the **Web** preset to `build/web/`, serves it at **http://localhost:8060** and opens your browser.
 `localhost` counts as a secure context, so the microphone works without certificate warnings.

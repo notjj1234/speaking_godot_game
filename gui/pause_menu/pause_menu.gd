@@ -23,6 +23,10 @@ const TITLE_SCENE := "res://levels/title_screen/title_screen.tscn"
 const SETTINGS_SCENE := "res://gui/settings/settings.tscn"
 
 var _leaving_to_title: bool = false
+var _skipping_tutorial: bool = false
+## "Skip tutorial", built from the Load button's look; shown only in Training
+## and the camp tour.
+var button_skip_tutorial: Button
 var _settings_node: SettingsNode = null
 ## UiInputRouter layer while the menu is open, 0 while closed.
 var input_layer: int = 0
@@ -39,6 +43,12 @@ var _load_confirm_layer: int = 0
 @onready var next_page_button: Button = %NextPageButton
 @onready var music_slider: HSlider = %MusicSlider
 @onready var music_mute_button: Button = %MusicMute
+@onready var _menu_card: Control = $Control/MenuRoot/Center/MenuCard
+@onready var _inventory_panel: Control = $Control/MenuRoot/Center/MenuCard/Card/Columns/LeftColumn/PanelContainer
+@onready var _inventory_grid: Node = $Control/MenuRoot/Center/MenuCard/Card/Columns/LeftColumn/PanelContainer/GridContainer
+@onready var _word_title: Label = $Control/MenuRoot/Center/MenuCard/Card/Columns/RightColumn/WordPanel/WordColumn/Title
+## Shown instead of an all-empty inventory grid.
+var inventory_empty_label: Label
 @onready var music_quieter_button: Button = %MusicQuieter
 @onready var music_louder_button: Button = %MusicLouder
 
@@ -63,10 +73,73 @@ func _ready() -> void:
 	button_save.pressed.connect(func(): print("[DEBUG] Save button pressed."))
 	button_load.pressed.connect(func(): print("[DEBUG] Load button pressed."))
 
+	_build_skip_button()
 	music_slider.value_changed.connect(_on_music_slider_changed)
 	music_mute_button.custom_minimum_size = Vector2(120, 44)
 	music_mute_button.clip_text = true
 	_sync_music_controls()
+	_tidy_layout()
+
+
+## Less clutter: one music control (slider + Mute; the rest is in Settings),
+## plain titles, Journal at the bottom of the word list, and a friendly line
+## instead of a grid of empty black squares.
+func _tidy_layout() -> void:
+	music_quieter_button.visible = false
+	music_louder_button.visible = false
+	if _word_title:
+		_word_title.text = "Words you said"
+	if journal_button:
+		journal_button.text = "Open journal"
+		var column := journal_button.get_parent()
+		column.move_child(journal_button, column.get_child_count() - 1)
+	inventory_empty_label = Label.new()
+	inventory_empty_label.name = "InventoryEmpty"
+	inventory_empty_label.text = "No items yet - buy some at camp."
+	inventory_empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	inventory_empty_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	inventory_empty_label.custom_minimum_size = Vector2(0, 44)
+	inventory_empty_label.add_theme_font_size_override("font_size", 14)
+	inventory_empty_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
+	inventory_empty_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+	inventory_empty_label.add_theme_constant_override("outline_size", 4)
+	inventory_empty_label.visible = false
+	_inventory_panel.get_parent().add_child(inventory_empty_label)
+	_inventory_panel.get_parent().move_child(inventory_empty_label, _inventory_panel.get_index() + 1)
+	var data = _inventory_grid.get("data")
+	if data and not data.changed.is_connected(_refresh_inventory_empty):
+		data.changed.connect(_refresh_inventory_empty)
+	_menu_card.resized.connect(_place_close_icon)
+	_menu_card.item_rect_changed.connect(_place_close_icon)
+
+
+func _refresh_inventory_empty() -> void:
+	if inventory_empty_label == null:
+		return
+	var empty := true
+	var data = _inventory_grid.get("data")
+	if data:
+		for slot in data.slots:
+			if slot != null and slot.item_data != null:
+				empty = false
+				break
+	_inventory_panel.visible = not empty
+	inventory_empty_label.visible = empty
+
+
+## The close X lives inside the card's top-right corner.
+func _place_close_icon() -> void:
+	if close_icon == null or _menu_card == null:
+		return
+	var card := _menu_card.get_global_rect()
+	var size := Vector2(44, 44)
+	if close_icon.texture_normal:
+		# A 44 px touch target in the title row, clear of the word panel.
+		var tex := close_icon.texture_normal.get_size()
+		var k := 44.0 / maxf(tex.x, tex.y)
+		close_icon.scale = Vector2(k, k)
+		size = tex * k
+	close_icon.global_position = Vector2(card.end.x - size.x - 6.0, card.position.y + 4.0)
 
 
 ## Pointer presses (and keyboard `pressed`) for everything on this layer.
@@ -83,6 +156,8 @@ func _route_pointer() -> void:
 	UiInputRouter.bind(button_load, _on_load_pressed, input_layer)
 	UiInputRouter.bind(button_main_menu, _on_main_menu_pressed, input_layer)
 	UiInputRouter.bind(button_settings, _on_settings_pressed, input_layer)
+	if button_skip_tutorial and button_skip_tutorial.visible:
+		UiInputRouter.bind_button(button_skip_tutorial, _on_skip_tutorial_pressed, input_layer)
 	for slot in item_grid.get_children():
 		if slot is InventorySlotUI and not slot.is_queued_for_deletion():
 			slot.route(input_layer)
@@ -133,11 +208,14 @@ func show_pause_menu() -> void:
 	is_paused = true
 	if input_layer == 0:
 		input_layer = UiInputRouter.push_layer(&"pause", self)
+	_sync_tutorial_buttons()
 	shown.emit()
 	_route_pointer()
 	current_page = 0
 	_sync_music_controls()
 	update_word_list_display()
+	_refresh_inventory_empty()
+	call_deferred("_place_close_icon")
 
 ## unpause=false is for closing the menu while a level load owns the pause:
 ## LevelManager unpauses once the new level has faded in.
@@ -428,6 +506,63 @@ func _on_main_menu_pressed() -> void:
 	await LevelManager.load_new_level(TITLE_SCENE, "", Vector2.ZERO)
 	_leaving_to_title = false
 
+func _build_skip_button() -> void:
+	# No signal copies: Load's `pressed` handler must not come along.
+	button_skip_tutorial = button_load.duplicate(Node.DUPLICATE_GROUPS | Node.DUPLICATE_SCRIPTS) as Button
+	button_skip_tutorial.name = "Button_SkipTutorial"
+	button_skip_tutorial.unique_name_in_owner = false
+	button_skip_tutorial.text = "Skip tutorial"
+	button_skip_tutorial.custom_minimum_size = Vector2(110, 44)
+	button_skip_tutorial.visible = false
+	button_load.get_parent().add_child(button_skip_tutorial)
+
+
+## Inside Training (or its camp tour): offer Skip, and hide Save, which would
+## only save "go to the horde".
+func _sync_tutorial_buttons() -> void:
+	var in_tutorial := TrainingState.in_tutorial(get_tree())
+	if button_skip_tutorial:
+		button_skip_tutorial.visible = in_tutorial
+	button_save.visible = not in_tutorial
+
+
+func _on_skip_tutorial_pressed() -> void:
+	if _skipping_tutorial or LevelManager.is_loading:
+		return
+	_skipping_tutorial = true
+	print("✅ Skipping Guided Training")
+	_end_open_challenge()
+	TrainingState.mark_completed()
+	TrainingState.tour_mode = false
+	TrainingState.direct_start = true
+	if is_paused:
+		hide_pause_menu(false)
+	if DialogSystem.is_open:
+		DialogSystem.close()
+	PlayerManager.player_spawned = false
+	await LevelManager.load_new_level(TrainingState.HORDE_PATH, "", Vector2.ZERO)
+	_skipping_tutorial = false
+
+
+## A speech challenge left open would keep the game paused and the mic live
+## across the level change.
+func _end_open_challenge() -> void:
+	var word_tracker := get_node_or_null("/root/WordTracker")
+	if word_tracker == null or not word_tracker.speech_challenge_active:
+		return
+	word_tracker.speech_challenge_active = false
+	var stt := get_node_or_null("/root/STTManager")
+	if stt:
+		stt.stop()
+	for node in get_tree().get_nodes_in_group("touch_controls"):
+		if node.has_method("end_challenge_mic"):
+			node.end_challenge_mic()
+	var hud := get_node_or_null("/root/PlayerHud")
+	if hud and hud.has_method("hide_speech_challenge"):
+		hud.hide_speech_challenge()
+	print("⚠️ PauseMenu: closed an open speech challenge before skipping")
+
+
 func update_item_description(new_text: String) -> void:
 	item_description.text = new_text
 
@@ -445,7 +580,7 @@ func _sync_music_controls() -> void:
 	if settings == null or music_slider == null:
 		return
 	music_slider.set_value_no_signal(float(settings.music_volume) * 100.0)
-	music_mute_button.text = "Unmute" if settings.music_muted else "Mute"
+	MuteLook.apply(music_mute_button, music_slider, settings.music_muted)
 
 
 func _on_music_slider_changed(value: float) -> void:

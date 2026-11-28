@@ -20,14 +20,14 @@ var tutorial_messages := {
 		"In this level, you will see some slimes.",
 		"Attack them until one falls...",
 		"When an enemy falls, the game pauses and shows a word.",
-		"Speak the word aloud to finish the enemy off — or type it as a backup.",
+		"Speak the word aloud to finish the enemy off — or tap the right words if the mic can't hear you.",
 	],
 	# Level 02 uses the HUD command panel + voice-only banner — no center
 	# bubble (it blocked the maze). Keep messages empty so the dialog stays hidden.
 	"02": [],
 	"03": [
 		"Kill the goblin!",
-		"Keyboard works again. Toggle Mic On anytime for voice move or attack.",
+		"The controls work again. Turn Mic On anytime to move or attack by voice.",
 		"Don't worry — you can't die in the tutorial.",
 	],
 }

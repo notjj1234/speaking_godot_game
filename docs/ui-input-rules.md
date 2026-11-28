@@ -49,10 +49,29 @@ must agree on the (now empty) D-pad TSB allowlist: a comment in
 ### Native GUI that stays outside the router
 
 These have no twin and nothing routed on top of them, so each press has one
-dispatcher: `HSlider`s, the challenge card's Speak / Submit / Listen buttons and
-text box (shown only while the tree is paused, when the gameplay HUD cannot
-process), and the Android mic-permission button. They respond to mouse events
-only, so on a real touch screen expect them not to react.
+dispatcher: `HSlider`s, the challenge card's developer-only typing box
+(`challenge_fallback_input`; its Speak / Submit / Listen buttons and word tiles
+are router-bound so real touches work), the camp Say-it box's developer-only
+typing `LineEdit` (`DialogSystem.say_typed_input`, inside the dialog layer's own
+card; its Listen / Speak / Submit buttons and word tiles are router-bound on the
+`dialog` layer), and the Android mic-permission button.
+They respond to mouse events only, so on a real touch screen expect them not to
+react.
+
+### Players have no keyboard
+
+Typing an answer is a developer-only aid (`SettingsManager.dev_mode`: `?dev=1`
+in the web URL, or five taps on the version badge). Every player-facing escape
+hatch is voice or tap: Speak, Listen, tap chips and pick-the-word tiles. Never
+mention typing in tutorial or hint text.
+
+### One prompt at a time
+
+A conversation or speech card owns the screen. While one is up, the coach
+bubble (`CoachBanner.set_suppressed`), the HUD's optional-mic banner and the
+desktop Mic button step aside, and come back when it closes. Camp
+conversations never open the HUD battle challenge card: their Say-it box has
+its own Listen / Speak / typing tools (`DialogSystem.set_say_tools`).
 
 ## Layers and modals
 

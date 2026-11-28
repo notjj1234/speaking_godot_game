@@ -204,6 +204,34 @@ func get_speech_challenge_for_stage(stage: int, band_override: int = -1) -> Stri
 
 
 ## Keep local sentences.txt phrases available even if Sheets replaced the lists.
+## Up to `n` phrases that look like `target` for pick-the-word tiles: same
+## length band first, then the bands next to it. Never the target, no
+## duplicates, and no side effects on the challenge rotation.
+func lookalike_phrases(target: String, n: int) -> Array:
+	_ensure_local_corpus_merged()
+	var key := target.strip_edges().to_lower()
+	var band := _band_of_phrase(target)
+	var out: Array = []
+	for b in [band, band - 1, band + 1]:
+		if b < 0 or out.size() >= n:
+			continue
+		var pool: Array = _phrases_in_band(b).duplicate()
+		pool.shuffle()
+		for phrase in pool:
+			var p := str(phrase).strip_edges()
+			if out.size() >= n:
+				break
+			if p == "" or p.to_lower() == key or out.any(func(o): return str(o).to_lower() == p.to_lower()):
+				continue
+			out.append(p)
+	for fill in ["apple", "river", "shadow", "lantern", "garden", "window"]:
+		if out.size() >= n:
+			break
+		if fill != key and not out.has(fill):
+			out.append(fill)
+	return out
+
+
 func _ensure_local_corpus_merged() -> void:
 	if not FileAccess.file_exists(LOCAL_SENTENCES_PATH):
 		return

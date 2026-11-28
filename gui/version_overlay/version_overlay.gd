@@ -10,9 +10,17 @@ const TOP := 40.0
 ## Above the HUD (2) and dialog bar (8), below the pause menu (10) and every
 ## other modal card: at 640 wide the badge sits on their top-right corner.
 const BADGE_LAYER := 9
+## Five taps on the badge within TAP_WINDOW_MS toggle developer mode.
+const TAPS_FOR_DEV := 5
+const TAP_WINDOW_MS := 3000
+
+var _panel: PanelContainer
+var _label: Label
+var _taps: Array[int] = []
 
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	layer = BADGE_LAYER
 	follow_viewport_enabled = false
 	var root := Control.new()
@@ -21,6 +29,7 @@ func _ready() -> void:
 	add_child(root)
 
 	var panel := PanelContainer.new()
+	_panel = panel
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	panel.anchor_left = 1.0
@@ -46,3 +55,50 @@ func _ready() -> void:
 	label.add_theme_font_size_override("font_size", 12)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(label)
+	_label = label
+	UiInputRouter.bind(panel, badge_tapped)
+	# SettingsManager loads after this autoload.
+	call_deferred("_hook_settings")
+
+
+func _hook_settings() -> void:
+	var settings := get_node_or_null("/root/SettingsManager")
+	if settings:
+		settings.dev_mode_changed.connect(func(_on): _refresh_label())
+	_refresh_label()
+
+
+func badge_tapped() -> void:
+	var now := Time.get_ticks_msec()
+	_taps.append(now)
+	while not _taps.is_empty() and now - _taps[0] > TAP_WINDOW_MS:
+		_taps.pop_front()
+	if _taps.size() < TAPS_FOR_DEV:
+		return
+	_taps.clear()
+	toggle_dev_mode()
+
+
+## Ctrl+` (dev_toggle) toggles developer mode too; works while paused.
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.is_action_pressed(&"dev_toggle", false, true):
+		get_viewport().set_input_as_handled()
+		toggle_dev_mode()
+
+
+func toggle_dev_mode() -> void:
+	var settings := get_node_or_null("/root/SettingsManager")
+	if settings == null:
+		return
+	settings.set_dev_mode(not settings.dev_mode)
+	PlayerHud.show_notice("Developer mode ON - typing enabled" if settings.dev_mode else "Developer mode OFF")
+
+
+func _refresh_label() -> void:
+	if _label == null:
+		return
+	var settings := get_node_or_null("/root/SettingsManager")
+	var dev: bool = settings != null and settings.dev_mode
+	var version := str(ProjectSettings.get_setting("application/config/version", VERSION))
+	_label.text = version + (" DEV" if dev else "")
+	_panel.offset_left = -96.0 if dev else -72.0

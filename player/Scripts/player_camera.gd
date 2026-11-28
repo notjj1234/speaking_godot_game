@@ -63,6 +63,15 @@ func update_limits(bounds: Array[Vector2]) -> void:
 	_refit()
 
 
+## Portrait phones: zoom so the map fills the play band's height (cropping
+## the sides; the camera follows the player), at least filling the width.
+static func portrait_zoom(view: Vector2, map_size: Vector2, band_h: float) -> float:
+	var z := maxf(1.0, view.x / map_size.x)
+	if band_h > 0.0:
+		z = maxf(z, band_h / map_size.y)
+	return minf(z, MAX_COVER_ZOOM)
+
+
 func _refit() -> void:
 	var view := get_viewport_rect().size
 	_fit_view = view
@@ -76,7 +85,8 @@ func _refit() -> void:
 	var z := 1.0
 	if map.size.x < view.x or map.size.y < view.y:
 		if portrait_touch:
-			z = maxf(1.0, view.x / map.size.x)
+			var arena: Rect2 = MobileSafeLayout.layout_touch_controls(get_viewport()).get("arena", Rect2())
+			z = portrait_zoom(view, map.size, arena.size.y)
 		else:
 			z = maxf(1.0, maxf(view.x / map.size.x, view.y / map.size.y))
 		z = minf(z, MAX_COVER_ZOOM)

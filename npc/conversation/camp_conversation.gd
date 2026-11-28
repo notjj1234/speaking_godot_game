@@ -9,6 +9,8 @@ extends Node
 enum Step { IDLE, ASK, OFFER, PRACTICE }
 
 signal line_changed(text: String)
+## A conversation opened (npc_id is "fire" for the camp fire).
+signal started(npc_id: String)
 signal purchase_made(offer_id: String, paid: int)
 signal action_chosen(action_id: String)
 signal ended
@@ -22,6 +24,8 @@ const MIC_DENIED := -1
 ## working (e.g. Android permission error 9), so fall back to tap choices.
 const STT_ERRORS_BEFORE_TAP := 3
 const SAY_MISS_TEXT := "Not quite. Try again."
+## How long a feedback cue lifts the mic's game-sound mute.
+const CUE_LIFT_SEC := 0.8
 
 var _active := false
 var _leaving := false
@@ -38,11 +42,19 @@ var _clarify_index := 0
 var _listening := false
 var _audio_quieted_by_us := false
 var _sfx_was_muted := false
+var _cue_lifting := false
+var _cue_lift_token := 0
 var _fallback_shown := false
+## The current answer came from a word tile (no first-try discount for it).
+var _tile_pick := false
+var _tiles_for := ""
 var _error_streak := 0
 var _token := 0
 var _pending_choice := ""
 var _say_misses := 0
+## Bumped by every Listen press; a read-aloud that ends after a newer Listen
+## (or after leaving) must not restart the mic.
+var _listen_token := 0
 
 
 func _ready() -> void:
@@ -83,11 +95,34 @@ func start(npc_id: String, portrait: Texture, portrait_hframes: int, on_end: Cal
 		_set_web_challenge_mic(true)
 	if not DialogSystem.say_cancelled.is_connected(_on_say_cancelled):
 		DialogSystem.say_cancelled.connect(_on_say_cancelled)
+	if not DialogSystem.say_listen_pressed.is_connected(_on_say_listen):
+		DialogSystem.say_listen_pressed.connect(_on_say_listen)
+	if not DialogSystem.say_speak_pressed.is_connected(_on_speak_pressed):
+		DialogSystem.say_speak_pressed.connect(_on_speak_pressed)
+	if not DialogSystem.say_typed_submitted.is_connected(submit_transcript):
+		DialogSystem.say_typed_submitted.connect(submit_transcript)
+	if not DialogSystem.say_tile_picked.is_connected(_on_say_tile):
+		DialogSystem.say_tile_picked.connect(_on_say_tile)
 	DialogSystem.show_conversation(str(data.get("name", npc_id)), portrait, portrait_hframes, _on_dialog_closed)
 	print("✅ CampConversation: talking to %s (%s)" % [npc_id, "voice" if _voice else "tap"])
 	_step = Step.ASK
+	started.emit(npc_id)
 	var greet: Array = data.get("greet", ["..."])
+	if _first_visit() and data.has("greet_first"):
+		greet = data["greet_first"]
 	_say(str(greet[randi() % greet.size()]))
+
+
+## The tour, or a player who has never fallen in the horde: no "back from the
+## dead" lines yet.
+func _first_visit() -> bool:
+	if TrainingState.tour_mode:
+		return true
+	var tracker := get_node_or_null("/root/ProgressTracker")
+	if tracker == null or not tracker.has_method("lifetime"):
+		return false
+	var life: Dictionary = tracker.lifetime()
+	return int(life.get("runs", 0)) == 0
 
 
 func is_active() -> bool:
@@ -181,6 +216,15 @@ func leave() -> void:
 	_clear_pending()
 	if DialogSystem.say_cancelled.is_connected(_on_say_cancelled):
 		DialogSystem.say_cancelled.disconnect(_on_say_cancelled)
+	if DialogSystem.say_listen_pressed.is_connected(_on_say_listen):
+		DialogSystem.say_listen_pressed.disconnect(_on_say_listen)
+	if DialogSystem.say_speak_pressed.is_connected(_on_speak_pressed):
+		DialogSystem.say_speak_pressed.disconnect(_on_speak_pressed)
+	if DialogSystem.say_typed_submitted.is_connected(submit_transcript):
+		DialogSystem.say_typed_submitted.disconnect(submit_transcript)
+	if DialogSystem.say_tile_picked.is_connected(_on_say_tile):
+		DialogSystem.say_tile_picked.disconnect(_on_say_tile)
+	_listen_token += 1
 	if _is_web():
 		_set_web_challenge_mic(false)
 	_step = Step.IDLE
@@ -237,11 +281,14 @@ func _pick_offer(offer_id: String) -> void:
 		var line := str(refuse.get(refused, ""))
 		if line == "":
 			line = "Can't do that one right now."
-		_play_sfx(&"error")
+		var why := {"broke": _broke_text(offer_id), "full": "Your pack is full",
+			"maxed": "Already maxed out", "no_sword": "You have no sword yet"}
+		_feedback(&"error", str(why.get(refused, "")), false)
 		_back_to_ask(line)
 		return
 	if offer_id == "sword":
 		CampShop.buy("sword", false)
+		_feedback(&"accept", "Sword on" if PlayerManager.sword_equipped else "Sword off", true)
 		var done_key := "done" if PlayerManager.sword_equipped else "done_off"
 		_back_to_ask(str(offer.get(done_key, offer.get("done", ""))))
 		return
@@ -277,6 +324,7 @@ func _enter_practice() -> void:
 		stage = maxi(int(tracker.horde_resume_stage()), 1)
 	_target = WordTracker.get_speech_challenge_for_stage(stage)
 	_say(str(_data.get("practice_intro", "Say: '%s'")) % _target)
+	DialogSystem.show_say_box("", _target)
 	_offer_typed_test_input()
 
 
@@ -293,11 +341,11 @@ func _handle_practice(heard: String) -> void:
 	if passed:
 		_hide_fallback()
 		_play_sfx(&"correct")
-		_complete_purchase(_attempts == 1, score)
+		_complete_purchase(_attempts == 1 and not _tile_pick, score)
 		return
 	_play_sfx(&"wrong")
 	_say(str(_data.get("retry", "Again.")))
-	if _is_web() and _attempts >= FALLBACK_AFTER_MISSES:
+	if _attempts >= FALLBACK_AFTER_MISSES:
 		_show_fallback()
 
 
@@ -306,11 +354,12 @@ func _complete_purchase(first_try: bool, score: float) -> void:
 	var paid := CampShop.discounted_price(offer_id) if first_try else CampShop.price(offer_id)
 	if not CampShop.buy(offer_id, first_try):
 		var refuse: Dictionary = _data.get("refuse", {})
-		var why := str(refuse.get(CampShop.refusal(offer_id), ""))
-		_play_sfx(&"error")
+		var code := CampShop.refusal(offer_id)
+		var why := str(refuse.get(code, ""))
+		_feedback(&"error", _broke_text(offer_id) if code == "broke" else "Couldn't buy that", false)
 		_back_to_ask(why if why != "" else "Hm. Your pack has no room for that.")
 		return
-	_play_sfx(&"purchase")
+	_feedback(&"purchase", "Bought! -%d gems" % paid, true)
 	purchase_made.emit(offer_id, paid)
 	var praise := str(_data.get("praise_first" if first_try else "praise", ""))
 	if score >= 0.0:
@@ -341,6 +390,8 @@ func _farewell() -> void:
 
 
 func _say(text: String) -> void:
+	if _step != Step.PRACTICE and _pending_choice == "" and DialogSystem.is_say_box_open():
+		DialogSystem.hide_say_box()
 	_line = text
 	DialogSystem.set_conversation_line(text)
 	line_changed.emit(text)
@@ -365,9 +416,11 @@ func _choices() -> Array:
 		for id in offers:
 			var offer: Dictionary = offers[id]
 			var label := str(offer.get("label", id))
+			if id == "sword" and PlayerManager.sword_equipped and offer.has("label_on"):
+				label = str(offer["label_on"])
 			var say := str(offer.get("say", label))
 			if not offer.get("action", false) and id != "sword":
-				label = "%s (%d)" % [label, CampShop.price(id)]
+				label = "%s - %d gems" % [label, CampShop.price(id)]
 			raw.append({"id": id, "label": label, "say": say})
 		var bye := str(_data.get("bye_label", "Bye"))
 		raw.append({"id": "bye", "label": bye, "say": bye})
@@ -440,7 +493,7 @@ func _handle_pending(heard: String) -> void:
 	_say_misses += 1
 	_play_sfx(&"wrong")
 	DialogSystem.set_say_feedback(SAY_MISS_TEXT)
-	if _is_web() and _say_misses >= FALLBACK_AFTER_MISSES:
+	if _say_misses >= FALLBACK_AFTER_MISSES:
 		_show_fallback()
 	_listen()
 
@@ -462,16 +515,56 @@ func _on_say_cancelled() -> void:
 		return
 	_pending_choice = ""
 	_say_misses = 0
-	if _step != Step.PRACTICE:
-		_target = ""
+	_listen_token += 1
 	_hide_fallback()
 	_abandon_scorer_capture()
+	if _step == Step.PRACTICE:
+		# Cancelling the practice phrase backs out of the deal.
+		_step = Step.OFFER
+		_say(_offer_line())
+	else:
+		_target = ""
 
 
+## Feedback cues must be heard even while the mic listens (game sounds are
+## muted then): the SFX bus is lifted for the length of the cue.
 func _play_sfx(cue: StringName) -> void:
 	var sfx := get_node_or_null("/root/Sfx")
 	if sfx:
 		sfx.play(cue)
+	_lift_sfx_for_cue()
+
+
+func _lift_sfx_for_cue() -> void:
+	var index := AudioServer.get_bus_index("SFX")
+	if index == -1:
+		return
+	_cue_lift_token += 1
+	var token := _cue_lift_token
+	_cue_lifting = true
+	if _audio_quieted_by_us:
+		AudioServer.set_bus_mute(index, _sfx_was_muted)
+	await get_tree().create_timer(CUE_LIFT_SEC, true, false, true).timeout
+	if token != _cue_lift_token:
+		return
+	_cue_lifting = false
+	if _audio_quieted_by_us:
+		AudioServer.set_bus_mute(index, true)
+
+
+func is_listening() -> bool:
+	return _listening
+
+
+## A purchase or refusal: its sound plus a short line the player can't miss.
+func _feedback(cue: StringName, text: String, good: bool) -> void:
+	_play_sfx(cue)
+	if text != "":
+		DialogSystem.show_toast(text, good)
+
+
+func _broke_text(offer_id: String) -> String:
+	return "Need %d gems - you have %d" % [CampShop.price(offer_id), PlayerManager.bonfire_points]
 
 
 # --- speech -----------------------------------------------------------------
@@ -545,41 +638,101 @@ func _on_speak_pressed() -> void:
 
 
 func _show_fallback() -> void:
-	var hud := get_node_or_null("/root/PlayerHud")
-	if hud == null or _fallback_shown:
+	if _fallback_shown:
 		return
 	_fallback_shown = true
-	hud.show_speech_challenge(_target)
-	hud.show_typed_fallback()
-	hud.show_speak_button()
-	if not hud.fallback_submitted.is_connected(submit_transcript):
-		hud.fallback_submitted.connect(submit_transcript)
-	if not hud.speak_pressed.is_connected(_on_speak_pressed):
-		hud.speak_pressed.connect(_on_speak_pressed)
+	_refresh_say_tools()
 
 
-## TEMPORARY (desktop testing): see PlayerHud.typed_test_input. Re-shows the
-## box so a retargeted Say-it box types against the new phrase.
+## Developer mode (PlayerHud.typed_test_input): the Say-it box offers its
+## typing row from the start.
 func _offer_typed_test_input() -> void:
-	var hud := get_node_or_null("/root/PlayerHud")
-	if hud == null or not hud.typed_test_input:
-		return
-	_hide_fallback()
-	_show_fallback()
+	_refresh_say_tools()
 
 
 func _hide_fallback() -> void:
 	if not _fallback_shown:
 		return
 	_fallback_shown = false
-	var hud := get_node_or_null("/root/PlayerHud")
-	if hud == null:
+	_refresh_say_tools()
+
+
+## The open Say-it box's helpers. Listen whenever read-aloud works; Speak and
+## pick-the-word tiles after the misses fallback; typing only in developer
+## mode (PlayerHud.typed_test_input) - players have no keyboard.
+func _refresh_say_tools() -> void:
+	if not DialogSystem.is_say_box_open():
 		return
-	if hud.fallback_submitted.is_connected(submit_transcript):
-		hud.fallback_submitted.disconnect(submit_transcript)
-	if hud.speak_pressed.is_connected(_on_speak_pressed):
-		hud.speak_pressed.disconnect(_on_speak_pressed)
-	hud.hide_speech_challenge()
+	var hud := get_node_or_null("/root/PlayerHud")
+	var tts := get_node_or_null("/root/TTSManager")
+	var listen: bool = tts != null and tts.is_available() and _target != ""
+	var typed: bool = hud != null and bool(hud.typed_test_input)
+	var speak := _fallback_shown and _voice
+	DialogSystem.set_say_tools(listen, speak, typed)
+	if _fallback_shown and _target != "":
+		if _tiles_for != _target:
+			_tiles_for = _target
+			DialogSystem.set_say_tiles(_tile_options())
+	else:
+		_tiles_for = ""
+		DialogSystem.set_say_tiles([])
+
+
+## The phrase to say plus two others: the other choices' phrases while
+## confirming a tapped option, otherwise practice phrases.
+func _tile_options() -> Array:
+	var options: Array = [_target]
+	var pool: Array = []
+	if _pending_choice != "":
+		for choice in _choices():
+			pool.append(str(choice["say"]))
+	else:
+		pool = WordTracker.lookalike_phrases(_target, 4)
+	pool.shuffle()
+	for phrase in pool:
+		if options.size() >= 3:
+			break
+		var p := str(phrase)
+		if p != "" and not options.any(func(o): return str(o).to_lower() == p.to_lower()):
+			options.append(p)
+	options.shuffle()
+	return options
+
+
+func _on_say_tile(text: String) -> void:
+	if not _active:
+		return
+	_tile_pick = true
+	submit_transcript(text)
+	_tile_pick = false
+
+
+## Listen: read the phrase aloud with the mic off, then listen again by itself.
+func _on_say_listen() -> void:
+	if not _active or _target == "":
+		return
+	var stt = _stt()
+	if stt and _listening:
+		if _is_web():
+			stt.end_challenge_listen()
+		else:
+			stt.stop()
+	_end_listen()
+	_abandon_scorer_capture()
+	_listen_token += 1
+	var token := _listen_token
+	var tts := get_node_or_null("/root/TTSManager")
+	if tts and tts.is_available() and tts.speak(_target):
+		tts.speech_finished.connect(_on_listen_done.bind(token), CONNECT_ONE_SHOT)
+		return
+	_listen()
+
+
+func _on_listen_done(token: int) -> void:
+	if token != _listen_token or not _active or not DialogSystem.is_say_box_open():
+		return
+	if not _listening:
+		_listen()
 
 
 # --- web phoneme scoring (pattern from enemy.gd) -----------------------------
@@ -643,7 +796,8 @@ func _quiet_for_mic() -> void:
 	var index := AudioServer.get_bus_index("SFX")
 	if index != -1:
 		_sfx_was_muted = AudioServer.is_bus_mute(index)
-		AudioServer.set_bus_mute(index, true)
+		if not _cue_lifting:  # a feedback cue is playing: it re-mutes when done
+			AudioServer.set_bus_mute(index, true)
 	var music := get_node_or_null("/root/MusicManager")
 	if music:
 		music.set_ducked(true)
@@ -654,7 +808,7 @@ func _restore_after_mic() -> void:
 		return
 	_audio_quieted_by_us = false
 	var index := AudioServer.get_bus_index("SFX")
-	if index != -1:
+	if index != -1 and not _cue_lifting:
 		AudioServer.set_bus_mute(index, _sfx_was_muted)
 	var music := get_node_or_null("/root/MusicManager")
 	if music:

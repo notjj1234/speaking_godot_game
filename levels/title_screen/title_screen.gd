@@ -2,7 +2,6 @@
 
 extends CanvasLayer
 
-const PLAYGROUND_PATH := "res://levels/playground.tscn"
 const ENDLESS_HORDE_PATH := "res://levels/endless_horde/endless_horde.tscn"
 const SAVE_FILE_PATH := "user://save.sav"
 
@@ -71,6 +70,7 @@ func _ready() -> void:
 	no_button.focus_neighbor_right = no_button.get_path_to(yes_button)
 	no_button.focus_next = no_button.get_path_to(yes_button)
 
+	_add_title_arena()
 	_refresh_load_button()
 	tutorial_button.grab_focus()
 
@@ -83,8 +83,54 @@ func _ready() -> void:
 ## so it must not enable Load. Disabled state must be known before building
 ## the arrow-key focus ring.
 func _refresh_load_button() -> void:
-	load_button.disabled = _read_save_scene_path().is_empty()
+	var has_save := not _read_save_scene_path().is_empty()
+	load_button.disabled = not has_save
+	# Nothing to load: hide it instead of a greyed-out button with no reason.
+	load_button.visible = has_save
 	_setup_menu_focus_neighbors()
+
+
+## The real first arena behind the menu (dimmed), scaled to cover the view,
+## instead of a stretched tile sheet.
+const TITLE_ARENA := preload("res://levels/endless_horde/arenas/arena_01.tscn")
+const ARENA_SIZE := Vector2(640, 480)
+var _title_arena: Node2D
+
+
+func _add_title_arena() -> void:
+	_title_arena = TITLE_ARENA.instantiate() as Node2D
+	_title_arena.name = "TitleArena"
+	_title_arena.process_mode = Node.PROCESS_MODE_DISABLED
+	add_child(_title_arena)
+	move_child(_title_arena, 0)
+	for hide_name in ["Control/Background", "Control/Backdrop"]:
+		var n := get_node_or_null(hide_name) as CanvasItem
+		if n:
+			n.visible = false
+	_fit_title_arena()
+	get_viewport().size_changed.connect(_fit_title_arena)
+
+
+## Portrait phones: bigger buttons and text (a small menu floated in the
+## middle of a tall screen).
+func apply_menu_size(portrait: bool) -> void:
+	var size := Vector2(280, 56) if portrait else Vector2(240, 48)
+	var font := 20 if portrait else 16
+	for btn in [tutorial_button, game_button, load_button, journal_button, settings_button, exit_button]:
+		if btn:
+			btn.custom_minimum_size = size
+			btn.add_theme_font_size_override("font_size", font)
+
+
+func _fit_title_arena() -> void:
+	var view_now := get_viewport().get_visible_rect().size
+	apply_menu_size(view_now.y > view_now.x)
+	if _title_arena == null:
+		return
+	var view := get_viewport().get_visible_rect().size
+	var k := maxf(view.x / ARENA_SIZE.x, view.y / ARENA_SIZE.y)
+	_title_arena.scale = Vector2(k, k)
+	_title_arena.position = view * 0.5 - ARENA_SIZE * 0.5 * k
 
 
 func _setup_menu_focus_neighbors() -> void:
@@ -169,24 +215,26 @@ func _on_tutorial_pressed() -> void:
 	if _navigating or _any_confirm_open() or _is_journal_open():
 		return
 	_navigating = true
-	print("Starting Tutorial...")
+	print("✅ Starting Guided Training...")
 	_prime_web_mic()
 	_restore_game_ui()
-	# Spawn at PlayerSpawn (center of playground), not PlaygroundTo01 (top edge —
-	# that transition would immediately pull the player into tutorial area 01).
-	# Empty target + player_spawned=false lets player_spawn.gd place the player.
 	PlayerManager.player_spawned = false
-	LevelManager.load_new_level(PLAYGROUND_PATH, "", Vector2.ZERO)
+	LevelManager.load_new_level(TrainingState.TRAINING_PATH, "", Vector2.ZERO)
 
 
 func _on_game_pressed() -> void:
 	if _navigating or _any_confirm_open() or _is_journal_open():
 		return
 	_navigating = true
-	print("✅ Starting Endless Horde...")
 	_prime_web_mic()
 	_restore_game_ui()
 	PlayerManager.player_spawned = false
+	# A brand-new player starts with Guided Training (skippable from pause).
+	if not TrainingState.is_completed():
+		print("✅ First Main Game: starting Guided Training")
+		LevelManager.load_new_level(TrainingState.TRAINING_PATH, "", Vector2.ZERO)
+		return
+	print("✅ Starting Endless Horde...")
 	LevelManager.load_new_level(ENDLESS_HORDE_PATH, "", Vector2.ZERO)
 
 
@@ -282,6 +330,8 @@ func _friendly_place_name(scene_path: String) -> String:
 	var path := scene_path.to_lower()
 	if "endless_horde" in path:
 		return "Endless Horde"
+	if "training" in path:
+		return "Training"
 	if "playground" in path:
 		return "Tutorial"
 	if scene_path.is_empty():

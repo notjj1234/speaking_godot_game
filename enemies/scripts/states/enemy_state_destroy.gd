@@ -33,6 +33,9 @@ func enter() -> void:
 	
 	enemy.update_animation(anim_name)
 	enemy.animation_player.animation_finished.connect(_on_animation_finished)
+	# No "0/3" bar hanging over the death animation.
+	if enemy.health_bar:
+		enemy.health_bar.hide_bar()
 	disable_hurt_box()
 	if enemy.has_method("spawn_split_children"):
 		enemy.spawn_split_children()

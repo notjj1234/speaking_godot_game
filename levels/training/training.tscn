@@ -1,0 +1,26 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://levels/training/training.gd" id="1_training"]
+[ext_resource type="PackedScene" uid="uid://b3oaeqoffq7dl" path="res://levels/player_spawn.tscn" id="2_spawn"]
+[ext_resource type="PackedScene" uid="uid://ctqin6e0wq3vi" path="res://touch_controls/Scene/touch_controls.tscn" id="3_touch"]
+[ext_resource type="PackedScene" uid="uid://cgf1781jg33w2" path="res://touch_controls/Scene/pause_button.tscn" id="4_pause"]
+[ext_resource type="PackedScene" uid="uid://f0b40yoyusyg" path="res://tile_maps/grass_background.tscn" id="5_bg"]
+
+[node name="Training" type="Node2D"]
+y_sort_enabled = true
+script = ExtResource("1_training")
+
+[node name="GrassBackground" parent="." instance=ExtResource("5_bg")]
+
+[node name="PlayerSpawn" parent="." instance=ExtResource("2_spawn")]
+position = Vector2(288, 207)
+
+[node name="TouchControls" parent="." instance=ExtResource("3_touch")]
+
+[node name="PauseButton" parent="." instance=ExtResource("4_pause")]
+
+[node name="TrainingEnemies" type="Node2D" parent="."]
+y_sort_enabled = true
+
+[node name="DecorLayer" type="Node2D" parent="."]
+y_sort_enabled = true

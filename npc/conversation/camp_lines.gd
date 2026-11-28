@@ -2,8 +2,9 @@ class_name CampLines
 extends RefCounted
 ## Conversation copy and phrase lists for the camp NPCs and the fire.
 ## ASCII only: the pixel font has no glyphs for curly quotes or dashes.
-## Upgrades read like an RPG menu: "label" is the chip (+2 HP, +1 DMG, with the
-## game's real numbers per rank) and "say" the plain phrase the player speaks.
+## Shop chips are plain words a young player understands ("Hit harder");
+## "say" is the phrase spoken to confirm it, and the price is added by
+## CampConversation ("Hit harder - 2 gems").
 ## No stat names in the talk ("vitality", "haste"). Offer lines are formatted
 ## with the price, so a literal percent sign is written %%.
 ## Offers with "action": true skip the offer and practice steps.
@@ -16,6 +17,7 @@ const NPCS := {
 	"smith": {
 		"name": "Smith",
 		"greet": ["Back from the dead? What'll it be?", "Still breathing. Need steel?"],
+		"greet_first": ["Welcome, recruit! Need steel?", "New face! Want a sharper blade?"],
 		"anything_else": "Anything else?",
 		"clarify": [
 			"Hit harder, or land more big hits?",
@@ -34,23 +36,25 @@ const NPCS := {
 		},
 		"offers": {
 			"might": {
-				"label": "+1 DMG",
+				"label": "Hit harder",
 				"say": "Hit harder",
-				"offer": "A sharper blade. +1 DMG. %d gems. Deal?",
+				"offer": "A sharper blade, so you hit harder. %d gems. Deal?",
 				"done": "There. Swing it.",
 				"phrases": ["hit harder", "stronger", "more damage", "damage", "attack", "might",
 					"sharper blade", "strength"],
 			},
 			"crit": {
-				"label": "+10% CRIT",
-				"say": "Big hits",
-				"offer": "I'll show you the weak spots. +10%% CRIT. %d gems. Deal?",
+				"label": "Lucky hits",
+				"say": "Lucky hits",
+				"offer": "I'll show you the weak spots - more lucky big hits. %d gems. Deal?",
 				"done": "You'll see the weak spots now.",
 				"phrases": ["big hits", "big hit", "crit", "crits", "critical", "critical hits", "sharper eye", "lucky hits",
 					"weak spots", "precision"],
 			},
 			"sword": {
-				"label": "Sword",
+				"label": "Use sword",
+				"label_on": "Put sword away",
+				"say": "Sword",
 				"done": "Sword's on your belt.",
 				"done_off": "Sword's put away. Fists it is.",
 				"phrases": ["sword", "equip", "unequip", "equip my sword", "put it away"],
@@ -82,17 +86,17 @@ const NPCS := {
 		},
 		"offers": {
 			"vitality": {
-				"label": "+2 HP",
-				"say": "More health",
-				"offer": "Toughen up. +2 HP. %d gems. Deal?",
+				"label": "More hearts",
+				"say": "More hearts",
+				"offer": "Toughen up - one more heart. %d gems. Deal?",
 				"done": "Feel that? One more heart.",
 				"phrases": ["tougher", "more health", "health", "hp", "vitality", "more hearts", "hearts",
 					"last longer", "survive", "endurance"],
 			},
 			"haste": {
-				"label": "+8% SPEED",
+				"label": "Run faster",
 				"say": "Run faster",
-				"offer": "Running drills. +8%% SPEED. %d gems. Deal?",
+				"offer": "Running drills, so you run faster. %d gems. Deal?",
 				"done": "Look at those feet go!",
 				"phrases": ["run faster", "faster", "speed", "haste", "quicker", "move faster", "quick",
 					"sprint"],
@@ -124,13 +128,15 @@ const NPCS := {
 		},
 		"offers": {
 			"apple": {
-				"label": "Apple",
+				"label": "Apple (small heal)",
+				"say": "Apple",
 				"offer": "A crisp apple. Heals 4 HP. %d gems. Deal?",
 				"done": "Fresh from the tree.",
 				"phrases": ["apple", "apples", "fruit", "snack", "something small"],
 			},
 			"potion": {
-				"label": "Potion",
+				"label": "Potion (big heal)",
+				"say": "Potion",
 				"offer": "A strong potion. Heals 10 HP. %d gems. Deal?",
 				"done": "Drink it when it hurts.",
 				"phrases": ["potion", "potions", "drink", "bottle", "something strong", "medicine", "heal"],

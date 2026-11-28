@@ -122,6 +122,97 @@ body {
 			<div id="status-notice"></div>
 		</div>
 
+		<script>
+			// Loqui Quest focus guard: while the page is hidden (tab switch, app
+			// switch, swipe away) nothing may keep playing or listening. The game
+			// loop is frozen then, so this has to live in JS, and it must run
+			// before the engine creates its AudioContext.
+			/* LQ_AUDIO_FOCUS_BEGIN */
+			function installAudioFocus(win, doc) {
+				const contexts = new Set();
+				const tracks = new Set();
+				const resumeContexts = new Set();
+				const reenableTracks = new Set();
+				let hidden = false;
+
+				function track(Orig) {
+					if (typeof Orig !== 'function') return Orig;
+					return class extends Orig {
+						constructor(...args) {
+							super(...args);
+							contexts.add(this);
+						}
+					};
+				}
+				const TrackedAudioContext = track(win.AudioContext);
+				const TrackedWebkitAudioContext = win.webkitAudioContext === win.AudioContext
+					? TrackedAudioContext : track(win.webkitAudioContext);
+				if (TrackedAudioContext) win.AudioContext = TrackedAudioContext;
+				if (TrackedWebkitAudioContext) win.webkitAudioContext = TrackedWebkitAudioContext;
+
+				const media = win.navigator && win.navigator.mediaDevices;
+				if (media && typeof media.getUserMedia === 'function') {
+					const getUserMedia = media.getUserMedia.bind(media);
+					media.getUserMedia = function (constraints) {
+						return getUserMedia(constraints).then(function (stream) {
+							try { stream.getTracks().forEach(function (t) { tracks.add(t); }); } catch (e) {}
+							return stream;
+						});
+					};
+				}
+
+				function onHidden() {
+					if (hidden) return;
+					hidden = true;
+					contexts.forEach(function (ctx) {
+						if (ctx.state === 'running') {
+							resumeContexts.add(ctx);
+							try { ctx.suspend(); } catch (e) {}
+						}
+					});
+					tracks.forEach(function (t) {
+						if (t.readyState === 'ended') { tracks.delete(t); return; }
+						if (t.enabled) {
+							reenableTracks.add(t);
+							t.enabled = false;
+						}
+					});
+					const speech = win.speechSynthesis;
+					if (speech) {
+						try {
+							if (speech.speaking) speech.pause();
+							speech.cancel();
+						} catch (e) {}
+					}
+				}
+
+				function onVisible() {
+					if (!hidden) return;
+					hidden = false;
+					resumeContexts.forEach(function (ctx) {
+						try { ctx.resume(); } catch (e) {}
+					});
+					resumeContexts.clear();
+					reenableTracks.forEach(function (t) {
+						if (t.readyState !== 'ended') t.enabled = true;
+					});
+					reenableTracks.clear();
+					if (win.speechSynthesis) {
+						try { win.speechSynthesis.resume(); } catch (e) {}
+					}
+				}
+
+				doc.addEventListener('visibilitychange', function () {
+					if (doc.visibilityState === 'hidden') onHidden(); else onVisible();
+				});
+				win.addEventListener('pagehide', onHidden);
+				win.addEventListener('pageshow', onVisible);
+				win.LQAudioFocus = { contexts: contexts, tracks: tracks, onHidden: onHidden, onVisible: onVisible };
+				return win.LQAudioFocus;
+			}
+			/* LQ_AUDIO_FOCUS_END */
+			installAudioFocus(window, document);
+		</script>
 		<script src="index.js"></script>
 		<script>
 			// Loqui Quest text-to-speech facade: exposes window.LQSpeak for the
@@ -270,7 +361,7 @@ body {
 			import '/extras/pronunciation/window_lqpron.js';
 		</script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":13111340,"index.wasm":39513091},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":9621672,"index.wasm":39513091},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 

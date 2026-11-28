@@ -180,8 +180,13 @@ func _build() -> void:
 	tabs.add_child(_tab_today)
 	tabs.add_child(_tab_phrases)
 	tabs.add_child(_tab_bestiary)
-	# Back shares the tab row: a 44 px row of its own would not fit 480 px.
-	_back = _make_pager_button("Back")
+	# Close shares the tab row (a 44 px row of its own would not fit 480 px),
+	# set apart by a gap and a dark outline so it doesn't read as a 4th tab.
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(16, 0)
+	tabs.add_child(gap)
+	_back = _make_pager_button("Close")
+	_style_close_button(_back)
 	tabs.add_child(_back)
 
 	_body = VBoxContainer.new()
@@ -550,6 +555,20 @@ func _apply_button_style(btn: Button, selected: bool) -> void:
 		btn.add_theme_stylebox_override(state, box)
 	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
 		btn.add_theme_color_override(state, ink)
+
+
+## Close: dark fill, light text, thicker light outline; a visible focus ring.
+func _style_close_button(btn: Button) -> void:
+	var box := _button_box(Color(0.12, 0.08, 0.04, 0.9), TEXT_LIGHT)
+	box.set_border_width_all(2)
+	var focus := box.duplicate() as StyleBoxFlat
+	focus.border_color = UI_ACCENT_COLOR
+	focus.set_border_width_all(3)
+	for state in ["normal", "hover", "pressed"]:
+		btn.add_theme_stylebox_override(state, box)
+	btn.add_theme_stylebox_override("focus", focus)
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
+		btn.add_theme_color_override(state, TEXT_LIGHT)
 
 
 func _button_box(fill: Color, border: Color) -> StyleBoxFlat:

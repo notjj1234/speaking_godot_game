@@ -2,6 +2,12 @@
 
 extends CanvasLayer
 
+## Fires for every recognised voice command ("move forward", "move backward",
+## "move left", "move right", "attack"). Guided Training listens for it.
+signal voice_command_executed(command: String)
+
+var _desktop_hidden_by_overlay := false
+
 @onready var mic_button = $Root/SafeArea/RightCluster/Mic
 @onready var interact_button = $Root/SafeArea/RightCluster/Interact
 @onready var attack_button: TouchScreenButton = $Root/SafeArea/RightCluster/Attack
@@ -42,11 +48,13 @@ var _movement_unlocked: bool = false
 var _voice_only_gesture_hooked: bool = false
 var _interact_hidden_by_level: bool = false
 var _talk_requests: int = 0
+var _prompt_label := "Talk"
 var _mic_toggle_cooldown_until_msec: int = 0
 
 func _ready() -> void:
 	add_to_group("touch_controls")
 	_bind_pointer_regions()
+	_apply_interact_visibility()  # hidden until something usable is in reach
 
 	_update_mic_ui()
 	print("Touch Controls Ready: Mic state initialized to: ", mic_enabled)
@@ -184,6 +192,14 @@ func _apply_legacy_level_rules(level_name: String) -> void:
 ## Called by UiInputRouter whenever an overlay layer opens or closes.
 func set_gameplay_suppressed(suppressed: bool) -> void:
 	if not _touch_ui_enabled:
+		# Desktop web may still show the Mic button (_ensure_mic_button_visible):
+		# a dialog or menu owns the screen, so hide it and bring it back after.
+		if suppressed and visible:
+			_desktop_hidden_by_overlay = true
+			visible = false
+		elif not suppressed and _desktop_hidden_by_overlay:
+			_desktop_hidden_by_overlay = false
+			visible = true
 		return
 	# TouchScreenButtons used to auto-release on hide; the joystick does not, so
 	# clear its Input.action_press state and stop its `_input` when an overlay
@@ -249,21 +265,22 @@ func _disable_interact_button() -> void:
 	_apply_interact_visibility()
 
 
-func set_talk_prompt(active: bool) -> void:
+## Something usable is in reach (an NPC: "Talk", a chest: "Open"). The
+## button only shows while at least one prompt is active.
+func set_talk_prompt(active: bool, label: String = "Talk") -> void:
 	_talk_requests += 1 if active else -1
 	_talk_requests = maxi(_talk_requests, 0)
+	if active:
+		_prompt_label = label
 	_apply_interact_visibility()
 
 
 func _apply_interact_visibility() -> void:
 	var talking := _talk_requests > 0 and not PlayerManager.dialog_open
-	var show := talking or not _interact_hidden_by_level
 	if interact_button:
-		interact_button.visible = show
+		interact_button.visible = talking
 		if talking:
-			interact_button.text = "Talk"
-		elif show:
-			interact_button.text = "Interact"
+			interact_button.text = _prompt_label
 
 
 func _disable_attack_button() -> void:
@@ -452,19 +469,21 @@ func _fail_open_voice_only(message: String) -> void:
 	print("⚠️ ", message)
 
 
+## Makes the mic switch reachable. Touch: the cluster's Mic button. Desktop:
+## the HUD's top-right mic plate becomes the switch (no lone floating button).
+## No speech recognition at all: no switch (it couldn't do anything).
 func _ensure_mic_button_visible() -> void:
+	var stt := get_node_or_null("/root/STTManager")
+	var can_listen: bool = stt != null and stt.is_speech_available()
 	if mic_button:
-		mic_button.visible = true
-	# Desktop web hides the whole layer; show at least the right cluster so the
-	# player can tap Mic On and satisfy the browser gesture requirement.
+		mic_button.visible = can_listen and _touch_ui_enabled
 	if not _touch_ui_enabled:
-		visible = true
-		if left_cluster:
-			left_cluster.visible = false
 		if right_cluster:
-			right_cluster.visible = true
-			_disable_interact_button()
-			_disable_attack_button()
+			right_cluster.visible = false
+		if player_hud and player_hud.has_method("set_stt_plate_clickable"):
+			player_hud.set_stt_plate_clickable(can_listen)
+			if can_listen and not player_hud.stt_plate_pressed.is_connected(_on_mic_tapped):
+				player_hud.stt_plate_pressed.connect(_on_mic_tapped)
 
 
 func _hook_voice_only_gesture_retry() -> void:
@@ -678,6 +697,8 @@ func _execute_command(command: String) -> void:
 	if PlayerManager.player == null:
 		print("Error: PlayerManager.player is null")
 		return
+	if command in ["move forward", "move backward", "move left", "move right", "attack"]:
+		voice_command_executed.emit(command)
 
 	var is_facing_south = PlayerManager.player.cardinal_direction == Vector2.DOWN
 

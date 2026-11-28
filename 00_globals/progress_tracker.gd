@@ -298,6 +298,13 @@ func boss_cleared_stage() -> int:
 	return int(_horde_run().get("boss_cleared_stage", 0))
 
 
+## The journal never outlives a level change.
+func _enter_tree() -> void:
+	var lm := get_node_or_null("/root/LevelManager")
+	if lm and not lm.level_load_started.is_connected(hide_journal):
+		lm.level_load_started.connect(hide_journal)
+
+
 func show_journal() -> void:
 	if _journal == null:
 		var packed := load("res://gui/progress_journal/progress_journal.tscn") as PackedScene

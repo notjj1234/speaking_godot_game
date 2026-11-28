@@ -50,6 +50,15 @@ func _run() -> void:
 	await _frames(5)
 	_check_arena(horde, "Meadow", "practice")
 	_check("practice label", (horde.get("_label") as Label).text == "Practice", (horde.get("_label") as Label).text)
+	var pad := horde.get("_start_pad") as Node2D
+	var pad_label := pad.find_children("*", "Label", true, false)[0] as Label if pad else null
+	_check("start pad says what to do", pad_label != null and pad_label.text == "Walk here to start!",
+		pad_label.text if pad_label else "<none>")
+	_check("start pad glows", pad != null and not pad.find_children("*", "PatchGlow", true, false).is_empty()
+		or (pad != null and pad.get_child_count() >= 3))
+	var guide = horde.get("_pad_pointer")
+	_check("guide arrow points at the start pad", guide != null and guide.current_kind() in [&"world", &"edge"],
+		str(guide.current_kind()) if guide else "<none>")
 	var player := PlayerManager.player as Node2D
 	_check("player starts on the spawn point", player.global_position.distance_to(Vector2(320, 240)) < 2.0, str(player.global_position))
 	await _check_camera(horde)

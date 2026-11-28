@@ -13,7 +13,7 @@ enum SpeechDifficulty {
 signal settings_changed
 
 var music_volume: float = 0.8
-var music_muted: bool = true
+var music_muted: bool = false
 var sfx_volume: float = 0.8
 var sfx_muted: bool = false
 var fullscreen: bool = true
@@ -23,6 +23,13 @@ var speech_difficulty: SpeechDifficulty = SpeechDifficulty.DIFFICULTY_NORMAL
 var ui_scale: float = 1.0
 var reduce_motion: bool = false
 var color_blind_mode: bool = false
+## Guided Training: finished once, and which one-time coach tips were shown.
+var tutorial_completed: bool = false
+var tutorial_tips_seen: Dictionary = {}
+## Developer mode: typing answers (players have no keyboard). On with ?dev=1 in
+## the web URL or five taps on the version badge; remembered in settings.cfg.
+var dev_mode: bool = false
+signal dev_mode_changed(on: bool)
 
 const SETTINGS_PATH = "user://settings.cfg"
 
@@ -30,6 +37,36 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	load_settings()
 	apply_settings()
+	MobileSafeLayout.set_force_touch_ui(touch_controls_forced)
+	if OS.has_feature("web"):
+		var query = JavaScriptBridge.eval("window.location.search", true)
+		var flag := dev_flag_from_query(str(query) if query != null else "")
+		if flag != -1:
+			dev_mode = flag == 1
+			save_settings()
+	_push_dev_mode()
+
+
+## ?dev=1 -> 1, ?dev=0 -> 0, no dev parameter -> -1.
+static func dev_flag_from_query(query: String) -> int:
+	for pair in query.trim_prefix("?").split("&", false):
+		var kv := pair.split("=")
+		if kv[0] == "dev":
+			return 0 if kv.size() > 1 and kv[1] == "0" else 1
+	return -1
+
+
+func set_dev_mode(on: bool) -> void:
+	dev_mode = on
+	save_settings()
+	_push_dev_mode()
+	dev_mode_changed.emit(on)
+
+
+func _push_dev_mode() -> void:
+	var hud := get_node_or_null("/root/PlayerHud")
+	if hud:
+		hud.typed_test_input = dev_mode
 
 
 func load_settings() -> void:
@@ -51,6 +88,10 @@ func load_settings() -> void:
 	ui_scale = config.get_value("accessibility", "ui_scale", 1.0)
 	reduce_motion = config.get_value("accessibility", "reduce_motion", false)
 	color_blind_mode = config.get_value("accessibility", "color_blind_mode", false)
+	tutorial_completed = bool(config.get_value("tutorial", "completed", false))
+	dev_mode = bool(config.get_value("dev", "enabled", false))
+	var tips = config.get_value("tutorial", "tips_seen", {})
+	tutorial_tips_seen = tips if tips is Dictionary else {}
 
 
 func save_settings() -> void:
@@ -66,6 +107,9 @@ func save_settings() -> void:
 	config.set_value("accessibility", "ui_scale", ui_scale)
 	config.set_value("accessibility", "reduce_motion", reduce_motion)
 	config.set_value("accessibility", "color_blind_mode", color_blind_mode)
+	config.set_value("tutorial", "completed", tutorial_completed)
+	config.set_value("tutorial", "tips_seen", tutorial_tips_seen)
+	config.set_value("dev", "enabled", dev_mode)
 	
 	var err = config.save(SETTINGS_PATH)
 	if err != OK:
@@ -134,11 +178,15 @@ func set_stt_language(lang: String) -> void:
 	settings_changed.emit()
 
 
+## On = touch controls on any device; Auto = the device decides. Touch
+## controls live in each level (group "touch_controls"), not at /root.
 func set_touch_controls_forced(enabled: bool) -> void:
 	touch_controls_forced = enabled
-	var touch = get_node_or_null("/root/TouchControls")
-	if touch and touch.has_method("apply_touch_ui_enabled"):
-		touch.apply_touch_ui_enabled()
+	MobileSafeLayout.set_force_touch_ui(enabled)
+	for touch in get_tree().get_nodes_in_group("touch_controls"):
+		if touch.has_method("apply_touch_ui_enabled"):
+			touch.apply_touch_ui_enabled()
+	save_settings()
 	settings_changed.emit()
 
 
@@ -207,5 +255,10 @@ func reset_progress() -> void:
 	if tracker and tracker.has_method("load_from_save"):
 		tracker.load_from_save({})
 	
+	# Training and its one-time tips count as progress too.
+	tutorial_completed = false
+	tutorial_tips_seen = {}
+	save_settings()
+
 	print("[SettingsManager] Progress reset")
 	settings_changed.emit()

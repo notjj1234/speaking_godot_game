@@ -35,10 +35,12 @@ func player_interact() -> void:
 	if is_open == true:
 		return
 	is_open = true
+	_set_open_prompt(false)
 	is_open_data.set_value()
 	animation_player.play("open_chest")
 	if item_data and quantity > 0:
 		PlayerManager.INVENTORY_DATA.add_item(item_data, quantity)
+		Sfx.play(&"purchase")
 	else:
 		printerr("No Items in Chest")
 		push_error("No Items in Chest")
@@ -46,9 +48,23 @@ func player_interact() -> void:
 
 func _on_area_enter(_a :Area2D) -> void:
 	PlayerManager.interact_pressed.connect(player_interact)
+	_set_open_prompt(not is_open)
 
 func _on_area_exit(_a: Area2D) -> void:
 	PlayerManager.interact_pressed.disconnect(player_interact)
+	_set_open_prompt(false)
+
+
+## Touch: the Interact button reads "Open" while a closed chest is in reach.
+var _prompting := false
+
+func _set_open_prompt(on: bool) -> void:
+	if on == _prompting:
+		return
+	_prompting = on
+	for node in get_tree().get_nodes_in_group("touch_controls"):
+		if node.has_method("set_talk_prompt"):
+			node.set_talk_prompt(on, "Open")
 
 func _set_item_data(value: ItemData) -> void:
 	item_data = value
